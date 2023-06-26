@@ -11,13 +11,12 @@ type Object struct {
 
 type Field struct {
 	Parent    *Object
+	Type      FieldType
 	Name      string
 	Api       string
-	Kind      Kind
-	Type      Type
 	Data      interface{}
 	Comment   string
-	Relations []*RelationFiledInfo
+	relations []*RelationFiledInfo
 }
 
 type RelationFiledInfo struct {
@@ -25,22 +24,16 @@ type RelationFiledInfo struct {
 	TargetField  *Field
 }
 
-type Kind int
+type FieldType int
 
 const (
-	Normal Kind = iota
-	Relate
-	Formula
-	Aggregation
-)
-
-type Type int
-
-const (
-	Int Type = iota
+	Int FieldType = iota
 	String
 	Bool
 	Float
+	Relate
+	Formula
+	Aggregation
 )
 
 type AggregationKind = int
@@ -55,10 +48,12 @@ const (
 
 type RelateData struct {
 	ObjectApi string
+	resolved  *Object
 }
 
 type FormulaData struct {
 	Formula    string
+	Type       FieldType
 	SourceCode *formula.SourceCode
 }
 
@@ -66,6 +61,7 @@ type AggregationData struct {
 	Object    string
 	Relate    string
 	Field     string
+	Type      FieldType
 	Kind      AggregationKind
 	Condition string
 	Resolved  *Field

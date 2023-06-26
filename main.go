@@ -39,48 +39,44 @@ func main() {
 				{
 					Name:    "标题",
 					Api:     "title",
-					Kind:    Normal,
 					Type:    String,
 					Comment: "",
 				},
 				{
 					Name:    "作者名",
 					Api:     "name",
-					Kind:    Normal,
 					Type:    String,
 					Comment: "",
 				},
 				{
 					Name:    "年龄",
 					Api:     "age",
-					Kind:    Normal,
 					Type:    Int,
 					Comment: "",
 				},
 				{
 					Name: "汽车",
 					Api:  "car",
-					Kind: Relate,
-					Type: String,
-					Data: RelateData{
+					Type: Relate,
+					Data: &RelateData{
 						ObjectApi: "car",
 					},
 				},
 				{
 					Name: "汽车品牌",
 					Api:  "car_brand",
-					Kind: Formula,
-					Type: String,
+					Type: Formula,
 					Data: &FormulaData{
 						Formula: "car.brand",
+						Type:    String,
 					},
 				}, {
 					Name: "身价",
 					Api:  "shen",
-					Kind: Formula,
-					Type: Int,
+					Type: Formula,
 					Data: &FormulaData{
 						Formula: "age + car.oil + car.speed",
+						Type:    Int,
 					},
 				},
 			},
@@ -93,21 +89,18 @@ func main() {
 				{
 					Name:    "品牌",
 					Api:     "brand",
-					Kind:    Normal,
 					Type:    String,
 					Comment: "",
 				},
 				{
 					Name:    "速度",
 					Api:     "speed",
-					Kind:    Normal,
 					Type:    Int,
 					Comment: "",
 				},
 				{
 					Name:    "油耗",
 					Api:     "oil",
-					Kind:    Normal,
 					Type:    Int,
 					Comment: "",
 				},
@@ -120,19 +113,16 @@ func main() {
 				{
 					Name: "姓名",
 					Api:  "name",
-					Kind: Normal,
 					Type: String,
 				},
 				{
 					Name: "年龄",
 					Api:  "age",
-					Kind: Normal,
 					Type: Int,
 				},
 				{
 					Name: "班级",
 					Api:  "class",
-					Kind: Normal,
 					Type: String,
 				},
 				// {
@@ -140,7 +130,7 @@ func main() {
 				// 	Api:  "student_count",
 				// 	Kind: objectql.Aggregation,
 				// 	Type: objectql.Int,
-				// 	Data: objectql.AggregationData{
+				// 	Data: &objectql.AggregationData{
 
 				// 		Relate:    "student.teacher",
 				// 		Kind:      objectql.Count,
@@ -150,13 +140,13 @@ func main() {
 				{
 					Name: "学生平均年龄",
 					Api:  "student_age_avg",
-					Kind: Aggregation,
-					Type: Int,
-					Data: AggregationData{
+					Type: Aggregation,
+					Data: &AggregationData{
+						Kind:      Avg,
+						Type:      Float,
 						Object:    "student",
 						Relate:    "teacher",
 						Field:     "age",
-						Kind:      Avg,
 						Condition: "",
 					},
 				},
@@ -169,30 +159,27 @@ func main() {
 				{
 					Name: "姓名",
 					Api:  "name",
-					Kind: Normal,
 					Type: String,
 				},
 				{
 					Name: "年龄",
 					Api:  "age",
-					Kind: Normal,
 					Type: Int,
 				},
 				{
 					Name: "教师",
 					Api:  "teacher",
-					Kind: Relate,
-					Type: String,
-					Data: RelateData{
+					Type: Relate,
+					Data: &RelateData{
 						ObjectApi: "teacher",
 					},
 				},
 				{
 					Name: "教师姓名",
 					Api:  "teacher_name",
-					Kind: Formula,
-					Type: String,
+					Type: Formula,
 					Data: &FormulaData{
+						Type:    String,
 						Formula: "teacher.name",
 					},
 				},
