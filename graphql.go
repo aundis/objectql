@@ -6,8 +6,8 @@ import (
 
 	"github.com/aundis/graphql"
 	"github.com/gogf/gf/v2/util/gconv"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func (o *Objectql) InitObjectGraphqlQuery(object *Object) {
@@ -105,9 +105,8 @@ func (o *Objectql) graphqlQueryOneResolver(ctx context.Context, p graphql.Resolv
 	if err != nil {
 		return nil, err
 	}
-	var one bson.M
-	result := o.getCollection(object.Api).FindOne(ctx, filter, options)
-	err = result.Decode(&one)
+	var result bson.M
+	err = o.getCollection(object.Api).FindOne(ctx, filter, options).Decode(&result)
 	if err != nil {
 		return nil, err
 	}
@@ -176,44 +175,14 @@ func (o *Objectql) parseMongoFindFilters(ctx context.Context, p graphql.ResolveP
 	filter := p.Args["filter"]
 	filterMgn := bson.M{}
 	if filter != nil && len(filter.(string)) > 0 {
-		err := bson.UnmarshalJSON([]byte(filter.(string)), &filterMgn)
+		// TODO: 详细了解一下UnmarshalExtJSON的用法
+		err := bson.UnmarshalExtJSON([]byte(filter.(string)), false, &filterMgn)
 		if err != nil {
 			return nil, err
 		}
 	}
 	return filterMgn, nil
 }
-
-// func (o *Objectql) parseMgoQuery(ctx context.Context, p graphql.ResolveParams, object *Object) (*mgo.Query, error) {
-// 	filter := p.Args["filter"]
-// 	skip := p.Args["skip"]
-// 	top := p.Args["top"]
-// 	sort := p.Args["sort"]
-// 	filterMgn := bson.M{}
-// 	if filter != nil && len(filter.(string)) > 0 {
-// 		err := bson.UnmarshalJSON([]byte(filter.(string)), &filterMgn)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-// 	}
-// 	// 字段过滤
-// 	selects := getGraphqlSelectFieldNames(p)
-// 	mgoSelects := stringArrayToMongodbSelects(selects)
-// 	// 开始组合查询语句
-// 	query, err := o.getCollection(object.Api).Find(ctx, filterMgn)
-// 	query.All()
-
-// 	if skip != nil {
-// 		query = query.Skip(skip.(int))
-// 	}
-// 	if top != nil {
-// 		query = query.Limit(top.(int))
-// 	}
-// 	if sort != nil {
-// 		sort = query.Sort(gconv.Strings(sort)...)
-// 	}
-// 	return query, nil
-// }
 
 func (o *Objectql) InitObjectGraphqlMutation(object *Object) {
 	fields := graphql.InputObjectConfigFieldMap{}
@@ -311,12 +280,13 @@ func (o *Objectql) graphqlMutationDeleteResolver(ctx context.Context, p graphql.
 }
 
 func (o *Objectql) graphqlMutationQueryOne(ctx context.Context, p graphql.ResolveParams, object *Object, id string) (interface{}, error) {
+	options, err := o.parseMongoFindOneOptinos(ctx, p)
+	if err != nil {
+		return nil, err
+	}
+
 	var one bson.M
-	// 字段过滤
-	selects := getGraphqlSelectFieldNames(p)
-	mgoSelects := stringArrayToMongodbSelects(selects)
-	// 从数据库获取数据
-	err := o.getCollection(ctx, object.Api).Find(bson.M{"_id": bson.ObjectIdHex(id)}).Select(mgoSelects).One(&one)
+	err = o.getCollection(object.Api).FindOne(ctx, bson.M{"_id": ObjectIdFromHex(id)}, options).Decode(&one)
 	if err != nil {
 		return nil, err
 	}

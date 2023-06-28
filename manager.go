@@ -9,9 +9,10 @@ import (
 	"github.com/aundis/graphql"
 	"github.com/aundis/graphql/language/ast"
 	"github.com/gogf/gf/v2/util/gconv"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"gopkg.in/mgo.v2/bson"
 )
 
 var global *Objectql
@@ -158,30 +159,30 @@ func (o *Objectql) InitObjects(list []*Object) {
 	}
 }
 
-func (o *Objectql) GetObjectCount(api string) (int, error) {
-	c := session.DB("test").C(api)
-	return c.Count()
-}
+// func (o *Objectql) GetObjectCount(api string) (int, error) {
+// 	c := session.DB("test").C(api)
+// 	return c.Count()
+// }
 
-func (o *Objectql) GetObjectByID(api, id string) (bson.M, error) {
-	c := session.DB("test").C(api)
-	var result bson.M
-	err := c.Find(bson.M{"_id": bson.ObjectIdHex(id)}).One(&result)
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
-}
+// func (o *Objectql) GetObjectByID(api, id string) (bson.M, error) {
+// 	c := session.DB("test").C(api)
+// 	var result bson.M
+// 	err := c.Find(bson.M{"_id": bson.ObjectIdHex(id)}).One(&result)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	return result, nil
+// }
 
-func (o *Objectql) GetObjectList(api string) ([]bson.M, error) {
-	c := session.DB("test").C(api)
-	var result []bson.M
-	err := c.Find(bson.M{}).All(&result)
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
-}
+// func (o *Objectql) GetObjectList(api string) ([]bson.M, error) {
+// 	c := session.DB("test").C(api)
+// 	var result []bson.M
+// 	err := c.Find(bson.M{}).All(&result)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	return result, nil
+// }
 
 func stringArrayToMongodbSelects(arr []string) bson.M {
 	result := bson.M{}
@@ -194,6 +195,22 @@ func stringArrayToMongodbSelects(arr []string) bson.M {
 	return result
 }
 
+func getSelectMapKeys(v bson.M) []string {
+	var result []string
+	for k := range v {
+		result = append(result, k)
+	}
+	return result
+}
+
+func selectMapToQueryString(v bson.M) string {
+	var result []string
+	for k := range v {
+		result = append(result, k)
+	}
+	return strings.Join(result, ",")
+}
+
 func getObjectRelationObjectApis(object *Object) []string {
 	var result []string
 	for _, field := range object.Fields {
@@ -204,31 +221,31 @@ func getObjectRelationObjectApis(object *Object) []string {
 	return result
 }
 
-func (o *Objectql) InsertObject(api string, m bson.M) (bson.M, error) {
-	newId := bson.NewObjectId()
-	c := session.DB("test").C(api)
-	m["_id"] = newId
-	err := c.Insert(m)
-	if err != nil {
-		return nil, err
-	}
-	return o.GetObjectByID(api, newId.Hex())
-}
+// func (o *Objectql) InsertObject(api string, m bson.M) (bson.M, error) {
+// 	newId := bson.NewObjectId()
+// 	c := session.DB("test").C(api)
+// 	m["_id"] = newId
+// 	err := c.Insert(m)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	return o.GetObjectByID(api, newId.Hex())
+// }
 
-func (o *Objectql) UpdateObject(api string, id string, m bson.M) (bson.M, error) {
-	c := session.DB("test").C(api)
-	err := c.Update(bson.M{"_id": bson.ObjectIdHex(id)}, bson.M{
-		"$set": m,
-	})
-	if err != nil {
-		return nil, err
-	}
-	return o.GetObjectByID(api, id)
-}
+// func (o *Objectql) UpdateObject(api string, id string, m bson.M) (bson.M, error) {
+// 	c := session.DB("test").C(api)
+// 	err := c.Update(bson.M{"_id": bson.ObjectIdHex(id)}, bson.M{
+// 		"$set": m,
+// 	})
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	return o.GetObjectByID(api, id)
+// }
 
-func (o *Objectql) DeleteObject(api, id string) error {
-	return session.DB("test").C(api).RemoveId(bson.ObjectIdHex(id))
-}
+// func (o *Objectql) DeleteObject(api, id string) error {
+// 	return session.DB("test").C(api).RemoveId(bson.ObjectIdHex(id))
+// }
 
 func (o *Objectql) FullGraphqlObject(gobj *graphql.Object, object *Object) {
 	gobj.AddFieldConfig("_id", &graphql.Field{
@@ -236,7 +253,7 @@ func (o *Objectql) FullGraphqlObject(gobj *graphql.Object, object *Object) {
 		Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 			source, _ := p.Source.(bson.M)
 			if source != nil && source["_id"] != nil {
-				return source["_id"].(bson.ObjectId).Hex(), nil
+				return source["_id"].(primitive.ObjectID).Hex(), nil
 			}
 			return nil, nil
 		},
@@ -274,10 +291,9 @@ func (o *Objectql) graphqlFieldResolver(ctx context.Context, p graphql.ResolvePa
 
 	// 获取相关表
 	relateResolver := func(objectApi string, objectId string) (interface{}, error) {
-		var results bson.M
 		selects := getGraphqlSelectFieldNames(p)
 		mgoSelects := stringArrayToMongodbSelects(selects)
-		err := o.getCollection(ctx, objectApi).Find(bson.M{"_id": bson.ObjectIdHex(objectId)}).Select(mgoSelects).One(&results)
+		results, err := o.mongoFindOne(ctx, objectApi, bson.M{"_id": ObjectIdFromHex(objectId)}, selectMapToQueryString(mgoSelects))
 		if err != nil {
 			return nil, err
 		}
@@ -301,11 +317,11 @@ func (o *Objectql) graphqlFieldResolver(ctx context.Context, p graphql.ResolvePa
 				return nil, nil
 			}
 			if strings.Contains(gapi, "__expand") {
-				objectId := value.(bson.ObjectId).Hex()
+				objectId := value.(primitive.ObjectID).Hex()
 				data := field.Data.(*RelateData)
 				return relateResolver(data.ObjectApi, objectId)
 			} else {
-				return value.(bson.ObjectId).Hex(), nil
+				return value.(primitive.ObjectID).Hex(), nil
 			}
 		case Formula:
 			data := field.Data.(*FormulaData)

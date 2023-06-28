@@ -8,19 +8,7 @@ import (
 
 	"github.com/aundis/graphql"
 	graphiql "github.com/mnmtanish/go-graphiql"
-
-	"gopkg.in/mgo.v2"
 )
-
-var session *mgo.Session
-
-func init() {
-	var err error
-	session, err = mgo.Dial("mongodb://192.168.0.197:27017")
-	if err != nil {
-		panic(err)
-	}
-}
 
 type GraphqlQueryReq struct {
 	Query     string `json:"query"`

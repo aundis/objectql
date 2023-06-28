@@ -2,8 +2,9 @@ package main
 
 import (
 	"context"
+	"strings"
 
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func (o *Objectql) insertHandle(ctx context.Context, api string, doc map[string]interface{}) (string, error) {
@@ -19,23 +20,21 @@ func (o *Objectql) insertHandle(ctx context.Context, api string, doc map[string]
 	if err != nil {
 		return "", err
 	}
-	objectId := bson.NewObjectId()
-	doc["_id"] = objectId
-	err = o.getCollection(ctx, api).Insert(doc)
+	objectIdStr, err := o.mongoInsert(ctx, api, doc)
 	if err != nil {
 		return "", err
 	}
 	// 数据联动
 	for _, field := range object.Fields {
 		if _, ok := doc[field.Api]; ok {
-			err = o.onFieldChange(ctx, object, objectId.Hex(), field, nil)
+			err = o.onFieldChange(ctx, object, objectIdStr, field, nil)
 			if err != nil {
 				return "", err
 			}
 		}
 	}
 	// insertAfter 事件触发
-	return objectId.Hex(), nil
+	return objectIdStr, nil
 }
 
 func (o *Objectql) updateHandle(ctx context.Context, api string, id string, doc map[string]interface{}) error {
@@ -56,9 +55,7 @@ func (o *Objectql) updateHandle(ctx context.Context, api string, id string, doc 
 	if err != nil {
 		return err
 	}
-	err = o.getCollection(ctx, api).Update(bson.M{"_id": bson.ObjectIdHex(id)}, bson.M{
-		"$set": doc,
-	})
+	err = o.mongoUpdateById(ctx, api, id, doc)
 	if err != nil {
 		return err
 	}
@@ -89,7 +86,7 @@ func (o *Objectql) deleteHandle(ctx context.Context, api string, id string) erro
 		return err
 	}
 	// 数据库修改
-	err = o.getCollection(ctx, api).RemoveId(bson.ObjectIdHex(id))
+	err = o.mongoDeleteById(ctx, api, id)
 	if err != nil {
 		return err
 	}
@@ -104,14 +101,17 @@ func (o *Objectql) deleteHandle(ctx context.Context, api string, id string) erro
 	return nil
 }
 
-func (o *Objectql) getObjectBeforeValues(ctx context.Context, object *Object, id string) (map[string]interface{}, error) {
-	beforeValues := map[string]interface{}{}
+func (o *Objectql) getObjectBeforeValues(ctx context.Context, object *Object, id string) (beforeValues map[string]interface{}, err error) {
 	apis := getObjectRelationObjectApis(object)
 	if len(apis) > 0 {
-		err := o.getCollection(ctx, object.Api).Find(bson.M{"_id": bson.ObjectIdHex(id)}).Select(stringArrayToMongodbSelects(apis)).One(&beforeValues)
-		if err != nil {
-			return nil, err
+		selects := stringArrayToMongodbSelects(apis)
+		if len(selects) > 0 {
+			arr := getSelectMapKeys(selects)
+			beforeValues, err = o.mongoFindOne(ctx, object.Api, bson.M{"_id": ObjectIdFromHex(id)}, strings.Join(arr, ","))
+			if err != nil {
+				return
+			}
 		}
 	}
-	return beforeValues, nil
+	return
 }

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func FindObjectFromList(list []*Object, api string) *Object {
@@ -46,10 +46,10 @@ func formatInputValue(fields []*Field, doc map[string]interface{}) error {
 		if field.Type == Relate {
 			if v, ok := doc[field.Api]; ok {
 				if v2, ok := v.(string); ok {
-					if !bson.IsObjectIdHex(v2) {
+					if !primitive.IsValidObjectID(v2) {
 						return fmt.Errorf("FormatInputValue doc[\"%s\"] not valid object id hex", field.Api)
 					}
-					doc[field.Api] = bson.ObjectIdHex(v2)
+					doc[field.Api] = ObjectIdFromHex(v2)
 				}
 			}
 		}

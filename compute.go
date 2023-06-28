@@ -8,8 +8,9 @@ import (
 
 	"github.com/aundis/formula"
 	"github.com/gogf/gf/v2/util/gconv"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func (o *Objectql) onFieldChange(ctx context.Context, object *Object, id string, field *Field, beforeValues bson.M) error {
@@ -36,7 +37,7 @@ func (o *Objectql) formulaHandler(ctx context.Context, object *Object, id string
 	var objectIds []string
 	if info.TargetField.Parent == object {
 		// 计算字段在自身
-		count, err := o.getCollection(ctx, object.Api).Find(bson.M{"_id": bson.ObjectIdHex(id)}).Count()
+		count, err := o.getCollection(object.Api).CountDocuments(ctx, bson.M{"_id": ObjectIdFromHex(id)})
 		if err != nil {
 			return err
 		}
@@ -47,8 +48,11 @@ func (o *Objectql) formulaHandler(ctx context.Context, object *Object, id string
 		objectIds = append(objectIds, id)
 	} else {
 		// 存在通过字段肯定是相关表
-		var result []bson.M
-		err := o.getCollection(ctx, info.ThroughField.Parent.Api).Find(bson.M{info.ThroughField.Api: bson.ObjectIdHex(id)}).Select(bson.M{"_id": 1}).All(&result)
+		objectId, err := primitive.ObjectIDFromHex(id)
+		if err != nil {
+			return err
+		}
+		result, err := o.mongoFindAll(ctx, info.ThroughField.Parent.Api, bson.M{info.ThroughField.Api: objectId}, "_id")
 		if err != nil {
 			return err
 		}
@@ -57,7 +61,7 @@ func (o *Objectql) formulaHandler(ctx context.Context, object *Object, id string
 			return nil
 		}
 		for _, item := range result {
-			objectIds = append(objectIds, item["_id"].(bson.ObjectId).Hex())
+			objectIds = append(objectIds, item["_id"].(primitive.ObjectID).Hex())
 		}
 	}
 
@@ -90,15 +94,14 @@ func (o *Objectql) formulaHandler(ctx context.Context, object *Object, id string
 func (o *Objectql) resolverIdentifier(ctx context.Context, name string) (interface{}, error) {
 	runner := formula.RunnerFromCtx(ctx)
 	object := runner.Get("object").(*Object)
-	objectId := runner.Get("objectId").(string)
+	objectIdStr := runner.Get("objectId").(string)
 	// 先找到这个字段
 	field := FindFieldFromObject(object, name)
 	if field == nil {
 		return nil, fmt.Errorf("can't found field '%s' from object '%s'", name, object.Api)
 	}
 	// 将这个记录查找出来
-	var one bson.M
-	err := o.getCollection(ctx, object.Api).Find(bson.M{"_id": bson.ObjectIdHex(objectId)}).Select(bson.M{name: 1}).One(&one)
+	one, err := o.mongoFindOne(ctx, object.Api, bson.M{"_id": ObjectIdFromHex(objectIdStr)}, name)
 	if err != nil {
 		return nil, err
 	}
@@ -131,9 +134,8 @@ func (o *Objectql) resolveSelectorExpression(ctx context.Context, name string) (
 		return nil, err
 	}
 	// 将相关表的值查找出来
-	var one bson.M
-	err = o.getCollection(ctx, object.Api).Find(bson.M{"_id": bson.ObjectIdHex(objectId)}).Select(bson.M{relationFieldApi: 1}).One(&one)
-	if err != nil && err != mgo.ErrNotFound {
+	one, err := o.mongoFindOne(ctx, object.Api, bson.M{"_id": ObjectIdFromHex(objectId)}, relationFieldApi)
+	if err != nil {
 		return nil, err
 	}
 	// 找不到就忽略掉返回一个默认值
@@ -145,8 +147,7 @@ func (o *Objectql) resolveSelectorExpression(ctx context.Context, name string) (
 		return formula.FormatValue(v)
 	}
 	// 查询相关表对应的值
-	var relate bson.M
-	err = o.getCollection(ctx, relateObjectApi).Find(bson.M{"_id": one[relationFieldApi]}).Select(bson.M{valueFieldApi: 1}).One(&relate)
+	relate, err := o.mongoFindOne(ctx, relateObjectApi, bson.M{"_id": one[relationFieldApi]}, valueFieldApi)
 	if err != nil {
 		return nil, err
 	}
@@ -202,19 +203,19 @@ func (o *Objectql) aggregationHandler(ctx context.Context, object *Object, id st
 	// 修改前
 	if beforeValues != nil && beforeValues[info.ThroughField.Api] != nil {
 		objectId := beforeValues[info.ThroughField.Api]
-		err := o.aggregateField(ctx, info.TargetField.Parent, objectId.(bson.ObjectId).Hex(), info.TargetField)
+		err := o.aggregateField(ctx, info.TargetField.Parent, objectId.(primitive.ObjectID).Hex(), info.TargetField)
 		if err != nil {
 			return err
 		}
 	}
 	// 修改后
-	data, err := o.GetObjectByID(object.Api, id)
+	data, err := o.mongoFindOne(ctx, object.Api, bson.M{"_id": ObjectIdFromHex(id)}, info.ThroughField.Api)
 	if err != nil {
 		panic(err)
 	}
 	if data != nil && data[info.ThroughField.Api] != nil {
 		objectId := data[info.ThroughField.Api]
-		err := o.aggregateField(ctx, info.TargetField.Parent, objectId.(bson.ObjectId).Hex(), info.TargetField)
+		err := o.aggregateField(ctx, info.TargetField.Parent, objectId.(primitive.ObjectID).Hex(), info.TargetField)
 		if err != nil {
 			return err
 		}
@@ -245,12 +246,10 @@ func (o *Objectql) aggregateField(ctx context.Context, object *Object, id string
 		return errors.New("not support aggregate kind")
 	}
 	// 聚合查询
-	var result bson.M
-	c := session.DB("test").C(adata.Object)
-	err := c.Pipe([]bson.M{
+	cursor, err := o.getCollection(adata.Object).Aggregate(ctx, []bson.M{
 		{
 			"$match": bson.M{
-				adata.Relate: bson.ObjectIdHex(id),
+				adata.Relate: ObjectIdFromHex(id),
 			},
 		},
 		{
@@ -259,8 +258,12 @@ func (o *Objectql) aggregateField(ctx context.Context, object *Object, id string
 				"result": bson.M{funcStr: "$" + adata.Field},
 			},
 		},
-	}).One(&result)
-	if err != nil && err != mgo.ErrNotFound {
+	})
+	if err != nil {
+		return err
+	}
+	result, err := readOneFromCuresor(ctx, cursor)
+	if err != nil {
 		return err
 	}
 	// 应用修改
@@ -276,4 +279,16 @@ func (o *Objectql) aggregateField(ctx context.Context, object *Object, id string
 		return err
 	}
 	return nil
+}
+
+func readOneFromCuresor(ctx context.Context, cursor *mongo.Cursor) (bson.M, error) {
+	var result bson.M
+	if cursor.Next(ctx) {
+		err := cursor.Decode(&result)
+		if err != nil {
+			return nil, err
+		}
+		return result, nil
+	}
+	return nil, nil
 }
