@@ -1,17 +1,22 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
 	"github.com/aundis/formula"
 	"github.com/aundis/graphql"
+	"github.com/aundis/graphql/language/ast"
+	"github.com/gogf/gf/v2/util/gconv"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"gopkg.in/mgo.v2/bson"
 )
 
 var global *Objectql
 
-func Manager() *Objectql {
+func New() *Objectql {
 	if global == nil {
 		global = &Objectql{
 			query:    map[string]*graphql.Field{},
@@ -29,6 +34,10 @@ type Objectql struct {
 	objects  []Object
 	gobjects map[string]*graphql.Object
 	list     []*Object
+
+	mongoClientOpts        *options.ClientOptions
+	mongoClient            *mongo.Client
+	mongoCollectionOptions *options.CollectionOptions
 }
 
 func (o *Objectql) InitObjects(list []*Object) {
@@ -129,6 +138,13 @@ func (o *Objectql) InitObjects(list []*Object) {
 				Name: f.Api,
 				Type: graphql.String,
 			}
+			// 展开查询
+			if f.Type == Relate {
+				fields[f.Api+"__expand"] = &graphql.Field{
+					Name: f.Api,
+					Type: graphql.String,
+				}
+			}
 		}
 		o.gobjects[v.Api] = graphql.NewObject(graphql.ObjectConfig{
 			Name:   v.Api,
@@ -137,8 +153,8 @@ func (o *Objectql) InitObjects(list []*Object) {
 	}
 	for _, v := range list {
 		o.FullGraphqlObject(o.gobjects[v.Api], v)
-		o.InitObjectQuery(v)
-		o.InitObjectMutation(v)
+		o.InitObjectGraphqlQuery(v)
+		o.InitObjectGraphqlMutation(v)
 	}
 }
 
@@ -170,6 +186,9 @@ func (o *Objectql) GetObjectList(api string) ([]bson.M, error) {
 func stringArrayToMongodbSelects(arr []string) bson.M {
 	result := bson.M{}
 	for _, item := range arr {
+		if strings.Contains(item, "__expand") {
+			continue
+		}
 		result[item] = 1
 	}
 	return result
@@ -223,20 +242,96 @@ func (o *Objectql) FullGraphqlObject(gobj *graphql.Object, object *Object) {
 		},
 	})
 	for _, field := range object.Fields {
-		api := field.Api
-		gobj.AddFieldConfig(api, &graphql.Field{
-			Name: api,
-			Type: toGraphqlType(field),
+		cur := field
+		gobj.AddFieldConfig(cur.Api, &graphql.Field{
+			Name: cur.Api,
+			Type: o.toGraphqlType(cur, cur.Api),
 			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-				source, _ := p.Source.(bson.M)
-				if source != nil && source[api] != nil {
-					return source[api], nil
-				}
-				return nil, nil
+				return o.graphqlFieldResolver(p.Context, p, cur, cur.Api)
 			},
-			Description: field.Comment,
+			Description: cur.Comment,
 		})
+		if cur.Type == Relate {
+			expandApi := cur.Api + "__expand"
+			gobj.AddFieldConfig(expandApi, &graphql.Field{
+				Name: expandApi,
+				Type: o.toGraphqlType(cur, expandApi),
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					return o.graphqlFieldResolver(p.Context, p, cur, expandApi)
+				},
+				Description: cur.Comment,
+			})
+		}
 	}
+}
+
+func (o *Objectql) graphqlFieldResolver(ctx context.Context, p graphql.ResolveParams, field *Field, gapi string) (interface{}, error) {
+	source, ok := p.Source.(bson.M)
+	//
+	if !ok {
+		return nil, nil
+	}
+
+	// 获取相关表
+	relateResolver := func(objectApi string, objectId string) (interface{}, error) {
+		var results bson.M
+		selects := getGraphqlSelectFieldNames(p)
+		mgoSelects := stringArrayToMongodbSelects(selects)
+		err := o.getCollection(ctx, objectApi).Find(bson.M{"_id": bson.ObjectIdHex(objectId)}).Select(mgoSelects).One(&results)
+		if err != nil {
+			return nil, err
+		}
+		return results, nil
+	}
+
+	// 格式化输出值 (自己调用需要先写个声明)
+	var formatGraohqlOutValue func(fieldType FieldType, value interface{}) (interface{}, error)
+	formatGraohqlOutValue = func(fieldType FieldType, value interface{}) (interface{}, error) {
+		switch fieldType {
+		case Bool:
+			return gconv.Bool(value), nil
+		case Int:
+			return gconv.Int(value), nil
+		case Float:
+			return gconv.Float32(value), nil
+		case String:
+			return gconv.String(value), nil
+		case Relate:
+			if value == nil {
+				return nil, nil
+			}
+			if strings.Contains(gapi, "__expand") {
+				objectId := value.(bson.ObjectId).Hex()
+				data := field.Data.(*RelateData)
+				return relateResolver(data.ObjectApi, objectId)
+			} else {
+				return value.(bson.ObjectId).Hex(), nil
+			}
+		case Formula:
+			data := field.Data.(*FormulaData)
+			return formatGraohqlOutValue(data.Type, value)
+		case Aggregation:
+			data := field.Data.(*AggregationData)
+			return formatGraohqlOutValue(data.Type, value)
+		default:
+			return nil, fmt.Errorf("formatGraohqlOutValue simple not support type(%v)", fieldType)
+		}
+	}
+
+	return formatGraohqlOutValue(field.Type, source[field.Api])
+}
+
+func getGraphqlSelectFieldNames(p graphql.ResolveParams) []string {
+	if p.Info.FieldASTs[0].SelectionSet == nil {
+		return nil
+	}
+	var result []string
+	for _, selection := range p.Info.FieldASTs[0].SelectionSet.Selections {
+		if field, ok := selection.(*ast.Field); ok {
+			result = append(result, field.Name.Value)
+		}
+	}
+	return result
 }
 
 func (o *Objectql) GetSchema() (graphql.Schema, error) {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -31,7 +32,13 @@ type Author struct {
 }
 
 func main() {
-	Manager().InitObjects([]*Object{
+	objectql := New()
+	err := objectql.initMongodb(context.Background(), "mongodb://192.168.0.197:27017/?connect=direct")
+	if err != nil {
+		panic(err)
+	}
+
+	objectql.InitObjects([]*Object{
 		{
 			Name: "作者",
 			Api:  "author",
@@ -188,7 +195,7 @@ func main() {
 	})
 
 	// 定义GraphQL模式
-	schema, err := Manager().GetSchema()
+	schema, err := New().GetSchema()
 	if err != nil {
 		panic(err)
 	}

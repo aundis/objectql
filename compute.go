@@ -12,15 +12,15 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-func (o *Objectql) onFieldChange(object *Object, id string, field *Field, beforeValues bson.M) error {
+func (o *Objectql) onFieldChange(ctx context.Context, object *Object, id string, field *Field, beforeValues bson.M) error {
 	if len(field.relations) > 0 {
 		for _, relation := range field.relations {
 			var err error
 			switch relation.TargetField.Type {
 			case Formula:
-				err = o.formulaHandler(object, id, relation)
+				err = o.formulaHandler(ctx, object, id, relation)
 			case Aggregation:
-				err = o.aggregationHandler(object, id, relation, beforeValues)
+				err = o.aggregationHandler(ctx, object, id, relation, beforeValues)
 			default:
 				err = fmt.Errorf("target field kind %v not support", relation.TargetField.Type)
 			}
@@ -32,11 +32,11 @@ func (o *Objectql) onFieldChange(object *Object, id string, field *Field, before
 	return nil
 }
 
-func (o *Objectql) formulaHandler(object *Object, id string, info *RelationFiledInfo) error {
+func (o *Objectql) formulaHandler(ctx context.Context, object *Object, id string, info *RelationFiledInfo) error {
 	var objectIds []string
 	if info.TargetField.Parent == object {
 		// 计算字段在自身
-		count, err := o.getCollection(object.Api).Find(bson.M{"_id": bson.ObjectIdHex(id)}).Count()
+		count, err := o.getCollection(ctx, object.Api).Find(bson.M{"_id": bson.ObjectIdHex(id)}).Count()
 		if err != nil {
 			return err
 		}
@@ -48,7 +48,7 @@ func (o *Objectql) formulaHandler(object *Object, id string, info *RelationFiled
 	} else {
 		// 存在通过字段肯定是相关表
 		var result []bson.M
-		err := o.getCollection(info.ThroughField.Parent.Api).Find(bson.M{info.ThroughField.Api: bson.ObjectIdHex(id)}).Select(bson.M{"_id": 1}).All(&result)
+		err := o.getCollection(ctx, info.ThroughField.Parent.Api).Find(bson.M{info.ThroughField.Api: bson.ObjectIdHex(id)}).Select(bson.M{"_id": 1}).All(&result)
 		if err != nil {
 			return err
 		}
@@ -77,7 +77,7 @@ func (o *Objectql) formulaHandler(object *Object, id string, info *RelationFiled
 		if err != nil {
 			return err
 		}
-		err = o.Update(target.Api, objectId, bson.M{
+		err = o.updateHandle(ctx, target.Api, objectId, bson.M{
 			info.TargetField.Api: formated,
 		})
 		if err != nil {
@@ -98,11 +98,15 @@ func (o *Objectql) resolverIdentifier(ctx context.Context, name string) (interfa
 	}
 	// 将这个记录查找出来
 	var one bson.M
-	err := o.getCollection(object.Api).Find(bson.M{"_id": bson.ObjectIdHex(objectId)}).Select(bson.M{name: 1}).One(&one)
+	err := o.getCollection(ctx, object.Api).Find(bson.M{"_id": bson.ObjectIdHex(objectId)}).Select(bson.M{name: 1}).One(&one)
 	if err != nil {
 		return nil, err
 	}
-	return formatFormulaReturnValue(field, one[name])
+	v, err := formatFormulaReturnValue(field, one[name])
+	if err != nil {
+		return nil, err
+	}
+	return formula.FormatValue(v)
 }
 
 func (o *Objectql) resolveSelectorExpression(ctx context.Context, name string) (interface{}, error) {
@@ -128,7 +132,7 @@ func (o *Objectql) resolveSelectorExpression(ctx context.Context, name string) (
 	}
 	// 将相关表的值查找出来
 	var one bson.M
-	err = o.getCollection(object.Api).Find(bson.M{"_id": bson.ObjectIdHex(objectId)}).Select(bson.M{relationFieldApi: 1}).One(&one)
+	err = o.getCollection(ctx, object.Api).Find(bson.M{"_id": bson.ObjectIdHex(objectId)}).Select(bson.M{relationFieldApi: 1}).One(&one)
 	if err != nil && err != mgo.ErrNotFound {
 		return nil, err
 	}
@@ -142,7 +146,7 @@ func (o *Objectql) resolveSelectorExpression(ctx context.Context, name string) (
 	}
 	// 查询相关表对应的值
 	var relate bson.M
-	err = o.getCollection(relateObjectApi).Find(bson.M{"_id": one[relationFieldApi]}).Select(bson.M{valueFieldApi: 1}).One(&relate)
+	err = o.getCollection(ctx, relateObjectApi).Find(bson.M{"_id": one[relationFieldApi]}).Select(bson.M{valueFieldApi: 1}).One(&relate)
 	if err != nil {
 		return nil, err
 	}
@@ -181,24 +185,24 @@ func formatFormulaReturnValue(field *Field, value interface{}) (interface{}, err
 func basicFormatFormulaReturnValue(tpe FieldType, value interface{}) (interface{}, error) {
 	switch tpe {
 	case Int:
-		return formula.ToInt(value)
+		return gconv.Int(value), nil
 	case Float:
-		return formula.ToFloat32(value)
+		return gconv.Float32(value), nil
 	case Bool:
-		return formula.ToBool(value)
+		return gconv.Bool(value), nil
 	case String:
-		return formula.ToString(value)
+		return gconv.String(value), nil
 	default:
 		return nil, fmt.Errorf("basicFormatFormulaReturnValue unknown field type %v", tpe)
 	}
 }
 
-func (o *Objectql) aggregationHandler(object *Object, id string, info *RelationFiledInfo, beforeValues bson.M) error {
+func (o *Objectql) aggregationHandler(ctx context.Context, object *Object, id string, info *RelationFiledInfo, beforeValues bson.M) error {
 	// 聚合2次, 修改前和修改后
 	// 修改前
 	if beforeValues != nil && beforeValues[info.ThroughField.Api] != nil {
 		objectId := beforeValues[info.ThroughField.Api]
-		err := o.aggregateField(info.TargetField.Parent, objectId.(bson.ObjectId).Hex(), info.TargetField)
+		err := o.aggregateField(ctx, info.TargetField.Parent, objectId.(bson.ObjectId).Hex(), info.TargetField)
 		if err != nil {
 			return err
 		}
@@ -210,7 +214,7 @@ func (o *Objectql) aggregationHandler(object *Object, id string, info *RelationF
 	}
 	if data != nil && data[info.ThroughField.Api] != nil {
 		objectId := data[info.ThroughField.Api]
-		err := o.aggregateField(info.TargetField.Parent, objectId.(bson.ObjectId).Hex(), info.TargetField)
+		err := o.aggregateField(ctx, info.TargetField.Parent, objectId.(bson.ObjectId).Hex(), info.TargetField)
 		if err != nil {
 			return err
 		}
@@ -218,7 +222,7 @@ func (o *Objectql) aggregationHandler(object *Object, id string, info *RelationF
 	return nil
 }
 
-func (o *Objectql) aggregateField(object *Object, id string, field *Field) error {
+func (o *Objectql) aggregateField(ctx context.Context, object *Object, id string, field *Field) error {
 	adata := field.Data.(*AggregationData)
 	// TODO:这个要放到初始化那边去
 	if adata.Resolved == nil {
@@ -265,7 +269,7 @@ func (o *Objectql) aggregateField(object *Object, id string, field *Field) error
 	if result != nil {
 		value = gconv.Float64(result["result"])
 	}
-	err = o.Update(object.Api, id, bson.M{
+	err = o.updateHandle(ctx, object.Api, id, bson.M{
 		field.Api: value,
 	})
 	if err != nil {

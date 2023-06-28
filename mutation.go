@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
+
 	"gopkg.in/mgo.v2/bson"
 )
 
-func (o *Objectql) Insert(api string, doc map[string]interface{}) (string, error) {
+func (o *Objectql) insertHandle(ctx context.Context, api string, doc map[string]interface{}) (string, error) {
 	object := FindObjectFromList(o.list, api)
 	if object == nil {
 		return "", NotFoundObjectErr
@@ -19,14 +21,14 @@ func (o *Objectql) Insert(api string, doc map[string]interface{}) (string, error
 	}
 	objectId := bson.NewObjectId()
 	doc["_id"] = objectId
-	err = o.getCollection(api).Insert(doc)
+	err = o.getCollection(ctx, api).Insert(doc)
 	if err != nil {
 		return "", err
 	}
 	// 数据联动
 	for _, field := range object.Fields {
 		if _, ok := doc[field.Api]; ok {
-			err = o.onFieldChange(object, objectId.Hex(), field, nil)
+			err = o.onFieldChange(ctx, object, objectId.Hex(), field, nil)
 			if err != nil {
 				return "", err
 			}
@@ -36,7 +38,7 @@ func (o *Objectql) Insert(api string, doc map[string]interface{}) (string, error
 	return objectId.Hex(), nil
 }
 
-func (o *Objectql) Update(api string, id string, doc map[string]interface{}) error {
+func (o *Objectql) updateHandle(ctx context.Context, api string, id string, doc map[string]interface{}) error {
 	object := FindObjectFromList(o.list, api)
 	if object == nil {
 		return NotFoundObjectErr
@@ -45,7 +47,7 @@ func (o *Objectql) Update(api string, id string, doc map[string]interface{}) err
 	// 权限校验
 	// updateBefore 事件触发 (可以修改表单内容)
 	// 保存相关表的字段
-	beforeValues, err := o.getObjectBeforeValues(object, id)
+	beforeValues, err := o.getObjectBeforeValues(ctx, object, id)
 	if err != nil {
 		return err
 	}
@@ -54,7 +56,7 @@ func (o *Objectql) Update(api string, id string, doc map[string]interface{}) err
 	if err != nil {
 		return err
 	}
-	err = o.getCollection(api).Update(bson.M{"_id": bson.ObjectIdHex(id)}, bson.M{
+	err = o.getCollection(ctx, api).Update(bson.M{"_id": bson.ObjectIdHex(id)}, bson.M{
 		"$set": doc,
 	})
 	if err != nil {
@@ -63,7 +65,7 @@ func (o *Objectql) Update(api string, id string, doc map[string]interface{}) err
 	// 数据联动
 	for _, field := range object.Fields {
 		if _, ok := doc[field.Api]; ok {
-			err = o.onFieldChange(object, id, field, beforeValues)
+			err = o.onFieldChange(ctx, object, id, field, beforeValues)
 			if err != nil {
 				return err
 			}
@@ -73,7 +75,7 @@ func (o *Objectql) Update(api string, id string, doc map[string]interface{}) err
 	return nil
 }
 
-func (o *Objectql) Delete(api string, id string) error {
+func (o *Objectql) deleteHandle(ctx context.Context, api string, id string) error {
 	object := FindObjectFromList(o.list, api)
 	if object == nil {
 		return NotFoundObjectErr
@@ -82,18 +84,18 @@ func (o *Objectql) Delete(api string, id string) error {
 	// 权限校验
 	// deleteBefore 事件触发
 	// 保存相关表的字段
-	beforeValues, err := o.getObjectBeforeValues(object, id)
+	beforeValues, err := o.getObjectBeforeValues(ctx, object, id)
 	if err != nil {
 		return err
 	}
 	// 数据库修改
-	err = o.getCollection(api).RemoveId(bson.ObjectIdHex(id))
+	err = o.getCollection(ctx, api).RemoveId(bson.ObjectIdHex(id))
 	if err != nil {
 		return err
 	}
 	// 数据联动
 	for _, field := range object.Fields {
-		err = o.onFieldChange(object, id, field, beforeValues)
+		err = o.onFieldChange(ctx, object, id, field, beforeValues)
 		if err != nil {
 			return err
 		}
@@ -102,12 +104,11 @@ func (o *Objectql) Delete(api string, id string) error {
 	return nil
 }
 
-func (o *Objectql) getObjectBeforeValues(object *Object, id string) (map[string]interface{}, error) {
+func (o *Objectql) getObjectBeforeValues(ctx context.Context, object *Object, id string) (map[string]interface{}, error) {
 	beforeValues := map[string]interface{}{}
 	apis := getObjectRelationObjectApis(object)
 	if len(apis) > 0 {
-		c := session.DB("test").C(object.Api)
-		err := c.Find(bson.M{"_id": bson.ObjectIdHex(id)}).Select(stringArrayToMongodbSelects(apis)).One(&beforeValues)
+		err := o.getCollection(ctx, object.Api).Find(bson.M{"_id": bson.ObjectIdHex(id)}).Select(stringArrayToMongodbSelects(apis)).One(&beforeValues)
 		if err != nil {
 			return nil, err
 		}
