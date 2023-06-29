@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
-	"strings"
 
+	"github.com/aundis/graphql"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -12,11 +12,33 @@ func (o *Objectql) insertHandle(ctx context.Context, api string, doc map[string]
 	if object == nil {
 		return "", NotFoundObjectErr
 	}
+	// 对象权限校验
+	err := o.checkObjectPermission(ctx, object.Api, ObjectInsert)
+	if err != nil {
+		return "", err
+	}
 	// 数据校验层
-	// 权限校验
+	err = o.validateDocument(object, doc)
+	if err != nil {
+		return "", err
+	}
 	// insertBefore 事件触发 (可以修改表单内容)
+	err = o.triggerInsertBefore(ctx, api, doc)
+	if err != nil {
+		return "", err
+	}
+	// 数据校验层(数据可能被修改了,所以在校验一次)
+	err = o.validateDocument(object, doc)
+	if err != nil {
+		return "", err
+	}
+	// 字段权限校验
+	err = o.checkObjectFieldPermissionWithDocument(ctx, object, doc, FieldUpdate)
+	if err != nil {
+		return "", err
+	}
 	// 数据库修改
-	err := formatInputValue(object.Fields, doc)
+	err = formatInputValue(object.Fields, doc)
 	if err != nil {
 		return "", err
 	}
@@ -34,17 +56,48 @@ func (o *Objectql) insertHandle(ctx context.Context, api string, doc map[string]
 		}
 	}
 	// insertAfter 事件触发
+	err = o.triggerInsertAfter(ctx, api, objectIdStr)
+	if err != nil {
+		return "", err
+	}
 	return objectIdStr, nil
 }
 
-func (o *Objectql) updateHandle(ctx context.Context, api string, id string, doc map[string]interface{}) error {
+func (o *Objectql) updateHandle(ctx context.Context, api string, id string, doc map[string]interface{}, permissionBlock bool) error {
+	var err error
 	object := FindObjectFromList(o.list, api)
 	if object == nil {
 		return NotFoundObjectErr
 	}
+	// 对象权限校验
+	if !permissionBlock {
+		err = o.checkObjectPermission(ctx, object.Api, ObjectInsert)
+		if err != nil {
+			return err
+		}
+	}
 	// 数据校验
-	// 权限校验
+	err = o.validateDocument(object, doc)
+	if err != nil {
+		return err
+	}
 	// updateBefore 事件触发 (可以修改表单内容)
+	err = o.triggerUpdateBefore(ctx, api, id, doc)
+	if err != nil {
+		return err
+	}
+	// 数据校验(数据可能被修改了,所以再校验一次)
+	err = o.validateDocument(object, doc)
+	if err != nil {
+		return err
+	}
+	// 字段权限校验
+	if !permissionBlock {
+		err = o.checkObjectFieldPermissionWithDocument(ctx, object, doc, FieldUpdate)
+		if err != nil {
+			return err
+		}
+	}
 	// 保存相关表的字段
 	beforeValues, err := o.getObjectBeforeValues(ctx, object, id)
 	if err != nil {
@@ -69,6 +122,10 @@ func (o *Objectql) updateHandle(ctx context.Context, api string, id string, doc 
 		}
 	}
 	// updateAfter 事件触发
+	err = o.triggerUpdateAfter(ctx, api, id)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -77,9 +134,16 @@ func (o *Objectql) deleteHandle(ctx context.Context, api string, id string) erro
 	if object == nil {
 		return NotFoundObjectErr
 	}
-	// 数据校验
-	// 权限校验
+	// 对象权限校验
+	err := o.checkObjectPermission(ctx, object.Api, ObjectInsert)
+	if err != nil {
+		return err
+	}
 	// deleteBefore 事件触发
+	err = o.triggerDeleteBefore(ctx, api, id)
+	if err != nil {
+		return err
+	}
 	// 保存相关表的字段
 	beforeValues, err := o.getObjectBeforeValues(ctx, object, id)
 	if err != nil {
@@ -98,20 +162,23 @@ func (o *Objectql) deleteHandle(ctx context.Context, api string, id string) erro
 		}
 	}
 	// deleteAfter 事件触发
+	err = o.triggerDeleteAfter(ctx, api, id)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
-func (o *Objectql) getObjectBeforeValues(ctx context.Context, object *Object, id string) (beforeValues map[string]interface{}, err error) {
-	apis := getObjectRelationObjectApis(object)
-	if len(apis) > 0 {
-		selects := stringArrayToMongodbSelects(apis)
-		if len(selects) > 0 {
-			arr := getSelectMapKeys(selects)
-			beforeValues, err = o.mongoFindOne(ctx, object.Api, bson.M{"_id": ObjectIdFromHex(id)}, strings.Join(arr, ","))
-			if err != nil {
-				return
-			}
-		}
+func (o *Objectql) graphqlMutationQueryOne(ctx context.Context, p graphql.ResolveParams, object *Object, id string) (interface{}, error) {
+	options, err := o.parseMongoFindOneOptinos(ctx, p)
+	if err != nil {
+		return nil, err
 	}
-	return
+
+	var one bson.M
+	err = o.getCollection(object.Api).FindOne(ctx, bson.M{"_id": ObjectIdFromHex(id)}, options).Decode(&one)
+	if err != nil {
+		return nil, err
+	}
+	return one, nil
 }

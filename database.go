@@ -27,6 +27,21 @@ func (o *Objectql) getCollection(api string) *mongo.Collection {
 	return o.mongoClient.Database("test").Collection(api)
 }
 
+func (o *Objectql) WithTransaction(ctx context.Context, fn func(ctx context.Context) (interface{}, error)) (interface{}, error) {
+	if mongo.SessionFromContext(ctx) != nil {
+		return fn(ctx)
+	} else {
+		session, err := o.mongoClient.StartSession()
+		if err != nil {
+			return nil, err
+		}
+		defer session.EndSession(ctx)
+		return session.WithTransaction(ctx, func(ctx mongo.SessionContext) (interface{}, error) {
+			return fn(ctx)
+		})
+	}
+}
+
 func (o *Objectql) mongoFindAll(ctx context.Context, table string, filter bson.M, selects string) ([]bson.M, error) {
 	findOptions := options.Find()
 	if len(selects) > 0 {

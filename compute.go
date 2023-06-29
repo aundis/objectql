@@ -83,7 +83,7 @@ func (o *Objectql) formulaHandler(ctx context.Context, object *Object, id string
 		}
 		err = o.updateHandle(ctx, target.Api, objectId, bson.M{
 			info.TargetField.Api: formated,
-		})
+		}, true)
 		if err != nil {
 			return err
 		}
@@ -274,7 +274,7 @@ func (o *Objectql) aggregateField(ctx context.Context, object *Object, id string
 	}
 	err = o.updateHandle(ctx, object.Api, id, bson.M{
 		field.Api: value,
-	})
+	}, true)
 	if err != nil {
 		return err
 	}

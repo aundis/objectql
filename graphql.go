@@ -10,6 +10,13 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+func (o *Objectql) GraphqlExec(request string) {
+	// graphql.Do(graphql.Params{
+	// 	Schema:        schema,
+	// 	RequestString: params.Query,
+	// })
+}
+
 func (o *Objectql) InitObjectGraphqlQuery(object *Object) {
 	o.query[object.Api] = &graphql.Field{
 		Type: graphql.NewList(o.gobjects[object.Api]),
@@ -76,6 +83,11 @@ func (o *Objectql) InitObjectGraphqlQuery(object *Object) {
 }
 
 func (o *Objectql) graphqlQueryListResolver(ctx context.Context, p graphql.ResolveParams, object *Object) (interface{}, error) {
+	// 对象权限检验
+	err := o.checkObjectPermission(ctx, object.Api, ObjectQuery)
+	if err != nil {
+		return nil, err
+	}
 	filter, err := o.parseMongoFindFilters(ctx, p)
 	if err != nil {
 		return nil, err
@@ -97,6 +109,11 @@ func (o *Objectql) graphqlQueryListResolver(ctx context.Context, p graphql.Resol
 }
 
 func (o *Objectql) graphqlQueryOneResolver(ctx context.Context, p graphql.ResolveParams, object *Object) (interface{}, error) {
+	// 对象权限检验
+	err := o.checkObjectPermission(ctx, object.Api, ObjectQuery)
+	if err != nil {
+		return nil, err
+	}
 	filter, err := o.parseMongoFindFilters(ctx, p)
 	if err != nil {
 		return nil, err
@@ -114,6 +131,11 @@ func (o *Objectql) graphqlQueryOneResolver(ctx context.Context, p graphql.Resolv
 }
 
 func (o *Objectql) graphqlQueryCountResolver(ctx context.Context, p graphql.ResolveParams, object *Object) (interface{}, error) {
+	// 对象权限检验
+	err := o.checkObjectPermission(ctx, object.Api, ObjectQuery)
+	if err != nil {
+		return nil, err
+	}
 	filter, err := o.parseMongoFindFilters(ctx, p)
 	if err != nil {
 		return nil, err
@@ -176,7 +198,7 @@ func (o *Objectql) parseMongoFindFilters(ctx context.Context, p graphql.ResolveP
 	filterMgn := bson.M{}
 	if filter != nil && len(filter.(string)) > 0 {
 		// TODO: 详细了解一下UnmarshalExtJSON的用法
-		err := bson.UnmarshalExtJSON([]byte(filter.(string)), false, &filterMgn)
+		err := bson.UnmarshalExtJSON([]byte(filter.(string)), true, &filterMgn)
 		if err != nil {
 			return nil, err
 		}
@@ -257,7 +279,7 @@ func (o *Objectql) graphqlMutationUpdateResolver(ctx context.Context, p graphql.
 		m, ok2 := p.Args["doc"].(map[string]interface{})
 		if ok2 {
 			m = formatNullValue(m)
-			err := o.updateHandle(ctx, object.Api, objectId, m)
+			err := o.updateHandle(ctx, object.Api, objectId, m, false)
 			if err != nil {
 				return nil, err
 			}
@@ -279,18 +301,19 @@ func (o *Objectql) graphqlMutationDeleteResolver(ctx context.Context, p graphql.
 	return true, nil
 }
 
-func (o *Objectql) graphqlMutationQueryOne(ctx context.Context, p graphql.ResolveParams, object *Object, id string) (interface{}, error) {
-	options, err := o.parseMongoFindOneOptinos(ctx, p)
-	if err != nil {
-		return nil, err
+func (o *Objectql) getObjectBeforeValues(ctx context.Context, object *Object, id string) (beforeValues map[string]interface{}, err error) {
+	apis := getObjectRelationObjectApis(object)
+	if len(apis) > 0 {
+		selects := stringArrayToMongodbSelects(apis)
+		if len(selects) > 0 {
+			arr := getSelectMapKeys(selects)
+			beforeValues, err = o.mongoFindOne(ctx, object.Api, bson.M{"_id": ObjectIdFromHex(id)}, strings.Join(arr, ","))
+			if err != nil {
+				return
+			}
+		}
 	}
-
-	var one bson.M
-	err = o.getCollection(object.Api).FindOne(ctx, bson.M{"_id": ObjectIdFromHex(id)}, options).Decode(&one)
-	if err != nil {
-		return nil, err
-	}
-	return one, nil
+	return
 }
 
 func (o *Objectql) toInputGraphqlType(field *Field) graphql.Output {

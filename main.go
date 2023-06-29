@@ -182,6 +182,10 @@ func main() {
 		},
 	})
 
+	objectql.ListenInsertBefore("student", func(ctx context.Context, doc map[string]interface{}) error {
+		fmt.Println("hello")
+		return nil
+	})
 	// 定义GraphQL模式
 	schema, err := New().GetSchema()
 	if err != nil {
