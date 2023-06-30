@@ -17,27 +17,17 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var global *Objectql
-
 func New() *Objectql {
-	if global == nil {
-		global = &Objectql{
-			query:    map[string]*graphql.Field{},
-			mutation: map[string]*graphql.Field{},
-			objects:  []Object{},
-			gobjects: map[string]*graphql.Object{},
-			eventMap: gmap.NewAnyAnyMap(true),
-		}
+	return &Objectql{
+		gobjects: map[string]*graphql.Object{},
+		eventMap: gmap.NewAnyAnyMap(true),
 	}
-	return global
 }
 
 type Objectql struct {
-	query    graphql.Fields
-	mutation graphql.Fields
-	objects  []Object
-	gobjects map[string]*graphql.Object
 	list     []*Object
+	gobjects map[string]*graphql.Object
+	gschema  graphql.Schema
 	// database
 	mongoClientOpts        *options.ClientOptions
 	mongoClient            *mongo.Client
@@ -49,92 +39,155 @@ type Objectql struct {
 	objectFieldPermissionCheckHandler ObjectFieldPermissionCheckHandler
 }
 
-func (o *Objectql) InitObjects(list []*Object) {
-	o.list = list
+func (o *Objectql) AddObject(object *Object) {
+	o.list = append(o.list, object)
+}
+
+func (o *Objectql) InitObjects() error {
+	// 初始化字段的parent
+	o.initFieldParent()
+	// 解析字段的引用关系
+	err := o.parseFields()
+	if err != nil {
+		return err
+	}
+	// 预初始化所有对象
+	o.preInitObjects()
+	//
+	querys := graphql.Fields{}
+	mutations := graphql.Fields{}
+	for _, v := range o.list {
+		// 初始化Graphql对象的字段
+		o.fullGraphqlObject(o.gobjects[v.Api], v)
+		// 初始化Graphql对象的query
+		o.initObjectGraphqlQuery(querys, v)
+		// 初始化Graphql对象的mutation
+		o.initObjectGraphqlMutation(mutations, v)
+	}
+	// 初始化Graphql Schema
+	o.gschema, err = graphql.NewSchema(graphql.SchemaConfig{
+		Query: graphql.NewObject(graphql.ObjectConfig{
+			Name:   "RootQuery",
+			Fields: querys,
+		}),
+		Mutation: graphql.NewObject(graphql.ObjectConfig{
+			Name:   "Mutation",
+			Fields: mutations,
+		}),
+	})
+	return err
+}
+
+func (o *Objectql) initFieldParent() {
 	// 为所有的field设定parent
-	for _, v := range list {
+	for _, v := range o.list {
 		for _, f := range v.Fields {
 			f.Parent = v
 		}
 	}
-	// 解析公式及其引用关系
-	for _, object := range list {
-		for _, cur := range object.Fields {
-			// 累计总和
-			if cur.Type == Aggregation {
-				adata := cur.Data.(*AggregationData)
-				// 关联字段(相关表)
-				relateField, err := FindFieldFromName(list, adata.Object, adata.Relate)
-				if err != nil {
-					panic(err)
-				}
-				relateField.relations = append(relateField.relations, &RelationFiledInfo{
-					ThroughField: relateField,
-					TargetField:  cur,
-				})
-				// 被统计的字段
-				beCountedField, err := FindFieldFromName(list, adata.Object, adata.Field)
-				if err != nil {
-					panic(err)
-				}
-				beCountedField.relations = append(beCountedField.relations, &RelationFiledInfo{
-					ThroughField: relateField,
-					TargetField:  cur,
-				})
-			}
-			// 公式字段
-			if cur.Type == Formula {
-				fdata := cur.Data.(*FormulaData)
-				var err error
-				fdata.SourceCode, err = formula.ParseSourceCode([]byte(fdata.Formula))
-				if err != nil {
-					panic(err)
-				}
-				fields, err := formula.ResolveReferenceFields(fdata.SourceCode)
-				if err != nil {
-					panic(err)
-				}
-				// 字段挂载
-				for _, fstr := range fields {
-					arr := strings.Split(fstr, ".")
-					if len(arr) != 1 && len(arr) != 2 {
-						panic("filed must is e.g. field or object.field")
-					}
-					// 找到引用的字段(在本对象找到引用类型的字段)
-					relatedField, err := FindFieldFromName(list, object.Api, arr[0])
-					if err != nil {
-						panic(err)
-					}
+}
 
-					if len(arr) == 1 {
-						relatedField.relations = append(relatedField.relations, &RelationFiledInfo{
-							ThroughField: nil,
-							TargetField:  cur,
-						})
-					} else {
-						if relatedField.Type != Relate {
-							panic(fmt.Sprintf("object %s field %s not a relate field", object.Api, arr[0]))
-						}
-						relatedField.relations = append(relatedField.relations, &RelationFiledInfo{
-							ThroughField: relatedField,
-							TargetField:  cur,
-						})
-						relateData := relatedField.Data.(*RelateData)
-						beCountedField, err := FindFieldFromName(list, relateData.ObjectApi, arr[1])
-						if err != nil {
-							panic(err)
-						}
-						beCountedField.relations = append(beCountedField.relations, &RelationFiledInfo{
-							ThroughField: relatedField,
-							TargetField:  cur,
-						})
-					}
-				}
+// 解析公式及其引用关系
+func (o *Objectql) parseFields() (err error) {
+	for _, object := range o.list {
+		// 解析统计和公式字段
+		for _, field := range object.Fields {
+			if field.Type == Aggregation {
+				err = o.parseAggregationField(object, field)
+			}
+			if field.Type == Formula {
+				err = o.parseFormulaField(object, field)
+			}
+			if err != nil {
+				return fmt.Errorf("parse field %s.%s error: %s", object.Api, field.Api, err.Error())
 			}
 		}
 	}
-	// 局部初始化全部的对象,因为后面可能相关表需要相互引用
-	for _, v := range list {
+	return nil
+}
+
+func (o *Objectql) parseAggregationField(object *Object, field *Field) error {
+	adata := field.Data.(*AggregationData)
+	// 解析引用的相关表字段
+	resolved, err := FindFieldFromName(o.list, adata.Object, adata.Relate)
+	if err != nil {
+		return err
+	}
+	adata.resolved = resolved
+	// 关联字段(相关表)
+	relateField, err := FindFieldFromName(o.list, adata.Object, adata.Relate)
+	if err != nil {
+		return err
+	}
+	relateField.relations = append(relateField.relations, &RelationFiledInfo{
+		ThroughField: relateField,
+		TargetField:  field,
+	})
+	// 被统计的字段
+	beCountedField, err := FindFieldFromName(o.list, adata.Object, adata.Field)
+	if err != nil {
+		return err
+	}
+	beCountedField.relations = append(beCountedField.relations, &RelationFiledInfo{
+		ThroughField: relateField,
+		TargetField:  field,
+	})
+	return nil
+}
+
+func (o *Objectql) parseFormulaField(object *Object, field *Field) error {
+	var err error
+	fdata := field.Data.(*FormulaData)
+	fdata.SourceCode, err = formula.ParseSourceCode([]byte(fdata.Formula))
+	if err != nil {
+		return err
+	}
+	names, err := formula.ResolveReferenceFields(fdata.SourceCode)
+	if err != nil {
+		return err
+	}
+	// 字段挂载
+	for _, name := range names {
+		arr := strings.Split(name, ".")
+		if len(arr) != 1 && len(arr) != 2 {
+			return fmt.Errorf("formual reference name dot len > 2")
+		}
+		// 找到引用的字段(在本对象找到引用类型的字段)
+		relatedField, err := FindFieldFromName(o.list, object.Api, arr[0])
+		if err != nil {
+			return err
+		}
+
+		if len(arr) == 1 {
+			relatedField.relations = append(relatedField.relations, &RelationFiledInfo{
+				ThroughField: nil,
+				TargetField:  field,
+			})
+		} else {
+			if relatedField.Type != Relate {
+				return fmt.Errorf("object %s field %s not a relate field", object.Api, arr[0])
+			}
+			relatedField.relations = append(relatedField.relations, &RelationFiledInfo{
+				ThroughField: relatedField,
+				TargetField:  field,
+			})
+			relateData := relatedField.Data.(*RelateData)
+			beCountedField, err := FindFieldFromName(o.list, relateData.ObjectApi, arr[1])
+			if err != nil {
+				return err
+			}
+			beCountedField.relations = append(beCountedField.relations, &RelationFiledInfo{
+				ThroughField: relatedField,
+				TargetField:  field,
+			})
+		}
+	}
+	return nil
+}
+
+// 局部初始化全部的对象,因为后面可能相关表需要相互引用
+func (o *Objectql) preInitObjects() {
+	for _, object := range o.list {
 		// 先填充后面再替换
 		fields := graphql.Fields{
 			"_id": &graphql.Field{
@@ -142,48 +195,24 @@ func (o *Objectql) InitObjects(list []*Object) {
 				Type: graphql.String,
 			},
 		}
-		for _, f := range v.Fields {
-			fields[f.Api] = &graphql.Field{
-				Name: f.Api,
+		for _, field := range object.Fields {
+			fields[field.Api] = &graphql.Field{
+				Name: field.Api,
 				Type: graphql.String,
 			}
 			// 展开查询
-			if f.Type == Relate {
-				fields[f.Api+"__expand"] = &graphql.Field{
-					Name: f.Api,
+			if field.Type == Relate {
+				fields[field.Api+"__expand"] = &graphql.Field{
+					Name: field.Api,
 					Type: graphql.String,
 				}
 			}
 		}
-		o.gobjects[v.Api] = graphql.NewObject(graphql.ObjectConfig{
-			Name:   v.Api,
+		o.gobjects[object.Api] = graphql.NewObject(graphql.ObjectConfig{
+			Name:   object.Api,
 			Fields: fields,
 		})
 	}
-	for _, v := range list {
-		o.FullGraphqlObject(o.gobjects[v.Api], v)
-		o.InitObjectGraphqlQuery(v)
-		o.InitObjectGraphqlMutation(v)
-	}
-}
-
-func stringArrayToMongodbSelects(arr []string) bson.M {
-	result := bson.M{}
-	for _, item := range arr {
-		if strings.Contains(item, "__expand") {
-			continue
-		}
-		result[item] = 1
-	}
-	return result
-}
-
-func getSelectMapKeys(v bson.M) []string {
-	var result []string
-	for k := range v {
-		result = append(result, k)
-	}
-	return result
 }
 
 func selectMapToQueryString(v bson.M) string {
@@ -194,17 +223,7 @@ func selectMapToQueryString(v bson.M) string {
 	return strings.Join(result, ",")
 }
 
-func getObjectRelationObjectApis(object *Object) []string {
-	var result []string
-	for _, field := range object.Fields {
-		if field.Type == Relate {
-			result = append(result, field.Api)
-		}
-	}
-	return result
-}
-
-func (o *Objectql) FullGraphqlObject(gobj *graphql.Object, object *Object) {
+func (o *Objectql) fullGraphqlObject(gobj *graphql.Object, object *Object) {
 	gobj.AddFieldConfig("_id", &graphql.Field{
 		Type: graphql.String,
 		Resolve: func(p graphql.ResolveParams) (interface{}, error) {
@@ -296,6 +315,17 @@ func (o *Objectql) relateResolver(ctx context.Context, p graphql.ResolveParams, 
 	return results, nil
 }
 
+func stringArrayToMongodbSelects(arr []string) bson.M {
+	result := bson.M{}
+	for _, item := range arr {
+		if strings.Contains(item, "__expand") {
+			continue
+		}
+		result[item] = 1
+	}
+	return result
+}
+
 func getGraphqlSelectFieldNames(p graphql.ResolveParams) []string {
 	if p.Info.FieldASTs[0].SelectionSet == nil {
 		return nil
@@ -309,17 +339,6 @@ func getGraphqlSelectFieldNames(p graphql.ResolveParams) []string {
 	return result
 }
 
-func (o *Objectql) GetSchema() (graphql.Schema, error) {
-	// TODO: 加个版本号, 可以动态增删对象
-	return graphql.NewSchema(graphql.SchemaConfig{
-		Query: graphql.NewObject(graphql.ObjectConfig{
-			Name:   "RootQuery",
-			Fields: o.query,
-		},
-		),
-		Mutation: graphql.NewObject(graphql.ObjectConfig{
-			Name:   "Mutation",
-			Fields: o.mutation,
-		}),
-	})
+func (o *Objectql) GetSchema() graphql.Schema {
+	return o.gschema
 }

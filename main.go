@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -26,171 +27,220 @@ func main() {
 		panic(err)
 	}
 
-	objectql.InitObjects([]*Object{
-		{
-			Name: "作者",
-			Api:  "author",
-			Fields: []*Field{
-				{
-					Name:    "标题",
-					Api:     "title",
-					Type:    String,
-					Comment: "",
-				},
-				{
-					Name:    "作者名",
-					Api:     "name",
-					Type:    String,
-					Comment: "",
-				},
-				{
-					Name:    "年龄",
-					Api:     "age",
-					Type:    Int,
-					Comment: "",
-				},
-				{
-					Name: "汽车",
-					Api:  "car",
-					Type: Relate,
-					Data: &RelateData{
-						ObjectApi: "car",
-					},
-				},
-				{
-					Name: "汽车品牌",
-					Api:  "car_brand",
-					Type: Formula,
-					Data: &FormulaData{
-						Formula: "car.brand",
-						Type:    String,
-					},
-				}, {
-					Name: "身价",
-					Api:  "shen",
-					Type: Formula,
-					Data: &FormulaData{
-						Formula: "age + car.oil + car.speed",
-						Type:    Int,
-					},
+	objectql.AddObject(&Object{
+		Name: "作者",
+		Api:  "author",
+		Fields: []*Field{
+			{
+				Name:    "标题",
+				Api:     "title",
+				Type:    String,
+				Comment: "",
+			},
+			{
+				Name:    "作者名",
+				Api:     "name",
+				Type:    String,
+				Comment: "",
+			},
+			{
+				Name:    "年龄",
+				Api:     "age",
+				Type:    Int,
+				Comment: "",
+			},
+			{
+				Name: "汽车",
+				Api:  "car",
+				Type: Relate,
+				Data: &RelateData{
+					ObjectApi: "car",
 				},
 			},
-			Comment: "",
-		},
-		{
-			Name: "汽车",
-			Api:  "car",
-			Fields: []*Field{
-				{
-					Name:    "品牌",
-					Api:     "brand",
+			{
+				Name: "汽车品牌",
+				Api:  "car_brand",
+				Type: Formula,
+				Data: &FormulaData{
+					Formula: "car.brand",
 					Type:    String,
-					Comment: "",
 				},
-				{
-					Name:    "速度",
-					Api:     "speed",
+			},
+			{
+				Name: "身价",
+				Api:  "shen",
+				Type: Formula,
+				Data: &FormulaData{
+					Formula: "age + car.oil + car.speed",
 					Type:    Int,
-					Comment: "",
-				},
-				{
-					Name:    "油耗",
-					Api:     "oil",
-					Type:    Int,
-					Comment: "",
 				},
 			},
 		},
-		{
-			Name: "教师",
-			Api:  "teacher",
-			Fields: []*Field{
-				{
-					Name: "姓名",
-					Api:  "name",
-					Type: String,
+		Comment: "",
+	})
+	objectql.AddObject(&Object{
+		Name: "作者",
+		Api:  "author",
+		Fields: []*Field{
+			{
+				Name:    "标题",
+				Api:     "title",
+				Type:    String,
+				Comment: "",
+			},
+			{
+				Name:    "作者名",
+				Api:     "name",
+				Type:    String,
+				Comment: "",
+			},
+			{
+				Name:    "年龄",
+				Api:     "age",
+				Type:    Int,
+				Comment: "",
+			},
+			{
+				Name: "汽车",
+				Api:  "car",
+				Type: Relate,
+				Data: &RelateData{
+					ObjectApi: "car",
 				},
-				{
-					Name: "年龄",
-					Api:  "age",
-					Type: Int,
+			},
+			{
+				Name: "汽车品牌",
+				Api:  "car_brand",
+				Type: Formula,
+				Data: &FormulaData{
+					Formula: "car.brand",
+					Type:    String,
 				},
-				{
-					Name: "班级",
-					Api:  "class",
-					Type: String,
+			}, {
+				Name: "身价",
+				Api:  "shen",
+				Type: Formula,
+				Data: &FormulaData{
+					Formula: "age + car.oil + car.speed",
+					Type:    Int,
 				},
-				// {
-				// 	Name: "学生总数",
-				// 	Api:  "student_count",
-				// 	Kind: objectql.Aggregation,
-				// 	Type: objectql.Int,
-				// 	Data: &objectql.AggregationData{
+			},
+		},
+		Comment: "",
+	})
+	objectql.AddObject(&Object{
+		Name: "汽车",
+		Api:  "car",
+		Fields: []*Field{
+			{
+				Name:    "品牌",
+				Api:     "brand",
+				Type:    String,
+				Comment: "",
+			},
+			{
+				Name:    "速度",
+				Api:     "speed",
+				Type:    Int,
+				Comment: "",
+			},
+			{
+				Name:    "油耗",
+				Api:     "oil",
+				Type:    Int,
+				Comment: "",
+			},
+		},
+	})
+	objectql.AddObject(&Object{
+		Name: "教师",
+		Api:  "teacher",
+		Fields: []*Field{
+			{
+				Name: "姓名",
+				Api:  "name",
+				Type: String,
+			},
+			{
+				Name: "年龄",
+				Api:  "age",
+				Type: Int,
+			},
+			{
+				Name: "班级",
+				Api:  "class",
+				Type: String,
+			},
+			// {
+			// 	Name: "学生总数",
+			// 	Api:  "student_count",
+			// 	Kind: objectql.Aggregation,
+			// 	Type: objectql.Int,
+			// 	Data: &objectql.AggregationData{
 
-				// 		Relate:    "student.teacher",
-				// 		Kind:      objectql.Count,
-				// 		Condition: "",
-				// 	},
-				// },
-				{
-					Name: "学生平均年龄",
-					Api:  "student_age_avg",
-					Type: Aggregation,
-					Data: &AggregationData{
-						Kind:      Avg,
-						Type:      Float,
-						Object:    "student",
-						Relate:    "teacher",
-						Field:     "age",
-						Condition: "",
-					},
-				},
-			},
-		},
-		{
-			Name: "学生",
-			Api:  "student",
-			Fields: []*Field{
-				{
-					Name: "姓名",
-					Api:  "name",
-					Type: String,
-				},
-				{
-					Name: "年龄",
-					Api:  "age",
-					Type: Int,
-				},
-				{
-					Name: "教师",
-					Api:  "teacher",
-					Type: Relate,
-					Data: &RelateData{
-						ObjectApi: "teacher",
-					},
-				},
-				{
-					Name: "教师姓名",
-					Api:  "teacher_name",
-					Type: Formula,
-					Data: &FormulaData{
-						Type:    String,
-						Formula: "teacher.name",
-					},
+			// 		Relate:    "student.teacher",
+			// 		Kind:      objectql.Count,
+			// 		Condition: "",
+			// 	},
+			// },
+			{
+				Name: "学生平均年龄",
+				Api:  "student_age_avg",
+				Type: Aggregation,
+				Data: &AggregationData{
+					Kind:      Avg,
+					Type:      Float,
+					Object:    "student",
+					Relate:    "teacher",
+					Field:     "age",
+					Condition: "",
 				},
 			},
 		},
 	})
-
-	objectql.ListenInsertBefore("student", func(ctx context.Context, doc map[string]interface{}) error {
-		fmt.Println("hello")
-		return nil
+	objectql.AddObject(&Object{
+		Name: "学生",
+		Api:  "student",
+		Fields: []*Field{
+			{
+				Name: "姓名",
+				Api:  "name",
+				Type: String,
+			},
+			{
+				Name: "年龄",
+				Api:  "age",
+				Type: Int,
+			},
+			{
+				Name: "教师",
+				Api:  "teacher",
+				Type: Relate,
+				Data: &RelateData{
+					ObjectApi: "teacher",
+				},
+			},
+			{
+				Name: "教师姓名",
+				Api:  "teacher_name",
+				Type: Formula,
+				Data: &FormulaData{
+					Type:    String,
+					Formula: "teacher.name",
+				},
+			},
+		},
 	})
-	// 定义GraphQL模式
-	schema, err := New().GetSchema()
+	// 初始化
+	err = objectql.InitObjects()
 	if err != nil {
 		panic(err)
 	}
+
+	objectql.ListenInsertBefore("student", func(ctx context.Context, doc map[string]interface{}) error {
+		fmt.Println("hello")
+		return errors.New("禁止创建")
+	})
 
 	// 处理GraphQL请求
 	// http.HandleFunc("/graphql", func(w http.ResponseWriter, r *http.Request) {
@@ -202,6 +252,7 @@ func main() {
 	// 	})
 	// 	json.NewEncoder(w).Encode(result)
 	// })
+	schema := objectql.GetSchema()
 	http.HandleFunc("/graphql", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "POST" {
 			var params *GraphqlQueryReq

@@ -17,8 +17,8 @@ func (o *Objectql) GraphqlExec(request string) {
 	// })
 }
 
-func (o *Objectql) InitObjectGraphqlQuery(object *Object) {
-	o.query[object.Api] = &graphql.Field{
+func (o *Objectql) initObjectGraphqlQuery(querys graphql.Fields, object *Object) {
+	querys[object.Api] = &graphql.Field{
 		Type: graphql.NewList(o.gobjects[object.Api]),
 		Args: graphql.FieldConfigArgument{
 			"filter": &graphql.ArgumentConfig{
@@ -39,7 +39,7 @@ func (o *Objectql) InitObjectGraphqlQuery(object *Object) {
 		},
 	}
 
-	o.query[object.Api+"__one"] = &graphql.Field{
+	querys[object.Api+"__one"] = &graphql.Field{
 		Type: o.gobjects[object.Api],
 		Args: graphql.FieldConfigArgument{
 			"filter": &graphql.ArgumentConfig{
@@ -60,7 +60,7 @@ func (o *Objectql) InitObjectGraphqlQuery(object *Object) {
 		},
 	}
 
-	o.query[object.Api+"__count"] = &graphql.Field{
+	querys[object.Api+"__count"] = &graphql.Field{
 		Type: graphql.Int,
 		Args: graphql.FieldConfigArgument{
 			"filter": &graphql.ArgumentConfig{
@@ -206,7 +206,7 @@ func (o *Objectql) parseMongoFindFilters(ctx context.Context, p graphql.ResolveP
 	return filterMgn, nil
 }
 
-func (o *Objectql) InitObjectGraphqlMutation(object *Object) {
+func (o *Objectql) initObjectGraphqlMutation(mutations graphql.Fields, object *Object) {
 	fields := graphql.InputObjectConfigFieldMap{}
 	for _, cur := range object.Fields {
 		if cur.Type == Formula || cur.Type == Aggregation {
@@ -221,7 +221,7 @@ func (o *Objectql) InitObjectGraphqlMutation(object *Object) {
 		Fields: fields,
 	})
 	// 新增
-	o.mutation[object.Api+"__insert"] = &graphql.Field{
+	mutations[object.Api+"__insert"] = &graphql.Field{
 		Type: o.gobjects[object.Api],
 		Args: graphql.FieldConfigArgument{
 			"doc": &graphql.ArgumentConfig{
@@ -233,7 +233,7 @@ func (o *Objectql) InitObjectGraphqlMutation(object *Object) {
 		},
 	}
 	// 修改
-	o.mutation[object.Api+"__update"] = &graphql.Field{
+	mutations[object.Api+"__update"] = &graphql.Field{
 		Type: o.gobjects[object.Api],
 		Args: graphql.FieldConfigArgument{
 			"_id": &graphql.ArgumentConfig{
@@ -248,7 +248,7 @@ func (o *Objectql) InitObjectGraphqlMutation(object *Object) {
 		},
 	}
 	// 删除
-	o.mutation[object.Api+"__delete"] = &graphql.Field{
+	mutations[object.Api+"__delete"] = &graphql.Field{
 		Type: graphql.Boolean,
 		Args: graphql.FieldConfigArgument{
 			"_id": &graphql.ArgumentConfig{
@@ -314,6 +314,24 @@ func (o *Objectql) getObjectBeforeValues(ctx context.Context, object *Object, id
 		}
 	}
 	return
+}
+
+func getSelectMapKeys(v bson.M) []string {
+	var result []string
+	for k := range v {
+		result = append(result, k)
+	}
+	return result
+}
+
+func getObjectRelationObjectApis(object *Object) []string {
+	var result []string
+	for _, field := range object.Fields {
+		if field.Type == Relate {
+			result = append(result, field.Api)
+		}
+	}
+	return result
 }
 
 func (o *Objectql) toInputGraphqlType(field *Field) graphql.Output {

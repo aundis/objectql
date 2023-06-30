@@ -225,14 +225,7 @@ func (o *Objectql) aggregationHandler(ctx context.Context, object *Object, id st
 
 func (o *Objectql) aggregateField(ctx context.Context, object *Object, id string, field *Field) error {
 	adata := field.Data.(*AggregationData)
-	// TODO:这个要放到初始化那边去
-	if adata.Resolved == nil {
-		field, err := FindFieldFromName(o.list, adata.Object, adata.Relate)
-		if err != nil {
-			panic(err)
-		}
-		adata.Resolved = field
-	}
+
 	// 聚合方法
 	funcStr := ""
 	switch adata.Kind {

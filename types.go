@@ -48,7 +48,6 @@ const (
 
 type RelateData struct {
 	ObjectApi string
-	resolved  *Object
 }
 
 type FormulaData struct {
@@ -64,5 +63,5 @@ type AggregationData struct {
 	Type      FieldType
 	Kind      AggregationKind
 	Condition string
-	Resolved  *Field
+	resolved  *Field
 }
