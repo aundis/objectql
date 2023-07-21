@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -339,6 +340,169 @@ func getGraphqlSelectFieldNames(p graphql.ResolveParams) []string {
 	return result
 }
 
-func (o *Objectql) GetSchema() graphql.Schema {
-	return o.gschema
+// 增删改查接口
+func (o *Objectql) Insert(ctx context.Context, objectApi string, doc bson.M, opts ...interface{}) (map[string]interface{}, error) {
+	object := FindObjectFromList(o.list, objectApi)
+	if object == nil {
+		return nil, fmt.Errorf("not found object '%s'", objectApi)
+	}
+	var buffer bytes.Buffer
+	buffer.WriteString("mutation {")
+	buffer.WriteString("data: " + objectApi + "__insert(")
+	buffer.WriteString(" doc:")
+	buffer.WriteString(docToGrpahqlArgument(doc))
+	buffer.WriteString(")")
+	buffer.WriteString(getObjectFieldsQueryString(object))
+	buffer.WriteString("}")
+	result := graphql.Do(graphql.Params{
+		Schema:        o.gschema,
+		RequestString: buffer.String(),
+		Context:       ctx,
+	})
+	if len(result.Errors) > 0 {
+		return nil, result.Errors[0]
+	}
+	return result.Data.(map[string]interface{})["data"].(map[string]interface{}), nil
+}
+
+func (o *Objectql) Update(ctx context.Context, objectApi string, id string, doc bson.M) (bson.M, error) {
+	object := FindObjectFromList(o.list, objectApi)
+	if object == nil {
+		return nil, fmt.Errorf("not found object '%s'", objectApi)
+	}
+	var buffer bytes.Buffer
+	buffer.WriteString("mutation {")
+	buffer.WriteString("data: " + objectApi + "__update(")
+	buffer.WriteString(" _id:")
+	buffer.WriteString(`"` + id + `"`)
+	buffer.WriteString(" doc:")
+	buffer.WriteString(docToGrpahqlArgument(doc))
+	buffer.WriteString(")")
+	buffer.WriteString(getObjectFieldsQueryString(object))
+	buffer.WriteString("}")
+	result := graphql.Do(graphql.Params{
+		Schema:        o.gschema,
+		RequestString: buffer.String(),
+		Context:       ctx,
+	})
+	if len(result.Errors) > 0 {
+		return nil, result.Errors[0]
+	}
+	return result.Data.(map[string]interface{})["data"].(map[string]interface{}), nil
+}
+
+func (o *Objectql) Delete(ctx context.Context, objectApi string, id string) error {
+	object := FindObjectFromList(o.list, objectApi)
+	if object == nil {
+		return fmt.Errorf("not found object '%s'", objectApi)
+	}
+	var buffer bytes.Buffer
+	buffer.WriteString("mutation {")
+	buffer.WriteString(objectApi + "__delete(")
+	buffer.WriteString(" _id:")
+	buffer.WriteString(`"` + id + `"`)
+	buffer.WriteString(")")
+	buffer.WriteString("}")
+	result := graphql.Do(graphql.Params{
+		Schema:        o.gschema,
+		RequestString: buffer.String(),
+		Context:       ctx,
+	})
+	if len(result.Errors) > 0 {
+		return result.Errors[0]
+	}
+	return nil
+}
+
+func (o *Objectql) FindAll(ctx context.Context, condition bson.M, opts ...interface{}) ([]bson.M, error) {
+
+
+
+	// "filter": &graphql.ArgumentConfig{
+	// 	Type: graphql.String,
+	// },
+	// "top": &graphql.ArgumentConfig{
+	// 	Type: graphql.Int,
+	// },
+	// "skip": &graphql.ArgumentConfig{
+	// 	Type: graphql.Int,
+	// },
+	// "sort": &graphql.ArgumentConfig{
+	// 	Type: graphql.NewList(graphql.String),
+	// }
+
+	return nil, nil
+}
+
+func (o *Objectql) FindOne(ctx context.Context, condition bson.M, id string, fields ...string) (bson.M, error) {
+	object := FindObjectFromList(o.list, objectApi)
+	if object == nil {
+		return nil, fmt.Errorf("not found object '%s'", objectApi)
+	}
+	var buffer bytes.Buffer
+	buffer.WriteString("mutation {")
+	buffer.WriteString("data: " + objectApi + "__insert(")
+	buffer.WriteString(" doc:")
+	buffer.WriteString(docToGrpahqlArgument(doc))
+	buffer.WriteString(")")
+	buffer.WriteString(getObjectFieldsQueryString(object))
+	buffer.WriteString("}")
+	result := graphql.Do(graphql.Params{
+		Schema:        o.gschema,
+		RequestString: buffer.String(),
+		Context:       ctx,
+	})
+	if len(result.Errors) > 0 {
+		return nil, result.Errors[0]
+	}
+	return result.Data.(map[string]interface{})["data"].(map[string]interface{}), nil
+}
+
+func (o *Objectql) Aggregate() {}
+
+// Direct 通过context控制
+func (o *Objectql) DirectInsert()    {}
+func (o *Objectql) DirectUpdate()    {}
+func (o *Objectql) DirectDelete()    {}
+func (o *Objectql) DirectFind()      {}
+func (o *Objectql) DirectFindOne()   {}
+func (o *Objectql) DirectAggregate() {}
+
+func docToGrpahqlArgument(doc bson.M) string {
+	var buffer bytes.Buffer
+	buffer.WriteString("{")
+	for k, v := range doc {
+		buffer.WriteString(k)
+		buffer.WriteString(":")
+
+		switch n := v.(type) {
+		case string:
+			buffer.WriteString(`"`)
+			buffer.WriteString(escapeString(n))
+			buffer.WriteString(`"`)
+		default:
+			buffer.WriteString(escapeString(gconv.String(n)))
+		}
+	}
+	buffer.WriteString("}")
+	return buffer.String()
+}
+
+func getObjectFieldsQueryString(object *Object) string {
+	var result []string
+	for _, field := range object.Fields {
+		if strings.Contains(field.Api, "__") {
+			continue
+		}
+		result = append(result, field.Api)
+	}
+	return fieldNamesToQueryString(result)
+}
+
+func fieldNamesToQueryString(arr []string) string {
+	return "{" + strings.Join(arr, ",") + "}"
+}
+
+func escapeString(s string) string {
+	return strings.ReplaceAll(s, `"`, `\"`)
 }

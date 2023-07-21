@@ -66,7 +66,7 @@ func (o *Objectql) mongoFindOne(ctx context.Context, table string, filter bson.M
 	}
 	var result bson.M
 	err := o.getCollection(table).FindOne(ctx, filter, findOneOptions).Decode(&result)
-	if err != nil {
+	if err != nil && err != mongo.ErrNoDocuments {
 		return nil, err
 	}
 	return result, nil

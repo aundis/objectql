@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 
@@ -237,10 +236,10 @@ func main() {
 		panic(err)
 	}
 
-	objectql.ListenInsertBefore("student", func(ctx context.Context, doc map[string]interface{}) error {
-		fmt.Println("hello")
-		return errors.New("禁止创建")
-	})
+	// objectql.ListenInsertBefore("student", func(ctx context.Context, doc map[string]interface{}) error {
+	// 	fmt.Println("hello")
+	// 	return errors.New("禁止创建")
+	// })
 
 	// 处理GraphQL请求
 	// http.HandleFunc("/graphql", func(w http.ResponseWriter, r *http.Request) {
@@ -252,7 +251,6 @@ func main() {
 	// 	})
 	// 	json.NewEncoder(w).Encode(result)
 	// })
-	schema := objectql.GetSchema()
 	http.HandleFunc("/graphql", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "POST" {
 			var params *GraphqlQueryReq
@@ -262,7 +260,7 @@ func main() {
 				return
 			}
 			result := graphql.Do(graphql.Params{
-				Schema:        schema,
+				Schema:        objectql.gschema,
 				RequestString: params.Query,
 			})
 			json.NewEncoder(w).Encode(result)
@@ -273,6 +271,28 @@ func main() {
 
 	// 处理GraphQL Playground页面
 	http.HandleFunc("/", graphiql.ServeGraphiQL)
+
+	// v, err := objectql.Insert(context.Background(), "student", bson.M{
+	// 	"name": "李华",
+	// 	"age":  18,
+	// })
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// fmt.Println(v)
+
+	// r, err := objectql.Update(context.Background(), "student", "649fe4b8bc8cf2feccb3535d", bson.M{
+	// 	"name": "小洋洋",
+	// })
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// fmt.Println(r)
+
+	err = objectql.Delete(context.Background(), "student", "649e4ae5910d295405104635")
+	if err != nil {
+		panic(err)
+	}
 
 	// opts := graphiql.NewOptions("http://localhost:8080/graphql")
 	// http.Handle("/playground", graphiql.NewGraphiqlHandler(opts))
