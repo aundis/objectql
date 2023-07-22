@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -341,7 +342,7 @@ func getGraphqlSelectFieldNames(p graphql.ResolveParams) []string {
 }
 
 // 增删改查接口
-func (o *Objectql) Insert(ctx context.Context, objectApi string, doc bson.M, opts ...interface{}) (map[string]interface{}, error) {
+func (o *Objectql) Insert(ctx context.Context, objectApi string, option InsertOptions) (map[string]interface{}, error) {
 	object := FindObjectFromList(o.list, objectApi)
 	if object == nil {
 		return nil, fmt.Errorf("not found object '%s'", objectApi)
@@ -350,9 +351,17 @@ func (o *Objectql) Insert(ctx context.Context, objectApi string, doc bson.M, opt
 	buffer.WriteString("mutation {")
 	buffer.WriteString("data: " + objectApi + "__insert(")
 	buffer.WriteString(" doc:")
-	buffer.WriteString(docToGrpahqlArgument(doc))
+	buffer.WriteString(docToGrpahqlArgument(option.Doc))
 	buffer.WriteString(")")
-	buffer.WriteString(getObjectFieldsQueryString(object))
+	//
+	buffer.WriteString("{")
+	if option.Fields != nil {
+		buffer.WriteString(strings.Join(gconv.Strings(option.Fields), ","))
+	} else {
+		buffer.WriteString(getObjectFieldsQueryString(object))
+	}
+	buffer.WriteString("}")
+	//
 	buffer.WriteString("}")
 	result := graphql.Do(graphql.Params{
 		Schema:        o.gschema,
@@ -365,7 +374,7 @@ func (o *Objectql) Insert(ctx context.Context, objectApi string, doc bson.M, opt
 	return result.Data.(map[string]interface{})["data"].(map[string]interface{}), nil
 }
 
-func (o *Objectql) Update(ctx context.Context, objectApi string, id string, doc bson.M) (bson.M, error) {
+func (o *Objectql) Update(ctx context.Context, objectApi string, id string, options UpdateOptions) (bson.M, error) {
 	object := FindObjectFromList(o.list, objectApi)
 	if object == nil {
 		return nil, fmt.Errorf("not found object '%s'", objectApi)
@@ -376,9 +385,17 @@ func (o *Objectql) Update(ctx context.Context, objectApi string, id string, doc 
 	buffer.WriteString(" _id:")
 	buffer.WriteString(`"` + id + `"`)
 	buffer.WriteString(" doc:")
-	buffer.WriteString(docToGrpahqlArgument(doc))
+	buffer.WriteString(docToGrpahqlArgument(options.Doc))
 	buffer.WriteString(")")
-	buffer.WriteString(getObjectFieldsQueryString(object))
+	//
+	buffer.WriteString("{")
+	if len(options.Fields) > 0 {
+		buffer.WriteString(strings.Join(gconv.Strings(options.Fields), ","))
+	} else {
+		buffer.WriteString(getObjectFieldsQueryString(object))
+	}
+	buffer.WriteString("}")
+	//
 	buffer.WriteString("}")
 	result := graphql.Do(graphql.Params{
 		Schema:        o.gschema,
@@ -414,38 +431,54 @@ func (o *Objectql) Delete(ctx context.Context, objectApi string, id string) erro
 	return nil
 }
 
-func (o *Objectql) FindAll(ctx context.Context, condition bson.M, opts ...interface{}) ([]bson.M, error) {
-
-
-
-	// "filter": &graphql.ArgumentConfig{
-	// 	Type: graphql.String,
-	// },
-	// "top": &graphql.ArgumentConfig{
-	// 	Type: graphql.Int,
-	// },
-	// "skip": &graphql.ArgumentConfig{
-	// 	Type: graphql.Int,
-	// },
-	// "sort": &graphql.ArgumentConfig{
-	// 	Type: graphql.NewList(graphql.String),
-	// }
-
-	return nil, nil
-}
-
-func (o *Objectql) FindOne(ctx context.Context, condition bson.M, id string, fields ...string) (bson.M, error) {
+func (o *Objectql) FindAll(ctx context.Context, objectApi string, options FindAllOptions) ([]map[string]interface{}, error) {
 	object := FindObjectFromList(o.list, objectApi)
 	if object == nil {
 		return nil, fmt.Errorf("not found object '%s'", objectApi)
 	}
+	var jsonData string
+	if options.Condition != nil {
+		jsn, err := json.Marshal(options.Condition)
+		if err != nil {
+			return nil, err
+		}
+		jsonData = string(jsn)
+	}
+	// filters
 	var buffer bytes.Buffer
-	buffer.WriteString("mutation {")
-	buffer.WriteString("data: " + objectApi + "__insert(")
-	buffer.WriteString(" doc:")
-	buffer.WriteString(docToGrpahqlArgument(doc))
+	buffer.WriteString("query {")
+	buffer.WriteString("data: " + objectApi + "(")
+	// { "_id": "xxxxxxxxx" }
+	if len(jsonData) > 0 {
+		buffer.WriteString(" filter:")
+		buffer.WriteString(`"`)
+		buffer.WriteString(escapeString(jsonData))
+		buffer.WriteString(`"`)
+	}
+	if options.Skip != 0 {
+		buffer.WriteString(" skip:")
+		buffer.WriteString(gconv.String(options.Skip))
+	}
+	if options.Top != 0 {
+		buffer.WriteString(" top:")
+		buffer.WriteString(gconv.String(options.Top))
+	}
+	if options.Sort != "" {
+		buffer.WriteString(" sort:")
+		buffer.WriteString(`"`)
+		buffer.WriteString(options.Sort)
+		buffer.WriteString(`"`)
+	}
 	buffer.WriteString(")")
-	buffer.WriteString(getObjectFieldsQueryString(object))
+	// 字段筛选
+	buffer.WriteString("{")
+	if len(options.Fields) > 0 {
+		buffer.WriteString(strings.Join(gconv.Strings(options.Fields), ","))
+	} else {
+		buffer.WriteString(getObjectFieldsQueryString(object))
+	}
+	buffer.WriteString("}")
+	//
 	buffer.WriteString("}")
 	result := graphql.Do(graphql.Params{
 		Schema:        o.gschema,
@@ -455,7 +488,73 @@ func (o *Objectql) FindOne(ctx context.Context, condition bson.M, id string, fie
 	if len(result.Errors) > 0 {
 		return nil, result.Errors[0]
 	}
-	return result.Data.(map[string]interface{})["data"].(map[string]interface{}), nil
+	data := result.Data.(map[string]interface{})["data"]
+	var list []map[string]interface{}
+	for _, v := range data.([]interface{}) {
+		list = append(list, v.(map[string]interface{}))
+	}
+	return list, nil
+}
+
+func (o *Objectql) FindOne(ctx context.Context, objectApi string, options FindOneOptions) (map[string]interface{}, error) {
+	object := FindObjectFromList(o.list, objectApi)
+	if object == nil {
+		return nil, fmt.Errorf("not found object '%s'", objectApi)
+	}
+	var jsonData string
+	if options.Condition != nil {
+		jsn, err := json.Marshal(options.Condition)
+		if err != nil {
+			return nil, err
+		}
+		jsonData = string(jsn)
+	}
+	// filters
+	var buffer bytes.Buffer
+	buffer.WriteString("query {")
+	buffer.WriteString("data: " + objectApi + "__one(")
+	// { "_id": "xxxxxxxxx" }
+	if len(jsonData) > 0 {
+		buffer.WriteString(" filter:")
+		buffer.WriteString(`"`)
+		buffer.WriteString(escapeString(jsonData))
+		buffer.WriteString(`"`)
+	}
+	if options.Skip != 0 {
+		buffer.WriteString(" skip:")
+		buffer.WriteString(gconv.String(options.Skip))
+	}
+	if options.Top != 0 {
+		buffer.WriteString(" top:")
+		buffer.WriteString(gconv.String(options.Top))
+	}
+	if options.Sort != "" {
+		buffer.WriteString(" sort:")
+		buffer.WriteString(`"`)
+		buffer.WriteString(options.Sort)
+		buffer.WriteString(`"`)
+	}
+	buffer.WriteString(")")
+	// 字段筛选
+	buffer.WriteString("{")
+	if len(options.Fields) > 0 {
+		buffer.WriteString(strings.Join(gconv.Strings(options.Fields), ","))
+	} else {
+		buffer.WriteString(getObjectFieldsQueryString(object))
+	}
+	buffer.WriteString("}")
+	//
+	buffer.WriteString("}")
+	result := graphql.Do(graphql.Params{
+		Schema:        o.gschema,
+		RequestString: buffer.String(),
+		Context:       ctx,
+	})
+	if len(result.Errors) > 0 {
+		return nil, result.Errors[0]
+	}
+	data := result.Data.(map[string]interface{})["data"]
+	return data.(map[string]interface{}), nil
 }
 
 func (o *Objectql) Aggregate() {}
@@ -490,17 +589,14 @@ func docToGrpahqlArgument(doc bson.M) string {
 
 func getObjectFieldsQueryString(object *Object) string {
 	var result []string
+	result = append(result, "_id")
 	for _, field := range object.Fields {
 		if strings.Contains(field.Api, "__") {
 			continue
 		}
 		result = append(result, field.Api)
 	}
-	return fieldNamesToQueryString(result)
-}
-
-func fieldNamesToQueryString(arr []string) string {
-	return "{" + strings.Join(arr, ",") + "}"
+	return strings.Join(result, ",")
 }
 
 func escapeString(s string) string {

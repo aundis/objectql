@@ -7,6 +7,7 @@ import (
 	"github.com/aundis/graphql"
 	"github.com/gogf/gf/v2/util/gconv"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -203,7 +204,32 @@ func (o *Objectql) parseMongoFindFilters(ctx context.Context, p graphql.ResolveP
 			return nil, err
 		}
 	}
-	return filterMgn, nil
+	return formatMongoFilter(filterMgn).(bson.M), nil
+}
+
+func formatMongoFilter(data interface{}) interface{} {
+	switch n := data.(type) {
+	case string:
+		id, err := primitive.ObjectIDFromHex(n)
+		if err == nil {
+			return id
+		} else {
+			return n
+		}
+	case primitive.M:
+		for k, v := range n {
+			n[k] = formatMongoFilter(v)
+		}
+		return n
+	case []interface{}:
+		var list []interface{}
+		for _, v := range n {
+			list = append(list, formatMongoFilter(v))
+		}
+		return list
+	default:
+		return data
+	}
 }
 
 func (o *Objectql) initObjectGraphqlMutation(mutations graphql.Fields, object *Object) {

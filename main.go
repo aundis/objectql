@@ -8,6 +8,7 @@ import (
 
 	"github.com/aundis/graphql"
 	graphiql "github.com/mnmtanish/go-graphiql"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 type GraphqlQueryReq struct {
@@ -272,9 +273,11 @@ func main() {
 	// 处理GraphQL Playground页面
 	http.HandleFunc("/", graphiql.ServeGraphiQL)
 
-	// v, err := objectql.Insert(context.Background(), "student", bson.M{
-	// 	"name": "李华",
-	// 	"age":  18,
+	// v, err := objectql.Insert(context.Background(), "student", InsertOptions{
+	// 	Doc: bson.M{
+	// 		"name": "李华",
+	// 		"age":  18,
+	// 	},
 	// })
 	// if err != nil {
 	// 	panic(err)
@@ -283,16 +286,47 @@ func main() {
 
 	// r, err := objectql.Update(context.Background(), "student", "649fe4b8bc8cf2feccb3535d", bson.M{
 	// 	"name": "小洋洋",
+	// }, Fields{
+	// 	"_id",
+	// 	"name",
+	// 	"age",
 	// })
 	// if err != nil {
 	// 	panic(err)
 	// }
 	// fmt.Println(r)
 
-	err = objectql.Delete(context.Background(), "student", "649e4ae5910d295405104635")
+	// err = objectql.Delete(context.Background(), "student", "649e4ae5910d295405104635")
+	// if err != nil {
+	// 	panic(err)
+	// }
+
+	one, err := objectql.FindOne(context.Background(), "student", FindOneOptions{
+		Condition: bson.M{
+			"_id": "6498fee4229bcc6218af4e95",
+		},
+		Fields: Fields{
+			"name",
+		},
+	})
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println(one)
+
+	// list, err := objectql.FindAll(context.Background(), "student", FindAllOptions{
+	// 	Condition: bson.M{
+	// 		"age": bson.M{
+	// 			"$gt": 9,
+	// 		},
+	// 	},
+	// 	Top:    10,
+	// 	Fields: "name,age",
+	// })
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// fmt.Println(list)
 
 	// opts := graphiql.NewOptions("http://localhost:8080/graphql")
 	// http.Handle("/playground", graphiql.NewGraphiqlHandler(opts))

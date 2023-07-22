@@ -1,6 +1,8 @@
 package main
 
-import "github.com/aundis/formula"
+import (
+	"github.com/aundis/formula"
+)
 
 type Object struct {
 	Name    string
