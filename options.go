@@ -16,7 +16,7 @@ type UpdateOptions struct {
 	Fields Fields
 }
 
-type FindAllOptions struct {
+type FindListOptions struct {
 	Condition bson.M
 	Top       int
 	Skip      int

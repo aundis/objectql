@@ -39,7 +39,7 @@ func (o *Objectql) validateAssignable(field *Field, value interface{}) bool {
 	case Int, Float, String, Bool:
 		return simple(field.Type, value)
 	case Relate:
-		return isStringLick(value)
+		return value == nil || isStringLick(value)
 	case Formula:
 		data := field.Data.(*FormulaData)
 		return simple(data.Type, value)

@@ -55,7 +55,7 @@ type RelateData struct {
 type FormulaData struct {
 	Formula    string
 	Type       FieldType
-	SourceCode *formula.SourceCode
+	sourceCode *formula.SourceCode
 }
 
 type AggregationData struct {

@@ -73,7 +73,7 @@ func (o *Objectql) formulaHandler(ctx context.Context, object *Object, id string
 	for _, objectId := range objectIds {
 		runner.Set("object", target)
 		runner.Set("objectId", objectId)
-		value, err := runner.Resolve(context.Background(), formulaData.SourceCode.Expression)
+		value, err := runner.Resolve(ctx, formulaData.sourceCode.Expression)
 		if err != nil {
 			return err
 		}

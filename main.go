@@ -301,32 +301,37 @@ func main() {
 	// 	panic(err)
 	// }
 
-	one, err := objectql.FindOne(context.Background(), "student", FindOneOptions{
+	// one, err := objectql.FindOne(context.Background(), "student", FindOneOptions{
+	// 	Condition: bson.M{
+	// 		"_id": "6498fee4229bcc6218af4e95",
+	// 	},
+	// 	Fields: Fields{
+	// 		"_id",
+	// 		"name",
+	// 		"age",
+	// 	},
+	// })
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// fmt.Println(one)
+
+	list, err := objectql.FindList(context.Background(), "student", FindListOptions{
 		Condition: bson.M{
-			"_id": "6498fee4229bcc6218af4e95",
+			"age": bson.M{
+				"$gt": 900,
+			},
 		},
+		Top: 10,
 		Fields: Fields{
 			"name",
+			"age",
 		},
 	})
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(one)
-
-	// list, err := objectql.FindAll(context.Background(), "student", FindAllOptions{
-	// 	Condition: bson.M{
-	// 		"age": bson.M{
-	// 			"$gt": 9,
-	// 		},
-	// 	},
-	// 	Top:    10,
-	// 	Fields: "name,age",
-	// })
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// fmt.Println(list)
+	fmt.Println(list)
 
 	// opts := graphiql.NewOptions("http://localhost:8080/graphql")
 	// http.Handle("/playground", graphiql.NewGraphiqlHandler(opts))

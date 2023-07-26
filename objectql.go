@@ -140,11 +140,11 @@ func (o *Objectql) parseAggregationField(object *Object, field *Field) error {
 func (o *Objectql) parseFormulaField(object *Object, field *Field) error {
 	var err error
 	fdata := field.Data.(*FormulaData)
-	fdata.SourceCode, err = formula.ParseSourceCode([]byte(fdata.Formula))
+	fdata.sourceCode, err = formula.ParseSourceCode([]byte(fdata.Formula))
 	if err != nil {
 		return err
 	}
-	names, err := formula.ResolveReferenceFields(fdata.SourceCode)
+	names, err := formula.ResolveReferenceFields(fdata.sourceCode)
 	if err != nil {
 		return err
 	}
@@ -341,8 +341,28 @@ func getGraphqlSelectFieldNames(p graphql.ResolveParams) []string {
 	return result
 }
 
+func (o *Objectql) Do(ctx context.Context, request string) *graphql.Result {
+	r, _ := o.WithTransaction(ctx, func(ctx context.Context) (interface{}, error) {
+		result := graphql.Do(graphql.Params{
+			Schema:        o.gschema,
+			RequestString: request,
+			Context:       ctx,
+		})
+		// 如果发生了错误要回馈到WithTransaction,事务才能回滚
+		// result 也进行返回是要兼容网页版的graphql
+		if len(result.Errors) > 0 {
+			return result, result.Errors[0]
+		}
+		return result, nil
+	})
+	if v, ok := r.(*graphql.Result); ok {
+		return v
+	}
+	return nil
+}
+
 // 增删改查接口
-func (o *Objectql) Insert(ctx context.Context, objectApi string, option InsertOptions) (map[string]interface{}, error) {
+func (o *Objectql) Insert(ctx context.Context, objectApi string, options InsertOptions) (map[string]interface{}, error) {
 	object := FindObjectFromList(o.list, objectApi)
 	if object == nil {
 		return nil, fmt.Errorf("not found object '%s'", objectApi)
@@ -351,23 +371,19 @@ func (o *Objectql) Insert(ctx context.Context, objectApi string, option InsertOp
 	buffer.WriteString("mutation {")
 	buffer.WriteString("data: " + objectApi + "__insert(")
 	buffer.WriteString(" doc:")
-	buffer.WriteString(docToGrpahqlArgument(option.Doc))
+	buffer.WriteString(docToGrpahqlArgument(options.Doc))
 	buffer.WriteString(")")
 	//
 	buffer.WriteString("{")
-	if option.Fields != nil {
-		buffer.WriteString(strings.Join(gconv.Strings(option.Fields), ","))
+	if options.Fields != nil {
+		buffer.WriteString(strings.Join(gconv.Strings(options.Fields), ","))
 	} else {
 		buffer.WriteString(getObjectFieldsQueryString(object))
 	}
 	buffer.WriteString("}")
 	//
 	buffer.WriteString("}")
-	result := graphql.Do(graphql.Params{
-		Schema:        o.gschema,
-		RequestString: buffer.String(),
-		Context:       ctx,
-	})
+	result := o.Do(ctx, buffer.String())
 	if len(result.Errors) > 0 {
 		return nil, result.Errors[0]
 	}
@@ -397,11 +413,7 @@ func (o *Objectql) Update(ctx context.Context, objectApi string, id string, opti
 	buffer.WriteString("}")
 	//
 	buffer.WriteString("}")
-	result := graphql.Do(graphql.Params{
-		Schema:        o.gschema,
-		RequestString: buffer.String(),
-		Context:       ctx,
-	})
+	result := o.Do(ctx, buffer.String())
 	if len(result.Errors) > 0 {
 		return nil, result.Errors[0]
 	}
@@ -420,18 +432,14 @@ func (o *Objectql) Delete(ctx context.Context, objectApi string, id string) erro
 	buffer.WriteString(`"` + id + `"`)
 	buffer.WriteString(")")
 	buffer.WriteString("}")
-	result := graphql.Do(graphql.Params{
-		Schema:        o.gschema,
-		RequestString: buffer.String(),
-		Context:       ctx,
-	})
+	result := o.Do(ctx, buffer.String())
 	if len(result.Errors) > 0 {
 		return result.Errors[0]
 	}
 	return nil
 }
 
-func (o *Objectql) FindAll(ctx context.Context, objectApi string, options FindAllOptions) ([]map[string]interface{}, error) {
+func (o *Objectql) FindList(ctx context.Context, objectApi string, options FindListOptions) ([]map[string]interface{}, error) {
 	object := FindObjectFromList(o.list, objectApi)
 	if object == nil {
 		return nil, fmt.Errorf("not found object '%s'", objectApi)
@@ -480,11 +488,7 @@ func (o *Objectql) FindAll(ctx context.Context, objectApi string, options FindAl
 	buffer.WriteString("}")
 	//
 	buffer.WriteString("}")
-	result := graphql.Do(graphql.Params{
-		Schema:        o.gschema,
-		RequestString: buffer.String(),
-		Context:       ctx,
-	})
+	result := o.Do(ctx, buffer.String())
 	if len(result.Errors) > 0 {
 		return nil, result.Errors[0]
 	}
@@ -545,26 +549,49 @@ func (o *Objectql) FindOne(ctx context.Context, objectApi string, options FindOn
 	buffer.WriteString("}")
 	//
 	buffer.WriteString("}")
-	result := graphql.Do(graphql.Params{
-		Schema:        o.gschema,
-		RequestString: buffer.String(),
-		Context:       ctx,
-	})
+	result := o.Do(ctx, buffer.String())
 	if len(result.Errors) > 0 {
 		return nil, result.Errors[0]
 	}
 	data := result.Data.(map[string]interface{})["data"]
+	if data == nil {
+		return nil, nil
+	}
 	return data.(map[string]interface{}), nil
 }
 
 func (o *Objectql) Aggregate() {}
 
+type blockEvents struct{}
+
+var blockEventsKey = &blockEvents{}
+
 // Direct 通过context控制
-func (o *Objectql) DirectInsert()    {}
-func (o *Objectql) DirectUpdate()    {}
-func (o *Objectql) DirectDelete()    {}
-func (o *Objectql) DirectFind()      {}
-func (o *Objectql) DirectFindOne()   {}
+func (o *Objectql) DirectInsert(ctx context.Context, objectApi string, options InsertOptions) (map[string]interface{}, error) {
+	ctx = context.WithValue(ctx, blockEventsKey, true)
+	return o.Insert(ctx, objectApi, options)
+}
+
+func (o *Objectql) DirectUpdate(ctx context.Context, objectApi string, id string, options UpdateOptions) (map[string]interface{}, error) {
+	ctx = context.WithValue(ctx, blockEventsKey, true)
+	return o.Update(ctx, objectApi, id, options)
+}
+
+func (o *Objectql) DirectDelete(ctx context.Context, objectApi string, id string) error {
+	ctx = context.WithValue(ctx, blockEventsKey, true)
+	return o.Delete(ctx, objectApi, id)
+}
+
+func (o *Objectql) DirectFindList(ctx context.Context, objectApi string, options FindListOptions) ([]map[string]interface{}, error) {
+	ctx = context.WithValue(ctx, blockEventsKey, true)
+	return o.FindList(ctx, objectApi, options)
+}
+
+func (o *Objectql) DirectFindOne(ctx context.Context, objectApi string, options FindOneOptions) (map[string]interface{}, error) {
+	ctx = context.WithValue(ctx, blockEventsKey, true)
+	return o.FindOne(ctx, objectApi, options)
+}
+
 func (o *Objectql) DirectAggregate() {}
 
 func docToGrpahqlArgument(doc bson.M) string {
@@ -579,6 +606,8 @@ func docToGrpahqlArgument(doc bson.M) string {
 			buffer.WriteString(`"`)
 			buffer.WriteString(escapeString(n))
 			buffer.WriteString(`"`)
+		case nil:
+			buffer.WriteString(`null`)
 		default:
 			buffer.WriteString(escapeString(gconv.String(n)))
 		}

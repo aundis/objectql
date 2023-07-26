@@ -19,9 +19,9 @@ const (
 )
 
 type InsertBeforeHandler func(ctx context.Context, doc map[string]interface{}) error
-type InsertAfterHandler func(ctx context.Context, id string) error
+type InsertAfterHandler func(ctx context.Context, id string, doc map[string]interface{}) error
 type UpdateBeoferHandler func(ctx context.Context, id string, doc map[string]interface{}) error
-type UpdateAfterHandler func(ctx context.Context, id string) error
+type UpdateAfterHandler func(ctx context.Context, id string, doc map[string]interface{}) error
 type DeleteBeforeHandler func(ctx context.Context, id string) error
 type DeleteAfterHandler func(ctx context.Context, id string) error
 
@@ -83,9 +83,9 @@ func (o *Objectql) triggerInsertBefore(ctx context.Context, table string, doc ma
 	return nil
 }
 
-func (o *Objectql) triggerInsertAfter(ctx context.Context, table string, id string) error {
+func (o *Objectql) triggerInsertAfter(ctx context.Context, table string, id string, doc map[string]interface{}) error {
 	for _, handle := range o.getEventHanders(ctx, table, InsertAfter) {
-		err := handle.(InsertAfterHandler)(ctx, id)
+		err := handle.(InsertAfterHandler)(ctx, id, doc)
 		if err != nil {
 			return err
 		}
@@ -103,9 +103,9 @@ func (o *Objectql) triggerUpdateBefore(ctx context.Context, table string, id str
 	return nil
 }
 
-func (o *Objectql) triggerUpdateAfter(ctx context.Context, table string, id string) error {
+func (o *Objectql) triggerUpdateAfter(ctx context.Context, table string, id string, doc map[string]interface{}) error {
 	for _, handle := range o.getEventHanders(ctx, table, UpdateAfter) {
-		err := handle.(UpdateAfterHandler)(ctx, id)
+		err := handle.(UpdateAfterHandler)(ctx, id, doc)
 		if err != nil {
 			return err
 		}

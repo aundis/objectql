@@ -8,6 +8,7 @@ import (
 	"github.com/gogf/gf/v2/util/gconv"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -125,6 +126,9 @@ func (o *Objectql) graphqlQueryOneResolver(ctx context.Context, p graphql.Resolv
 	}
 	var result bson.M
 	err = o.getCollection(object.Api).FindOne(ctx, filter, options).Decode(&result)
+	if err == mongo.ErrNoDocuments {
+		return nil, nil
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -221,8 +225,8 @@ func formatMongoFilter(data interface{}) interface{} {
 			n[k] = formatMongoFilter(v)
 		}
 		return n
-	case []interface{}:
-		var list []interface{}
+	case primitive.A:
+		var list primitive.A
 		for _, v := range n {
 			list = append(list, formatMongoFilter(v))
 		}

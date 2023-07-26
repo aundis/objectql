@@ -23,9 +23,11 @@ func (o *Objectql) insertHandle(ctx context.Context, api string, doc map[string]
 		return "", err
 	}
 	// insertBefore 事件触发 (可以修改表单内容)
-	err = o.triggerInsertBefore(ctx, api, doc)
-	if err != nil {
-		return "", err
+	if ctx.Value(blockEventsKey) != true {
+		err = o.triggerInsertBefore(ctx, api, doc)
+		if err != nil {
+			return "", err
+		}
 	}
 	// 数据校验层(数据可能被修改了,所以在校验一次)
 	err = o.validateDocument(object, doc)
@@ -56,9 +58,11 @@ func (o *Objectql) insertHandle(ctx context.Context, api string, doc map[string]
 		}
 	}
 	// insertAfter 事件触发
-	err = o.triggerInsertAfter(ctx, api, objectIdStr)
-	if err != nil {
-		return "", err
+	if ctx.Value(blockEventsKey) != true {
+		err = o.triggerInsertAfter(ctx, api, objectIdStr, doc)
+		if err != nil {
+			return "", err
+		}
 	}
 	return objectIdStr, nil
 }
@@ -82,9 +86,11 @@ func (o *Objectql) updateHandle(ctx context.Context, api string, id string, doc 
 		return err
 	}
 	// updateBefore 事件触发 (可以修改表单内容)
-	err = o.triggerUpdateBefore(ctx, api, id, doc)
-	if err != nil {
-		return err
+	if ctx.Value(blockEventsKey) != true {
+		err = o.triggerUpdateBefore(ctx, api, id, doc)
+		if err != nil {
+			return err
+		}
 	}
 	// 数据校验(数据可能被修改了,所以再校验一次)
 	err = o.validateDocument(object, doc)
@@ -122,9 +128,11 @@ func (o *Objectql) updateHandle(ctx context.Context, api string, id string, doc 
 		}
 	}
 	// updateAfter 事件触发
-	err = o.triggerUpdateAfter(ctx, api, id)
-	if err != nil {
-		return err
+	if ctx.Value(blockEventsKey) != true {
+		err = o.triggerUpdateAfter(ctx, api, id, doc)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -140,9 +148,11 @@ func (o *Objectql) deleteHandle(ctx context.Context, api string, id string) erro
 		return err
 	}
 	// deleteBefore 事件触发
-	err = o.triggerDeleteBefore(ctx, api, id)
-	if err != nil {
-		return err
+	if ctx.Value(blockEventsKey) != true {
+		err = o.triggerDeleteBefore(ctx, api, id)
+		if err != nil {
+			return err
+		}
 	}
 	// 保存相关表的字段
 	beforeValues, err := o.getObjectBeforeValues(ctx, object, id)
@@ -162,9 +172,11 @@ func (o *Objectql) deleteHandle(ctx context.Context, api string, id string) erro
 		}
 	}
 	// deleteAfter 事件触发
-	err = o.triggerDeleteAfter(ctx, api, id)
-	if err != nil {
-		return err
+	if ctx.Value(blockEventsKey) != true {
+		err = o.triggerDeleteAfter(ctx, api, id)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
