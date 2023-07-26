@@ -12,13 +12,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func (o *Objectql) GraphqlExec(request string) {
-	// graphql.Do(graphql.Params{
-	// 	Schema:        schema,
-	// 	RequestString: params.Query,
-	// })
-}
-
 func (o *Objectql) initObjectGraphqlQuery(querys graphql.Fields, object *Object) {
 	querys[object.Api] = &graphql.Field{
 		Type: graphql.NewList(o.gobjects[object.Api]),
