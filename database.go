@@ -13,7 +13,7 @@ import (
 
 const MogSessionKey = "mgo_session"
 
-func (o *Objectql) initMongodb(ctx context.Context, uri string) (err error) {
+func (o *Objectql) InitMongodb(ctx context.Context, uri string) (err error) {
 	o.mongoClientOpts = options.Client().ApplyURI(uri)
 	o.mongoClient, err = mongo.Connect(ctx, o.mongoClientOpts)
 	if err != nil {

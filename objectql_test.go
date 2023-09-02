@@ -22,7 +22,7 @@ type GraphqlQueryReq struct {
 
 func TestServer(t *testing.T) {
 	objectql := New()
-	err := objectql.initMongodb(context.Background(), "mongodb://192.168.0.197:27017/?connect=direct")
+	err := objectql.InitMongodb(context.Background(), "mongodb://192.168.0.197:27017/?connect=direct")
 	if err != nil {
 		panic(err)
 	}
@@ -118,7 +118,7 @@ func TestServer(t *testing.T) {
 func TestInsert(t *testing.T) {
 	ctx := context.Background()
 	objectql := New()
-	err := objectql.initMongodb(ctx, testMongodbUrl)
+	err := objectql.InitMongodb(ctx, testMongodbUrl)
 	if err != nil {
 		t.Error("初始化数据库失败", err)
 		return
@@ -190,7 +190,7 @@ func TestInsert(t *testing.T) {
 func TestUpdate(t *testing.T) {
 	ctx := context.Background()
 	objectql := New()
-	err := objectql.initMongodb(ctx, testMongodbUrl)
+	err := objectql.InitMongodb(ctx, testMongodbUrl)
 	if err != nil {
 		t.Error("初始化数据库失败", err)
 		return
@@ -268,7 +268,7 @@ func TestUpdate(t *testing.T) {
 func TestDelete(t *testing.T) {
 	ctx := context.Background()
 	objectql := New()
-	err := objectql.initMongodb(ctx, testMongodbUrl)
+	err := objectql.InitMongodb(ctx, testMongodbUrl)
 	if err != nil {
 		t.Error("初始化数据库失败", err)
 		return
@@ -340,7 +340,7 @@ func TestDelete(t *testing.T) {
 func TestFindOne(t *testing.T) {
 	ctx := context.Background()
 	objectql := New()
-	err := objectql.initMongodb(ctx, testMongodbUrl)
+	err := objectql.InitMongodb(ctx, testMongodbUrl)
 	if err != nil {
 		t.Error("初始化数据库失败", err)
 		return
@@ -413,7 +413,7 @@ func TestFindOne(t *testing.T) {
 func TestFindList(t *testing.T) {
 	ctx := context.Background()
 	objectql := New()
-	err := objectql.initMongodb(ctx, testMongodbUrl)
+	err := objectql.InitMongodb(ctx, testMongodbUrl)
 	if err != nil {
 		t.Error("初始化数据库失败", err)
 		return

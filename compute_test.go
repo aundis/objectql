@@ -11,7 +11,7 @@ import (
 func TestSelfCompute(t *testing.T) {
 	ctx := context.Background()
 	objectql := New()
-	err := objectql.initMongodb(ctx, testMongodbUrl)
+	err := objectql.InitMongodb(ctx, testMongodbUrl)
 	if err != nil {
 		t.Error("初始化数据库失败", err)
 		return
@@ -111,7 +111,7 @@ func TestSelfCompute(t *testing.T) {
 func TestRelateCompute(t *testing.T) {
 	ctx := context.Background()
 	objectql := New()
-	err := objectql.initMongodb(ctx, testMongodbUrl)
+	err := objectql.InitMongodb(ctx, testMongodbUrl)
 	if err != nil {
 		t.Error("初始化数据库失败", err)
 		return
