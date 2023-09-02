@@ -1,4 +1,4 @@
-package main
+package objectql
 
 import (
 	"context"
@@ -357,9 +357,10 @@ func getObjectRelationObjectApis(object *Object) []string {
 	return result
 }
 
+// graphql mutation表单字段的类型
 func (o *Objectql) toInputGraphqlType(field *Field) graphql.Output {
 	switch field.Type {
-	case Bool, Int, Float, String:
+	case Bool, Int, Float, String, DateTime:
 		return o.basicToGrpuahType(field.Type)
 	case Relate:
 		return graphql.String
@@ -367,9 +368,10 @@ func (o *Objectql) toInputGraphqlType(field *Field) graphql.Output {
 	return nil
 }
 
+// graphql object对象定义的类型
 func (o *Objectql) toGraphqlType(field *Field, gapi string) graphql.Output {
 	switch field.Type {
-	case Bool, Int, Float, String:
+	case Bool, Int, Float, String, DateTime:
 		return o.basicToGrpuahType(field.Type)
 	case Relate:
 		if strings.Contains(gapi, "__expand") {
@@ -398,6 +400,8 @@ func (o *Objectql) basicToGrpuahType(tpe FieldType) graphql.Output {
 		return graphql.Float
 	case String:
 		return graphql.String
+	case DateTime:
+		return graphql.DateTime
 	}
 	return nil
 }

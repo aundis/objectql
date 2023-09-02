@@ -1,4 +1,4 @@
-package main
+package objectql
 
 import (
 	"context"
@@ -77,12 +77,12 @@ func (o *Objectql) formulaHandler(ctx context.Context, object *Object, id string
 		if err != nil {
 			return err
 		}
-		formated, err := formatFormulaReturnValue(info.TargetField, value)
+		input, err := formatComputedValue(info.TargetField, value)
 		if err != nil {
 			return err
 		}
 		err = o.updateHandle(ctx, target.Api, objectId, bson.M{
-			info.TargetField.Api: formated,
+			info.TargetField.Api: input,
 		}, true)
 		if err != nil {
 			return err
@@ -105,7 +105,7 @@ func (o *Objectql) resolverIdentifier(ctx context.Context, name string) (interfa
 	if err != nil {
 		return nil, err
 	}
-	v, err := formatFormulaReturnValue(field, one[name])
+	v, err := formatDatabaseValueToCompute(field, one[name])
 	if err != nil {
 		return nil, err
 	}
@@ -140,7 +140,7 @@ func (o *Objectql) resolveSelectorExpression(ctx context.Context, name string) (
 	}
 	// 找不到就忽略掉返回一个默认值
 	if one == nil || one[relationFieldApi] == nil {
-		v, err := formatFormulaReturnValue(valueField, nil)
+		v, err := getFieldComputeDefaultValue(valueField)
 		if err != nil {
 			return nil, err
 		}
@@ -153,49 +153,17 @@ func (o *Objectql) resolveSelectorExpression(ctx context.Context, name string) (
 	}
 	// 找不到就忽略掉返回一个默认值
 	if relate == nil {
-		v, err := formatFormulaReturnValue(valueField, nil)
+		v, err := getFieldComputeDefaultValue(valueField)
 		if err != nil {
 			return nil, err
 		}
 		return formula.FormatValue(v)
 	}
-	v, err := formatFormulaReturnValue(valueField, relate[valueFieldApi])
+	v, err := formatDatabaseValueToCompute(valueField, relate[valueFieldApi])
 	if err != nil {
 		return nil, err
 	}
 	return formula.FormatValue(v)
-}
-
-func formatFormulaReturnValue(field *Field, value interface{}) (interface{}, error) {
-	switch field.Type {
-	case Int, Float, Bool, String:
-		return basicFormatFormulaReturnValue(field.Type, value)
-	case Relate:
-		return basicFormatFormulaReturnValue(String, value)
-	case Formula:
-		data := field.Data.(*FormulaData)
-		return basicFormatFormulaReturnValue(data.Type, value)
-	case Aggregation:
-		data := field.Data.(*AggregationData)
-		return basicFormatFormulaReturnValue(data.Type, value)
-	default:
-		return nil, fmt.Errorf("formatFormulaReturnValue unknown field type %v", field.Type)
-	}
-}
-
-func basicFormatFormulaReturnValue(tpe FieldType, value interface{}) (interface{}, error) {
-	switch tpe {
-	case Int:
-		return gconv.Int(value), nil
-	case Float:
-		return gconv.Float32(value), nil
-	case Bool:
-		return gconv.Bool(value), nil
-	case String:
-		return gconv.String(value), nil
-	default:
-		return nil, fmt.Errorf("basicFormatFormulaReturnValue unknown field type %v", tpe)
-	}
 }
 
 func (o *Objectql) aggregationHandler(ctx context.Context, object *Object, id string, info *RelationFiledInfo, beforeValues bson.M) error {

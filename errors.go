@@ -1,7 +1,7 @@
-package main
+package objectql
 
 import "errors"
 
 var (
-	NotFoundObjectErr = errors.New("not found object")
+	ErrNotFoundObject = errors.New("not found object")
 )

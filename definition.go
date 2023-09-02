@@ -1,4 +1,4 @@
-package main
+package objectql
 
 import (
 	"github.com/aundis/formula"
@@ -33,6 +33,7 @@ const (
 	String
 	Bool
 	Float
+	DateTime
 	Relate
 	Formula
 	Aggregation

@@ -1,15 +1,119 @@
-package main
+package objectql
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
 	"testing"
 
 	"github.com/gogf/gf/v2/util/gconv"
 	"github.com/gogf/gf/v2/util/guid"
+	"github.com/mnmtanish/go-graphiql"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
 var testMongodbUrl = "mongodb://192.168.0.197:27017/?connect=direct"
+
+type GraphqlQueryReq struct {
+	Query     string `json:"query"`
+	Variables string `json:"variables"`
+}
+
+func TestServer(t *testing.T) {
+	objectql := New()
+	err := objectql.initMongodb(context.Background(), "mongodb://192.168.0.197:27017/?connect=direct")
+	if err != nil {
+		panic(err)
+	}
+
+	objectql.AddObject(&Object{
+		Name: "人",
+		Api:  "person",
+		Fields: []*Field{
+			{
+				Name: "名称",
+				Api:  "name",
+				Type: String,
+			},
+			{
+				Name: "出生日期",
+				Api:  "date",
+				Type: DateTime,
+			},
+			{
+				Name: "年",
+				Api:  "year",
+				Type: Formula,
+				Data: &FormulaData{
+					Type:    Int,
+					Formula: "year(date)",
+				},
+			},
+			{
+				Name: "月",
+				Api:  "month",
+				Type: Formula,
+				Data: &FormulaData{
+					Type:    Int,
+					Formula: "month(date)",
+				},
+			},
+			{
+				Name: "日",
+				Api:  "day",
+				Type: Formula,
+				Data: &FormulaData{
+					Type:    Int,
+					Formula: "day(date)",
+				},
+			},
+			{
+				Name: "和",
+				Api:  "sum",
+				Type: Formula,
+				Data: &FormulaData{
+					Type:    Int,
+					Formula: "year%1000",
+				},
+			},
+		},
+	})
+
+	// 初始化
+	err = objectql.InitObjects()
+	if err != nil {
+		panic(err)
+	}
+
+	http.HandleFunc("/graphql", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "POST" {
+			var params *GraphqlQueryReq
+			err := json.NewDecoder(r.Body).Decode(&params)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+
+			result := objectql.Do(context.Background(), params.Query)
+			// result := graphql.Do(graphql.Params{
+			// 	Schema:        objectql.gschema,
+			// 	RequestString: params.Query,
+			// 	Context: context.Background(),
+			// })
+			json.NewEncoder(w).Encode(result)
+		} else {
+			http.Error(w, "Method not supported", http.StatusMethodNotAllowed)
+		}
+	})
+
+	// 处理GraphQL Playground页面
+	http.HandleFunc("/", graphiql.ServeGraphiQL)
+
+	// 启动服务器
+	fmt.Println("Listening on :8080")
+	http.ListenAndServe(":8080", nil)
+}
 
 func TestInsert(t *testing.T) {
 	ctx := context.Background()

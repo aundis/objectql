@@ -24,7 +24,7 @@ require (
 )
 
 require (
-	github.com/aundis/formula v1.0.10
+	github.com/aundis/formula v1.0.11
 	github.com/gogf/gf/v2 v2.4.4
 	github.com/shopspring/decimal v1.3.1 // indirect
 )

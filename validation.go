@@ -1,6 +1,9 @@
-package main
+package objectql
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 func (o *Objectql) validateDocument(object *Object, doc map[string]interface{}) error {
 	exist := map[string]bool{}
@@ -11,7 +14,7 @@ func (o *Objectql) validateDocument(object *Object, doc map[string]interface{}) 
 		if v, ok := doc[field.Api]; ok {
 			exist[field.Api] = true
 			if !o.validateAssignable(field, v) {
-				return fmt.Errorf("%T not assign to %s.%s", v, object.Api, field.Api)
+				return fmt.Errorf("validateDocument %T not assign to %s.%s", v, object.Api, field.Api)
 			}
 		}
 	}
@@ -30,13 +33,15 @@ func (o *Objectql) validateAssignable(field *Field, value interface{}) bool {
 			return isStringLick(value)
 		case Bool:
 			return isBoolLike(value)
+		case DateTime:
+			return isDateTimeLike(value)
 		default:
 			return false
 		}
 	}
 
 	switch field.Type {
-	case Int, Float, String, Bool:
+	case Int, Float, String, Bool, DateTime:
 		return simple(field.Type, value)
 	case Relate:
 		return value == nil || isStringLick(value)
@@ -82,6 +87,15 @@ func isStringLick(value interface{}) bool {
 func isBoolLike(value interface{}) bool {
 	switch value.(type) {
 	case bool:
+		return true
+	default:
+		return false
+	}
+}
+
+func isDateTimeLike(value interface{}) bool {
+	switch value.(type) {
+	case string, *time.Time, time.Time:
 		return true
 	default:
 		return false

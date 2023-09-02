@@ -1,4 +1,4 @@
-package main
+package objectql
 
 import (
 	"bytes"
@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/aundis/formula"
 	"github.com/aundis/graphql"
@@ -270,41 +271,47 @@ func (o *Objectql) graphqlFieldResolver(ctx context.Context, p graphql.ResolvePa
 	if err != nil {
 		return nil, nil
 	}
-	// 格式化输出值 (自己调用需要先写个声明)
-	var formatGraohqlOutValue func(fieldType FieldType, value interface{}) (interface{}, error)
-	formatGraohqlOutValue = func(fieldType FieldType, value interface{}) (interface{}, error) {
+	// 格式化输出值
+	simpleHandle := func(fieldType FieldType, value interface{}) (interface{}, error) {
 		switch fieldType {
 		case Bool:
-			return gconv.Bool(value), nil
+			return boolOrNil(value), nil
 		case Int:
-			return gconv.Int(value), nil
+			return intOrNil(value), nil
 		case Float:
-			return gconv.Float32(value), nil
+			return floatOrNil(value), nil
 		case String:
-			return gconv.String(value), nil
-		case Relate:
-			if value == nil {
-				return nil, nil
-			}
-			if strings.Contains(gapi, "__expand") {
-				objectId := value.(primitive.ObjectID).Hex()
-				data := field.Data.(*RelateData)
-				return o.relateResolver(ctx, p, data.ObjectApi, objectId)
-			} else {
-				return value.(primitive.ObjectID).Hex(), nil
-			}
-		case Formula:
-			data := field.Data.(*FormulaData)
-			return formatGraohqlOutValue(data.Type, value)
-		case Aggregation:
-			data := field.Data.(*AggregationData)
-			return formatGraohqlOutValue(data.Type, value)
+			return stringOrNil(value), nil
+		case DateTime:
+			return dateTimeOrNil(value), nil
 		default:
-			return nil, fmt.Errorf("formatGraohqlOutValue simple not support type(%v)", fieldType)
+			return nil, fmt.Errorf("graphqlFieldResolver simple not support type(%v)", fieldType)
 		}
 	}
-
-	return formatGraohqlOutValue(field.Type, source[field.Api])
+	value := source[field.Api]
+	switch field.Type {
+	case Bool, Int, Float, String, DateTime:
+		return simpleHandle(field.Type, value)
+	case Relate:
+		if value == nil {
+			return nil, nil
+		}
+		if strings.Contains(gapi, "__expand") {
+			objectId := value.(primitive.ObjectID).Hex()
+			data := field.Data.(*RelateData)
+			return o.relateResolver(ctx, p, data.ObjectApi, objectId)
+		} else {
+			return value.(primitive.ObjectID).Hex(), nil
+		}
+	case Formula:
+		data := field.Data.(*FormulaData)
+		return simpleHandle(data.Type, value)
+	case Aggregation:
+		data := field.Data.(*AggregationData)
+		return simpleHandle(data.Type, value)
+	default:
+		return nil, fmt.Errorf("graphqlFieldResolver not support type(%v)", field.Type)
+	}
 }
 
 func (o *Objectql) relateResolver(ctx context.Context, p graphql.ResolveParams, objectApi string, objectId string) (interface{}, error) {
@@ -605,6 +612,10 @@ func docToGrpahqlArgument(doc bson.M) string {
 		case string:
 			buffer.WriteString(`"`)
 			buffer.WriteString(escapeString(n))
+			buffer.WriteString(`"`)
+		case time.Time:
+			buffer.WriteString(`"`)
+			buffer.WriteString(n.Format(time.RFC3339))
 			buffer.WriteString(`"`)
 		case nil:
 			buffer.WriteString(`null`)

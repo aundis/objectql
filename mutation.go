@@ -1,4 +1,4 @@
-package main
+package objectql
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 func (o *Objectql) insertHandle(ctx context.Context, api string, doc map[string]interface{}) (string, error) {
 	object := FindObjectFromList(o.list, api)
 	if object == nil {
-		return "", NotFoundObjectErr
+		return "", ErrNotFoundObject
 	}
 	// 对象权限校验
 	err := o.checkObjectPermission(ctx, object.Api, ObjectInsert)
@@ -40,7 +40,7 @@ func (o *Objectql) insertHandle(ctx context.Context, api string, doc map[string]
 		return "", err
 	}
 	// 数据库修改
-	err = formatInputValue(object.Fields, doc)
+	err = formatValueToDatabase(object.Fields, doc)
 	if err != nil {
 		return "", err
 	}
@@ -71,7 +71,7 @@ func (o *Objectql) updateHandle(ctx context.Context, api string, id string, doc 
 	var err error
 	object := FindObjectFromList(o.list, api)
 	if object == nil {
-		return NotFoundObjectErr
+		return ErrNotFoundObject
 	}
 	// 对象权限校验
 	if !permissionBlock {
@@ -110,7 +110,7 @@ func (o *Objectql) updateHandle(ctx context.Context, api string, id string, doc 
 		return err
 	}
 	// 数据库修改
-	err = formatInputValue(object.Fields, doc)
+	err = formatValueToDatabase(object.Fields, doc)
 	if err != nil {
 		return err
 	}
@@ -140,7 +140,7 @@ func (o *Objectql) updateHandle(ctx context.Context, api string, id string, doc 
 func (o *Objectql) deleteHandle(ctx context.Context, api string, id string) error {
 	object := FindObjectFromList(o.list, api)
 	if object == nil {
-		return NotFoundObjectErr
+		return ErrNotFoundObject
 	}
 	// 对象权限校验
 	err := o.checkObjectPermission(ctx, object.Api, ObjectInsert)

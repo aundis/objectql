@@ -1,4 +1,4 @@
-package main
+package objectql
 
 import (
 	"context"

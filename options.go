@@ -1,4 +1,4 @@
-package main
+package objectql
 
 import (
 	"go.mongodb.org/mongo-driver/bson"
