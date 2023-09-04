@@ -484,3 +484,75 @@ func TestFindList(t *testing.T) {
 		}
 	}
 }
+
+func TestCount(t *testing.T) {
+	ctx := context.Background()
+	objectql := New()
+	err := objectql.InitMongodb(ctx, testMongodbUrl)
+	if err != nil {
+		t.Error("初始化数据库失败", err)
+		return
+	}
+	objectql.AddObject(&Object{
+		Name: "学生",
+		Api:  "student",
+		Fields: []*Field{
+			{
+				Name: "姓名",
+				Api:  "name",
+				Type: String,
+			},
+			{
+				Name: "年龄",
+				Api:  "age",
+				Type: Int,
+			},
+		},
+		Comment: "",
+	})
+	err = objectql.InitObjects()
+	if err != nil {
+		t.Error("初始化对象失败", err)
+		return
+	}
+	// 插入几个数据
+	var ids []string
+	for i := 0; i < 5; i++ {
+		name := guid.S()
+		res, err := objectql.Insert(ctx, "student", InsertOptions{
+			Doc: map[string]interface{}{
+				"name": name,
+				"age":  13,
+			},
+			Fields: []interface{}{
+				"_id",
+			},
+		})
+		if err != nil {
+			t.Error("插入数据失败")
+			return
+		}
+		ids = append(ids, gconv.String(res["_id"]))
+	}
+	// 查找列表
+	count, err := objectql.Count(ctx, "student", map[string]interface{}{
+		"name": "小刚",
+	})
+	if err != nil {
+		t.Error("find list err:", err)
+		return
+	}
+	t.Log(count)
+	// if len(list) != 5 {
+	// 	t.Errorf("except find list count = 5 but got %d", len(list))
+	// 	return
+	// }
+	// 清空插入的数据
+	for _, v := range ids {
+		err = objectql.Delete(ctx, "student", v)
+		if err != nil {
+			t.Error("删除数据失败", err)
+			return
+		}
+	}
+}

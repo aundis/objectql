@@ -567,6 +567,43 @@ func (o *Objectql) FindOne(ctx context.Context, objectApi string, options FindOn
 	return data.(map[string]interface{}), nil
 }
 
+func (o *Objectql) Count(ctx context.Context, objectApi string, conditions bson.M) (int64, error) {
+	object := FindObjectFromList(o.list, objectApi)
+	if object == nil {
+		return 0, fmt.Errorf("not found object '%s'", objectApi)
+	}
+	var jsonData string
+	if conditions != nil {
+		jsn, err := json.Marshal(conditions)
+		if err != nil {
+			return 0, err
+		}
+		jsonData = string(jsn)
+	}
+	// filters
+	var buffer bytes.Buffer
+	buffer.WriteString("query {")
+	buffer.WriteString("data: " + objectApi + "__count")
+	// { "_id": "xxxxxxxxx" }
+	if len(jsonData) > 0 {
+		buffer.WriteString("(filter:")
+		buffer.WriteString(`"`)
+		buffer.WriteString(escapeString(jsonData))
+		buffer.WriteString(`")`)
+	}
+	//
+	buffer.WriteString("}")
+	result := o.Do(ctx, buffer.String())
+	if len(result.Errors) > 0 {
+		return 0, result.Errors[0]
+	}
+	data := result.Data.(map[string]interface{})["data"]
+	if data == nil {
+		return 0, nil
+	}
+	return gconv.Int64(data), nil
+}
+
 func (o *Objectql) Aggregate() {}
 
 type blockEvents struct{}
@@ -597,6 +634,11 @@ func (o *Objectql) DirectFindList(ctx context.Context, objectApi string, options
 func (o *Objectql) DirectFindOne(ctx context.Context, objectApi string, options FindOneOptions) (map[string]interface{}, error) {
 	ctx = context.WithValue(ctx, blockEventsKey, true)
 	return o.FindOne(ctx, objectApi, options)
+}
+
+func (o *Objectql) DirectCount(ctx context.Context, objectApi string, conditions bson.M) (int64, error) {
+	ctx = context.WithValue(ctx, blockEventsKey, true)
+	return o.Count(ctx, objectApi, conditions)
 }
 
 func (o *Objectql) DirectAggregate() {}
