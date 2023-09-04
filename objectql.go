@@ -664,6 +664,7 @@ func docToGrpahqlArgument(doc bson.M) string {
 		default:
 			buffer.WriteString(escapeString(gconv.String(n)))
 		}
+		buffer.WriteString(` `) // 加个空格
 	}
 	buffer.WriteString("}")
 	return buffer.String()
