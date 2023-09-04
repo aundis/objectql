@@ -23,6 +23,11 @@ func (o *Objectql) validateDocument(object *Object, doc map[string]interface{}) 
 
 // TODO: 可以支持字段自定义校验(扩展校验这一层要先通过)
 func (o *Objectql) validateAssignable(field *Field, value interface{}) bool {
+	// TODO: 允许所有字段为空
+	if value == nil {
+		return true
+	}
+
 	simple := func(tpe FieldType, value interface{}) bool {
 		switch tpe {
 		case Int:
