@@ -397,7 +397,7 @@ func (o *Objectql) Insert(ctx context.Context, objectApi string, options InsertO
 	return result.Data.(map[string]interface{})["data"].(map[string]interface{}), nil
 }
 
-func (o *Objectql) Update(ctx context.Context, objectApi string, options UpdateOptinos) ([]map[string]any, error) {
+func (o *Objectql) Update(ctx context.Context, objectApi string, options UpdateOptions) ([]map[string]any, error) {
 	rlist, err := o.WithTransaction(ctx, func(ctx context.Context) (interface{}, error) {
 		list, err := o.FindList(ctx, objectApi, FindListOptions{
 			Condition: options.Condition,
@@ -676,7 +676,7 @@ func (o *Objectql) DirectInsert(ctx context.Context, objectApi string, options I
 	return o.Insert(ctx, objectApi, options)
 }
 
-func (o *Objectql) DirectUpdate(ctx context.Context, objectApi string, options UpdateOptinos) ([]map[string]any, error) {
+func (o *Objectql) DirectUpdate(ctx context.Context, objectApi string, options UpdateOptions) ([]map[string]any, error) {
 	ctx = context.WithValue(ctx, blockEventsKey, true)
 	return o.Update(ctx, objectApi, options)
 }

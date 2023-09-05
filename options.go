@@ -11,7 +11,7 @@ type InsertOptions struct {
 	Fields Fields
 }
 
-type UpdateOptinos struct {
+type UpdateOptions struct {
 	Condition bson.M
 	Doc       bson.M
 	Fields    Fields
