@@ -507,6 +507,18 @@ func (o *Objectql) FindList(ctx context.Context, objectApi string, options FindL
 	return list, nil
 }
 
+func (o *Objectql) FindOneById(ctx context.Context, objectApi, id string, fields ...Fields) (map[string]interface{}, error) {
+	options := FindOneOptions{
+		Condition: bson.M{
+			"_id": objectApi,
+		},
+	}
+	if len(fields) != 0 {
+		options.Fields = fields[0]
+	}
+	return o.FindOne(ctx, objectApi, options)
+}
+
 func (o *Objectql) FindOne(ctx context.Context, objectApi string, options FindOneOptions) (map[string]interface{}, error) {
 	object := FindObjectFromList(o.list, objectApi)
 	if object == nil {
@@ -629,6 +641,11 @@ func (o *Objectql) DirectDelete(ctx context.Context, objectApi string, id string
 func (o *Objectql) DirectFindList(ctx context.Context, objectApi string, options FindListOptions) ([]map[string]interface{}, error) {
 	ctx = context.WithValue(ctx, blockEventsKey, true)
 	return o.FindList(ctx, objectApi, options)
+}
+
+func (o *Objectql) DirectFindOneById(ctx context.Context, objectApi, id string, fields ...Fields) (map[string]interface{}, error) {
+	ctx = context.WithValue(ctx, blockEventsKey, true)
+	return o.FindOneById(ctx, objectApi, id, fields...)
 }
 
 func (o *Objectql) DirectFindOne(ctx context.Context, objectApi string, options FindOneOptions) (map[string]interface{}, error) {
