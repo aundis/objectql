@@ -397,7 +397,35 @@ func (o *Objectql) Insert(ctx context.Context, objectApi string, options InsertO
 	return result.Data.(map[string]interface{})["data"].(map[string]interface{}), nil
 }
 
-func (o *Objectql) Update(ctx context.Context, objectApi string, id string, options UpdateOptions) (bson.M, error) {
+func (o *Objectql) Update(ctx context.Context, objectApi string, options UpdateOptinos) ([]map[string]any, error) {
+	rlist, err := o.WithTransaction(ctx, func(ctx context.Context) (interface{}, error) {
+		list, err := o.FindList(ctx, objectApi, FindListOptions{
+			Condition: options.Condition,
+			Fields:    Fields{"_id"},
+		})
+		if err != nil {
+			return nil, err
+		}
+		var result []map[string]any
+		for _, item := range list {
+			res, err := o.UpdateById(ctx, objectApi, gconv.String(item["_id"]), UpdateByIdOptions{
+				Doc:    options.Doc,
+				Fields: options.Fields,
+			})
+			if err != nil {
+				return nil, err
+			}
+			result = append(result, res)
+		}
+		return result, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return rlist.([]map[string]any), nil
+}
+
+func (o *Objectql) UpdateById(ctx context.Context, objectApi string, id string, options UpdateByIdOptions) (map[string]any, error) {
 	object := FindObjectFromList(o.list, objectApi)
 	if object == nil {
 		return nil, fmt.Errorf("not found object '%s'", objectApi)
@@ -427,7 +455,27 @@ func (o *Objectql) Update(ctx context.Context, objectApi string, id string, opti
 	return result.Data.(map[string]interface{})["data"].(map[string]interface{}), nil
 }
 
-func (o *Objectql) Delete(ctx context.Context, objectApi string, id string) error {
+func (o *Objectql) Delete(ctx context.Context, objectApi string, conditions map[string]any) error {
+	_, err := o.WithTransaction(ctx, func(ctx context.Context) (interface{}, error) {
+		list, err := o.FindList(ctx, objectApi, FindListOptions{
+			Condition: conditions,
+			Fields:    Fields{"_id"},
+		})
+		if err != nil {
+			return nil, err
+		}
+		for _, item := range list {
+			err = o.DeleteById(ctx, objectApi, gconv.String(item["_id"]))
+			if err != nil {
+				return nil, err
+			}
+		}
+		return nil, nil
+	})
+	return err
+}
+
+func (o *Objectql) DeleteById(ctx context.Context, objectApi string, id string) error {
 	object := FindObjectFromList(o.list, objectApi)
 	if object == nil {
 		return fmt.Errorf("not found object '%s'", objectApi)
@@ -509,7 +557,7 @@ func (o *Objectql) FindList(ctx context.Context, objectApi string, options FindL
 
 func (o *Objectql) FindOneById(ctx context.Context, objectApi, id string, fields ...Fields) (map[string]interface{}, error) {
 	options := FindOneOptions{
-		Condition: bson.M{
+		Condition: map[string]any{
 			"_id": objectApi,
 		},
 	}
@@ -579,7 +627,7 @@ func (o *Objectql) FindOne(ctx context.Context, objectApi string, options FindOn
 	return data.(map[string]interface{}), nil
 }
 
-func (o *Objectql) Count(ctx context.Context, objectApi string, conditions bson.M) (int64, error) {
+func (o *Objectql) Count(ctx context.Context, objectApi string, conditions map[string]any) (int64, error) {
 	object := FindObjectFromList(o.list, objectApi)
 	if object == nil {
 		return 0, fmt.Errorf("not found object '%s'", objectApi)
@@ -628,14 +676,24 @@ func (o *Objectql) DirectInsert(ctx context.Context, objectApi string, options I
 	return o.Insert(ctx, objectApi, options)
 }
 
-func (o *Objectql) DirectUpdate(ctx context.Context, objectApi string, id string, options UpdateOptions) (map[string]interface{}, error) {
+func (o *Objectql) DirectUpdate(ctx context.Context, objectApi string, options UpdateOptinos) ([]map[string]any, error) {
 	ctx = context.WithValue(ctx, blockEventsKey, true)
-	return o.Update(ctx, objectApi, id, options)
+	return o.Update(ctx, objectApi, options)
 }
 
-func (o *Objectql) DirectDelete(ctx context.Context, objectApi string, id string) error {
+func (o *Objectql) DirectUpdateById(ctx context.Context, objectApi string, id string, options UpdateByIdOptions) (map[string]interface{}, error) {
 	ctx = context.WithValue(ctx, blockEventsKey, true)
-	return o.Delete(ctx, objectApi, id)
+	return o.UpdateById(ctx, objectApi, id, options)
+}
+
+func (o *Objectql) DirectDelete(ctx context.Context, objectApi string, conditions map[string]any) error {
+	ctx = context.WithValue(ctx, blockEventsKey, true)
+	return o.Delete(ctx, objectApi, conditions)
+}
+
+func (o *Objectql) DirectDeleteById(ctx context.Context, objectApi string, id string) error {
+	ctx = context.WithValue(ctx, blockEventsKey, true)
+	return o.DeleteById(ctx, objectApi, id)
 }
 
 func (o *Objectql) DirectFindList(ctx context.Context, objectApi string, options FindListOptions) ([]map[string]interface{}, error) {
@@ -653,14 +711,14 @@ func (o *Objectql) DirectFindOne(ctx context.Context, objectApi string, options 
 	return o.FindOne(ctx, objectApi, options)
 }
 
-func (o *Objectql) DirectCount(ctx context.Context, objectApi string, conditions bson.M) (int64, error) {
+func (o *Objectql) DirectCount(ctx context.Context, objectApi string, conditions map[string]any) (int64, error) {
 	ctx = context.WithValue(ctx, blockEventsKey, true)
 	return o.Count(ctx, objectApi, conditions)
 }
 
 func (o *Objectql) DirectAggregate() {}
 
-func docToGrpahqlArgument(doc bson.M) string {
+func docToGrpahqlArgument(doc map[string]any) string {
 	var buffer bytes.Buffer
 	buffer.WriteString("{")
 	for k, v := range doc {

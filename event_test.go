@@ -193,7 +193,7 @@ func TestUpdateBefore(t *testing.T) {
 	}
 	// 更新对象
 	id := gconv.String(res["_id"])
-	_, err = objectql.Update(ctx, "staff", id, UpdateOptions{
+	_, err = objectql.UpdateById(ctx, "staff", id, UpdateByIdOptions{
 		Doc: map[string]interface{}{
 			"age": 23,
 		},
@@ -207,7 +207,7 @@ func TestUpdateBefore(t *testing.T) {
 		return
 	}
 	// 删除对象
-	err = objectql.Delete(ctx, "staff", id)
+	err = objectql.DeleteById(ctx, "staff", id)
 	if err != nil {
 		t.Error("删除对象错误", err)
 		return
@@ -273,7 +273,7 @@ func TestUpdateAfter(t *testing.T) {
 	}
 	// 更新对象
 	id := gconv.String(res["_id"])
-	_, err = objectql.Update(ctx, "staff", id, UpdateOptions{
+	_, err = objectql.UpdateById(ctx, "staff", id, UpdateByIdOptions{
 		Doc: map[string]interface{}{
 			"age": 23,
 		},
@@ -287,7 +287,7 @@ func TestUpdateAfter(t *testing.T) {
 		return
 	}
 	// 删除对象
-	err = objectql.Delete(ctx, "staff", id)
+	err = objectql.DeleteById(ctx, "staff", id)
 	if err != nil {
 		t.Error("删除对象错误", err)
 		return
@@ -352,7 +352,7 @@ func TestDeleteBefore(t *testing.T) {
 		return
 	}
 	// 删除对象
-	err = objectql.Delete(ctx, "staff", gconv.String(res["_id"]))
+	err = objectql.DeleteById(ctx, "staff", gconv.String(res["_id"]))
 	if err == nil {
 		t.Error("未返回预期错误")
 		return
@@ -421,7 +421,7 @@ func TestDeleteAfter(t *testing.T) {
 		return
 	}
 	// 删除对象
-	err = objectql.Delete(ctx, "staff", gconv.String(res["_id"]))
+	err = objectql.DeleteById(ctx, "staff", gconv.String(res["_id"]))
 	if err == nil {
 		t.Error("未返回预期错误")
 		return

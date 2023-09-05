@@ -120,7 +120,7 @@ func TestObjectFieldPermissionCheck(t *testing.T) {
 		return
 	}
 	// 删除数据
-	err = objectql.Delete(ctx, "student", gconv.String(res["_id"]))
+	err = objectql.DeleteById(ctx, "student", gconv.String(res["_id"]))
 	if err != nil {
 		t.Error("删除数据失败", err.Error())
 		return

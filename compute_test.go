@@ -81,7 +81,7 @@ func TestSelfCompute(t *testing.T) {
 		return
 	}
 	// 修改数据
-	res, err = objectql.Update(ctx, "staff", gconv.String(res["_id"]), UpdateOptions{
+	res, err = objectql.UpdateById(ctx, "staff", gconv.String(res["_id"]), UpdateByIdOptions{
 		Doc: map[string]interface{}{
 			"hourly_wage": 100,
 			"duration":    8,
@@ -101,7 +101,7 @@ func TestSelfCompute(t *testing.T) {
 		return
 	}
 	// 删除数据
-	err = objectql.Delete(ctx, "staff", gconv.String(res["_id"]))
+	err = objectql.DeleteById(ctx, "staff", gconv.String(res["_id"]))
 	if err != nil {
 		t.Error("删除失败", err)
 		return
@@ -223,7 +223,7 @@ func TestRelateCompute(t *testing.T) {
 		return
 	}
 	// 修改数据
-	res, err = objectql.Update(ctx, "staff", gconv.String(res["_id"]), UpdateOptions{
+	res, err = objectql.UpdateById(ctx, "staff", gconv.String(res["_id"]), UpdateByIdOptions{
 		Doc: map[string]interface{}{
 			"boss": boss2Id,
 		},
@@ -242,7 +242,7 @@ func TestRelateCompute(t *testing.T) {
 		return
 	}
 	// 修改数据为空
-	res, err = objectql.Update(ctx, "staff", gconv.String(res["_id"]), UpdateOptions{
+	res, err = objectql.UpdateById(ctx, "staff", gconv.String(res["_id"]), UpdateByIdOptions{
 		Doc: map[string]interface{}{
 			"boss": nil,
 		},
@@ -261,17 +261,17 @@ func TestRelateCompute(t *testing.T) {
 		return
 	}
 	// 删除数据
-	err = objectql.Delete(ctx, "boss", boss1Id)
+	err = objectql.DeleteById(ctx, "boss", boss1Id)
 	if err != nil {
 		t.Error("删除失败", err)
 		return
 	}
-	err = objectql.Delete(ctx, "boss", boss2Id)
+	err = objectql.DeleteById(ctx, "boss", boss2Id)
 	if err != nil {
 		t.Error("删除失败", err)
 		return
 	}
-	err = objectql.Delete(ctx, "staff", gconv.String(res["_id"]))
+	err = objectql.DeleteById(ctx, "staff", gconv.String(res["_id"]))
 	if err != nil {
 		t.Error("删除失败", err)
 		return
