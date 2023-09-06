@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"testing"
-
-	"github.com/gogf/gf/v2/util/gconv"
 )
 
 func TestInsertBefore(t *testing.T) {
@@ -192,7 +190,7 @@ func TestUpdateBefore(t *testing.T) {
 		return
 	}
 	// 更新对象
-	id := gconv.String(res["_id"])
+	id := res.String("_id")
 	_, err = objectql.UpdateById(ctx, "staff", id, UpdateByIdOptions{
 		Doc: map[string]interface{}{
 			"age": 23,
@@ -272,7 +270,7 @@ func TestUpdateAfter(t *testing.T) {
 		return
 	}
 	// 更新对象
-	id := gconv.String(res["_id"])
+	id := res.String("_id")
 	_, err = objectql.UpdateById(ctx, "staff", id, UpdateByIdOptions{
 		Doc: map[string]interface{}{
 			"age": 23,
@@ -352,7 +350,7 @@ func TestDeleteBefore(t *testing.T) {
 		return
 	}
 	// 删除对象
-	err = objectql.DeleteById(ctx, "staff", gconv.String(res["_id"]))
+	err = objectql.DeleteById(ctx, "staff", res.String("_id"))
 	if err == nil {
 		t.Error("未返回预期错误")
 		return
@@ -421,7 +419,7 @@ func TestDeleteAfter(t *testing.T) {
 		return
 	}
 	// 删除对象
-	err = objectql.DeleteById(ctx, "staff", gconv.String(res["_id"]))
+	err = objectql.DeleteById(ctx, "staff", res.String("_id"))
 	if err == nil {
 		t.Error("未返回预期错误")
 		return

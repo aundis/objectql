@@ -4,8 +4,6 @@ import (
 	"context"
 	"strings"
 	"testing"
-
-	"github.com/gogf/gf/v2/util/gconv"
 )
 
 func TestObjectPermissionCheck(t *testing.T) {
@@ -115,12 +113,12 @@ func TestObjectFieldPermissionCheck(t *testing.T) {
 		t.Error("插入数据失败", err.Error())
 		return
 	}
-	if gconv.String(res["name"]) != "小明" || gconv.Int(res["age"]) != 0 {
-		t.Errorf(`预期结果不一致, name="%s", age=%d`, gconv.String(res["name"]), gconv.Int(res["age"]))
+	if res.String("name") != "小明" || res.Int("age") != 0 {
+		t.Errorf(`预期结果不一致, name="%s", age=%d`, res.String("name"), res.Int("age"))
 		return
 	}
 	// 删除数据
-	err = objectql.DeleteById(ctx, "student", gconv.String(res["_id"]))
+	err = objectql.DeleteById(ctx, "student", res.String("_id"))
 	if err != nil {
 		t.Error("删除数据失败", err.Error())
 		return

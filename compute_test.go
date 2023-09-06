@@ -3,8 +3,6 @@ package objectql
 import (
 	"context"
 	"testing"
-
-	"github.com/gogf/gf/v2/util/gconv"
 )
 
 // 自身对象的公式字段计算
@@ -75,13 +73,13 @@ func TestSelfCompute(t *testing.T) {
 		t.Error("插入数据失败", err)
 		return
 	}
-	salary := gconv.Int(res["salary"])
+	salary := res.Int("salary")
 	if salary != 240 {
 		t.Errorf("except hourly wage = 240 bug got %d", salary)
 		return
 	}
 	// 修改数据
-	res, err = objectql.UpdateById(ctx, "staff", gconv.String(res["_id"]), UpdateByIdOptions{
+	res, err = objectql.UpdateById(ctx, "staff", res.String("_id"), UpdateByIdOptions{
 		Doc: map[string]interface{}{
 			"hourly_wage": 100,
 			"duration":    8,
@@ -95,13 +93,13 @@ func TestSelfCompute(t *testing.T) {
 		t.Error("修改数据失败", err)
 		return
 	}
-	salary = gconv.Int(res["salary"])
+	salary = res.Int("salary")
 	if salary != 800 {
 		t.Errorf("except hourly wage = 800 bug got %d", salary)
 		return
 	}
 	// 删除数据
-	err = objectql.DeleteById(ctx, "staff", gconv.String(res["_id"]))
+	err = objectql.DeleteById(ctx, "staff", res.String("_id"))
 	if err != nil {
 		t.Error("删除失败", err)
 		return
@@ -186,7 +184,7 @@ func TestRelateCompute(t *testing.T) {
 		t.Error("插入数据失败", err)
 		return
 	}
-	boss1Id := gconv.String(res["_id"])
+	boss1Id := res.String("_id")
 	res, err = objectql.Insert(ctx, "boss", InsertOptions{
 		Doc: map[string]interface{}{
 			"name": "马云",
@@ -200,7 +198,7 @@ func TestRelateCompute(t *testing.T) {
 		t.Error("插入数据失败", err)
 		return
 	}
-	boss2Id := gconv.String(res["_id"])
+	boss2Id := res.String("_id")
 	// 插入数据
 	res, err = objectql.Insert(ctx, "staff", InsertOptions{
 		Doc: map[string]interface{}{
@@ -217,13 +215,13 @@ func TestRelateCompute(t *testing.T) {
 		t.Error("插入数据失败", err)
 		return
 	}
-	bossName := gconv.String(res["boss_name"])
+	bossName := res.String("boss_name")
 	if bossName != "王健林" {
 		t.Errorf("except boss_name = 王健林 bug got %s", bossName)
 		return
 	}
 	// 修改数据
-	res, err = objectql.UpdateById(ctx, "staff", gconv.String(res["_id"]), UpdateByIdOptions{
+	res, err = objectql.UpdateById(ctx, "staff", res.String("_id"), UpdateByIdOptions{
 		Doc: map[string]interface{}{
 			"boss": boss2Id,
 		},
@@ -236,13 +234,13 @@ func TestRelateCompute(t *testing.T) {
 		t.Error("修改数据失败", err)
 		return
 	}
-	bossName = gconv.String(res["boss_name"])
+	bossName = res.String("boss_name")
 	if bossName != "马云" {
 		t.Errorf("except boss_name = 马云 bug got %s", bossName)
 		return
 	}
 	// 修改数据为空
-	res, err = objectql.UpdateById(ctx, "staff", gconv.String(res["_id"]), UpdateByIdOptions{
+	res, err = objectql.UpdateById(ctx, "staff", res.String("_id"), UpdateByIdOptions{
 		Doc: map[string]interface{}{
 			"boss": nil,
 		},
@@ -255,7 +253,7 @@ func TestRelateCompute(t *testing.T) {
 		t.Error("修改数据失败", err)
 		return
 	}
-	bossName = gconv.String(res["boss_name"])
+	bossName = res.String("boss_name")
 	if bossName != "" {
 		t.Errorf("except boss_name is empty bug got %s", bossName)
 		return
@@ -271,7 +269,7 @@ func TestRelateCompute(t *testing.T) {
 		t.Error("删除失败", err)
 		return
 	}
-	err = objectql.DeleteById(ctx, "staff", gconv.String(res["_id"]))
+	err = objectql.DeleteById(ctx, "staff", res.String("_id"))
 	if err != nil {
 		t.Error("删除失败", err)
 		return

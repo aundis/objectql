@@ -369,10 +369,10 @@ func (o *Objectql) Do(ctx context.Context, request string) *graphql.Result {
 }
 
 // 增删改查接口
-func (o *Objectql) Insert(ctx context.Context, objectApi string, options InsertOptions) (map[string]interface{}, error) {
+func (o *Objectql) Insert(ctx context.Context, objectApi string, options InsertOptions) (Entity, error) {
 	object := FindObjectFromList(o.list, objectApi)
 	if object == nil {
-		return nil, fmt.Errorf("not found object '%s'", objectApi)
+		return Entity{}, fmt.Errorf("not found object '%s'", objectApi)
 	}
 	var buffer bytes.Buffer
 	buffer.WriteString("mutation {")
@@ -392,12 +392,12 @@ func (o *Objectql) Insert(ctx context.Context, objectApi string, options InsertO
 	buffer.WriteString("}")
 	result := o.Do(ctx, buffer.String())
 	if len(result.Errors) > 0 {
-		return nil, result.Errors[0]
+		return Entity{}, result.Errors[0]
 	}
-	return result.Data.(map[string]interface{})["data"].(map[string]interface{}), nil
+	return Entity{v: result.Data.(map[string]interface{})["data"].(map[string]interface{})}, nil
 }
 
-func (o *Objectql) Update(ctx context.Context, objectApi string, options UpdateOptions) ([]map[string]any, error) {
+func (o *Objectql) Update(ctx context.Context, objectApi string, options UpdateOptions) ([]Entity, error) {
 	rlist, err := o.WithTransaction(ctx, func(ctx context.Context) (interface{}, error) {
 		list, err := o.FindList(ctx, objectApi, FindListOptions{
 			Condition: options.Condition,
@@ -406,9 +406,9 @@ func (o *Objectql) Update(ctx context.Context, objectApi string, options UpdateO
 		if err != nil {
 			return nil, err
 		}
-		var result []map[string]any
+		var result []Entity
 		for _, item := range list {
-			res, err := o.UpdateById(ctx, objectApi, gconv.String(item["_id"]), UpdateByIdOptions{
+			res, err := o.UpdateById(ctx, objectApi, item.String("_id"), UpdateByIdOptions{
 				Doc:    options.Doc,
 				Fields: options.Fields,
 			})
@@ -422,13 +422,13 @@ func (o *Objectql) Update(ctx context.Context, objectApi string, options UpdateO
 	if err != nil {
 		return nil, err
 	}
-	return rlist.([]map[string]any), nil
+	return rlist.([]Entity), nil
 }
 
-func (o *Objectql) UpdateById(ctx context.Context, objectApi string, id string, options UpdateByIdOptions) (map[string]any, error) {
+func (o *Objectql) UpdateById(ctx context.Context, objectApi string, id string, options UpdateByIdOptions) (Entity, error) {
 	object := FindObjectFromList(o.list, objectApi)
 	if object == nil {
-		return nil, fmt.Errorf("not found object '%s'", objectApi)
+		return Entity{}, fmt.Errorf("not found object '%s'", objectApi)
 	}
 	var buffer bytes.Buffer
 	buffer.WriteString("mutation {")
@@ -450,9 +450,9 @@ func (o *Objectql) UpdateById(ctx context.Context, objectApi string, id string, 
 	buffer.WriteString("}")
 	result := o.Do(ctx, buffer.String())
 	if len(result.Errors) > 0 {
-		return nil, result.Errors[0]
+		return Entity{}, result.Errors[0]
 	}
-	return result.Data.(map[string]interface{})["data"].(map[string]interface{}), nil
+	return Entity{v: result.Data.(map[string]interface{})["data"].(map[string]interface{})}, nil
 }
 
 func (o *Objectql) Delete(ctx context.Context, objectApi string, conditions map[string]any) error {
@@ -465,7 +465,7 @@ func (o *Objectql) Delete(ctx context.Context, objectApi string, conditions map[
 			return nil, err
 		}
 		for _, item := range list {
-			err = o.DeleteById(ctx, objectApi, gconv.String(item["_id"]))
+			err = o.DeleteById(ctx, objectApi, item.String("_id"))
 			if err != nil {
 				return nil, err
 			}
@@ -494,7 +494,7 @@ func (o *Objectql) DeleteById(ctx context.Context, objectApi string, id string) 
 	return nil
 }
 
-func (o *Objectql) FindList(ctx context.Context, objectApi string, options FindListOptions) ([]map[string]interface{}, error) {
+func (o *Objectql) FindList(ctx context.Context, objectApi string, options FindListOptions) ([]Entity, error) {
 	object := FindObjectFromList(o.list, objectApi)
 	if object == nil {
 		return nil, fmt.Errorf("not found object '%s'", objectApi)
@@ -552,10 +552,10 @@ func (o *Objectql) FindList(ctx context.Context, objectApi string, options FindL
 	for _, v := range data.([]interface{}) {
 		list = append(list, v.(map[string]interface{}))
 	}
-	return list, nil
+	return RawArrayToEntityArray(list), nil
 }
 
-func (o *Objectql) FindOneById(ctx context.Context, objectApi, id string, fields ...Fields) (map[string]interface{}, error) {
+func (o *Objectql) FindOneById(ctx context.Context, objectApi, id string, fields ...Fields) (Entity, error) {
 	options := FindOneOptions{
 		Condition: map[string]any{
 			"_id": objectApi,
@@ -567,16 +567,16 @@ func (o *Objectql) FindOneById(ctx context.Context, objectApi, id string, fields
 	return o.FindOne(ctx, objectApi, options)
 }
 
-func (o *Objectql) FindOne(ctx context.Context, objectApi string, options FindOneOptions) (map[string]interface{}, error) {
+func (o *Objectql) FindOne(ctx context.Context, objectApi string, options FindOneOptions) (Entity, error) {
 	object := FindObjectFromList(o.list, objectApi)
 	if object == nil {
-		return nil, fmt.Errorf("not found object '%s'", objectApi)
+		return Entity{}, fmt.Errorf("not found object '%s'", objectApi)
 	}
 	var jsonData string
 	if options.Condition != nil {
 		jsn, err := json.Marshal(options.Condition)
 		if err != nil {
-			return nil, err
+			return Entity{}, err
 		}
 		jsonData = string(jsn)
 	}
@@ -618,13 +618,13 @@ func (o *Objectql) FindOne(ctx context.Context, objectApi string, options FindOn
 	buffer.WriteString("}")
 	result := o.Do(ctx, buffer.String())
 	if len(result.Errors) > 0 {
-		return nil, result.Errors[0]
+		return Entity{}, result.Errors[0]
 	}
 	data := result.Data.(map[string]interface{})["data"]
 	if data == nil {
-		return nil, nil
+		return Entity{}, nil
 	}
-	return data.(map[string]interface{}), nil
+	return Entity{v: data.(map[string]interface{})}, nil
 }
 
 func (o *Objectql) Count(ctx context.Context, objectApi string, conditions map[string]any) (int64, error) {
@@ -671,17 +671,17 @@ type blockEvents struct{}
 var blockEventsKey = &blockEvents{}
 
 // Direct 通过context控制
-func (o *Objectql) DirectInsert(ctx context.Context, objectApi string, options InsertOptions) (map[string]interface{}, error) {
+func (o *Objectql) DirectInsert(ctx context.Context, objectApi string, options InsertOptions) (Entity, error) {
 	ctx = context.WithValue(ctx, blockEventsKey, true)
 	return o.Insert(ctx, objectApi, options)
 }
 
-func (o *Objectql) DirectUpdate(ctx context.Context, objectApi string, options UpdateOptions) ([]map[string]any, error) {
+func (o *Objectql) DirectUpdate(ctx context.Context, objectApi string, options UpdateOptions) ([]Entity, error) {
 	ctx = context.WithValue(ctx, blockEventsKey, true)
 	return o.Update(ctx, objectApi, options)
 }
 
-func (o *Objectql) DirectUpdateById(ctx context.Context, objectApi string, id string, options UpdateByIdOptions) (map[string]interface{}, error) {
+func (o *Objectql) DirectUpdateById(ctx context.Context, objectApi string, id string, options UpdateByIdOptions) (Entity, error) {
 	ctx = context.WithValue(ctx, blockEventsKey, true)
 	return o.UpdateById(ctx, objectApi, id, options)
 }
@@ -696,17 +696,17 @@ func (o *Objectql) DirectDeleteById(ctx context.Context, objectApi string, id st
 	return o.DeleteById(ctx, objectApi, id)
 }
 
-func (o *Objectql) DirectFindList(ctx context.Context, objectApi string, options FindListOptions) ([]map[string]interface{}, error) {
+func (o *Objectql) DirectFindList(ctx context.Context, objectApi string, options FindListOptions) ([]Entity, error) {
 	ctx = context.WithValue(ctx, blockEventsKey, true)
 	return o.FindList(ctx, objectApi, options)
 }
 
-func (o *Objectql) DirectFindOneById(ctx context.Context, objectApi, id string, fields ...Fields) (map[string]interface{}, error) {
+func (o *Objectql) DirectFindOneById(ctx context.Context, objectApi, id string, fields ...Fields) (Entity, error) {
 	ctx = context.WithValue(ctx, blockEventsKey, true)
 	return o.FindOneById(ctx, objectApi, id, fields...)
 }
 
-func (o *Objectql) DirectFindOne(ctx context.Context, objectApi string, options FindOneOptions) (map[string]interface{}, error) {
+func (o *Objectql) DirectFindOne(ctx context.Context, objectApi string, options FindOneOptions) (Entity, error) {
 	ctx = context.WithValue(ctx, blockEventsKey, true)
 	return o.FindOne(ctx, objectApi, options)
 }
