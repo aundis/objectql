@@ -61,7 +61,10 @@ func (o *Objectql) InitObjects() error {
 	mutations := graphql.Fields{}
 	for _, v := range o.list {
 		// 初始化Graphql对象的字段
-		o.fullGraphqlObject(o.gobjects[v.Api], v)
+		err = o.fullGraphqlObject(o.gobjects[v.Api], v)
+		if err != nil {
+			return err
+		}
 		// 初始化Graphql对象的query
 		o.initObjectGraphqlQuery(querys, v)
 		// 初始化Graphql对象的mutation
@@ -226,7 +229,7 @@ func selectMapToQueryString(v bson.M) string {
 	return strings.Join(result, ",")
 }
 
-func (o *Objectql) fullGraphqlObject(gobj *graphql.Object, object *Object) {
+func (o *Objectql) fullGraphqlObject(gobj *graphql.Object, object *Object) error {
 	gobj.AddFieldConfig("_id", &graphql.Field{
 		Type: graphql.String,
 		Resolve: func(p graphql.ResolveParams) (interface{}, error) {
@@ -239,9 +242,13 @@ func (o *Objectql) fullGraphqlObject(gobj *graphql.Object, object *Object) {
 	})
 	for _, field := range object.Fields {
 		cur := field
+		tpe := o.toGraphqlType(cur, cur.Api)
+		if tpe == nil {
+			return fmt.Errorf("can't resolve object (%s.%s) type", object.Name, cur.Name)
+		}
 		gobj.AddFieldConfig(cur.Api, &graphql.Field{
 			Name: cur.Api,
-			Type: o.toGraphqlType(cur, cur.Api),
+			Type: tpe,
 			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 				return o.graphqlFieldResolver(p.Context, p, cur, cur.Api)
 			},
@@ -249,9 +256,13 @@ func (o *Objectql) fullGraphqlObject(gobj *graphql.Object, object *Object) {
 		})
 		if cur.Type == Relate {
 			expandApi := cur.Api + "__expand"
+			tpe := o.toGraphqlType(cur, expandApi)
+			if tpe == nil {
+				return fmt.Errorf("can't resolve object (%s.%s) type", object.Name, cur.Name)
+			}
 			gobj.AddFieldConfig(expandApi, &graphql.Field{
 				Name: expandApi,
-				Type: o.toGraphqlType(cur, expandApi),
+				Type: tpe,
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 					return o.graphqlFieldResolver(p.Context, p, cur, expandApi)
 				},
@@ -259,6 +270,7 @@ func (o *Objectql) fullGraphqlObject(gobj *graphql.Object, object *Object) {
 			})
 		}
 	}
+	return nil
 }
 
 func (o *Objectql) graphqlFieldResolver(ctx context.Context, p graphql.ResolveParams, field *Field, gapi string) (interface{}, error) {
