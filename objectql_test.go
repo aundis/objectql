@@ -15,6 +15,29 @@ type GraphqlQueryReq struct {
 	Variables string `json:"variables"`
 }
 
+// 引用类型的字段引用不到对象时, 出现空指针引用的问题 #1
+func TestIssues1(t *testing.T) {
+	oql := New()
+	oql.AddObject(&Object{
+		Name: "用户信息",
+		Api:  "sysUser",
+		Fields: []*Field{
+			{
+				Name: "部门ID",
+				Api:  "departmentId",
+				Type: Relate,
+				Data: &RelateData{
+					ObjectApi: "xxxxxxxxxxxxx",
+				},
+			},
+		},
+	})
+	err := oql.InitObjects()
+	if !(err != nil && err.Error() == "can't resolve field 'sysUser.departmentId' expand type") {
+		t.Error("except report error")
+	}
+}
+
 // func TestServer(t *testing.T) {
 // 	objectql := New()
 // 	err := objectql.InitMongodb(context.Background(), "mongodb://192.168.0.197:27017/?connect=direct")

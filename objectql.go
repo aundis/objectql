@@ -243,8 +243,8 @@ func (o *Objectql) fullGraphqlObject(gobj *graphql.Object, object *Object) error
 	for _, field := range object.Fields {
 		cur := field
 		tpe := o.toGraphqlType(cur, cur.Api)
-		if tpe == nil {
-			return fmt.Errorf("can't resolve object (%s.%s) type", object.Name, cur.Name)
+		if isNull(tpe) {
+			return fmt.Errorf("can't resolve field '%s.%s' type", object.Api, cur.Api)
 		}
 		gobj.AddFieldConfig(cur.Api, &graphql.Field{
 			Name: cur.Api,
@@ -257,8 +257,8 @@ func (o *Objectql) fullGraphqlObject(gobj *graphql.Object, object *Object) error
 		if cur.Type == Relate {
 			expandApi := cur.Api + "__expand"
 			tpe := o.toGraphqlType(cur, expandApi)
-			if tpe == nil {
-				return fmt.Errorf("can't resolve object (%s.%s) type", object.Name, cur.Name)
+			if isNull(tpe) {
+				return fmt.Errorf("can't resolve field '%s.%s' expand type", object.Api, cur.Api)
 			}
 			gobj.AddFieldConfig(expandApi, &graphql.Field{
 				Name: expandApi,

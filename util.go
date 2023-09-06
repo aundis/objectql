@@ -2,6 +2,7 @@ package objectql
 
 import (
 	"fmt"
+	"reflect"
 )
 
 func FindObjectFromList(list []*Object, api string) *Object {
@@ -32,4 +33,15 @@ func FindFieldFromName(list []*Object, object, field string) (*Field, error) {
 		return nil, fmt.Errorf("can't find field '%s' from object '%s'", field, object)
 	}
 	return f, nil
+}
+
+func isNull(i interface{}) bool {
+	if i == nil {
+		return true
+	}
+	vi := reflect.ValueOf(i)
+	if vi.Kind() == reflect.Ptr {
+		return vi.IsNil()
+	}
+	return false
 }
