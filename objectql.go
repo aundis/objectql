@@ -572,7 +572,7 @@ func (o *Objectql) FindList(ctx context.Context, objectApi string, options FindL
 func (o *Objectql) FindOneById(ctx context.Context, objectApi, id string, fields ...Fields) (Entity, error) {
 	options := FindOneOptions{
 		Condition: map[string]any{
-			"_id": objectApi,
+			"_id": id,
 		},
 	}
 	if len(fields) != 0 {
