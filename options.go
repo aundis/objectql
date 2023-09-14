@@ -26,7 +26,7 @@ type FindListOptions struct {
 	Condition bson.M
 	Top       int
 	Skip      int
-	Sort      string
+	Sort      []string
 	Fields    Fields
 }
 
@@ -34,6 +34,6 @@ type FindOneOptions struct {
 	Condition bson.M
 	Top       int
 	Skip      int
-	Sort      string
+	Sort      []string
 	Fields    Fields
 }

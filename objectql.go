@@ -523,7 +523,7 @@ func (o *Objectql) FindList(ctx context.Context, objectApi string, options FindL
 	var buffer bytes.Buffer
 	buffer.WriteString("query {")
 	buffer.WriteString("data: " + objectApi)
-	if len(jsonData) > 0 || options.Skip != 0 || options.Top != 0 || options.Sort != "" {
+	if len(jsonData) > 0 || options.Skip != 0 || options.Top != 0 || len(options.Sort) > 0 {
 		buffer.WriteString("(")
 		if len(jsonData) > 0 {
 			buffer.WriteString(" filter:")
@@ -539,11 +539,9 @@ func (o *Objectql) FindList(ctx context.Context, objectApi string, options FindL
 			buffer.WriteString(" top:")
 			buffer.WriteString(gconv.String(options.Top))
 		}
-		if options.Sort != "" {
+		if len(options.Sort) > 0 {
 			buffer.WriteString(" sort:")
-			buffer.WriteString(`"`)
-			buffer.WriteString(options.Sort)
-			buffer.WriteString(`"`)
+			buffer.WriteString(stringsToGraphqlQuery(options.Sort))
 		}
 		buffer.WriteString(")")
 	}
@@ -613,11 +611,11 @@ func (o *Objectql) FindOne(ctx context.Context, objectApi string, options FindOn
 		buffer.WriteString(" top:")
 		buffer.WriteString(gconv.String(options.Top))
 	}
-	if options.Sort != "" {
+	if len(options.Sort) > 0 {
 		buffer.WriteString(" sort:")
-		buffer.WriteString(`"`)
-		buffer.WriteString(options.Sort)
-		buffer.WriteString(`"`)
+		buffer.WriteString(`[`)
+		buffer.WriteString(stringsToGraphqlQuery(options.Sort))
+		buffer.WriteString(`]`)
 	}
 	buffer.WriteString(")")
 	// 字段筛选
@@ -773,4 +771,12 @@ func getObjectFieldsQueryString(object *Object) string {
 
 func escapeString(s string) string {
 	return strings.ReplaceAll(s, `"`, `\"`)
+}
+
+func stringsToGraphqlQuery(arr []string) string {
+	var list []string
+	for _, v := range arr {
+		list = append(list, `"`+v+`"`)
+	}
+	return "[" + strings.Join(list, ",") + "]"
 }

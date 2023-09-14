@@ -157,7 +157,7 @@ func (o *Objectql) parseMongoFindOneOptinos(ctx context.Context, p graphql.Resol
 	}
 	sort := p.Args["sort"]
 	if sort != nil {
-		findOneOptins.SetSort(gconv.Strings(sort))
+		findOneOptins.SetSort(stringsToSortMap(gconv.Strings(sort)))
 	}
 	return findOneOptins, nil
 }
@@ -178,9 +178,24 @@ func (o *Objectql) parseMongoFindOptions(ctx context.Context, p graphql.ResolveP
 	}
 	sort := p.Args["sort"]
 	if sort != nil {
-		findOptions.SetSort(gconv.Strings(sort))
+		findOptions.SetSort(stringsToSortMap(gconv.Strings(sort)))
 	}
 	return findOptions, nil
+}
+
+func stringsToSortMap(arr []string) bson.M {
+	var result = bson.M{}
+	for _, v := range gconv.Strings(arr) {
+		if len(v) == 0 {
+			continue
+		}
+		if v[0] == '-' {
+			result[v[1:]] = -1
+		} else {
+			result[strings.Trim(v[1:], "+")] = 1
+		}
+	}
+	return result
 }
 
 func (o *Objectql) parseMongoFiledSelects(ctx context.Context, p graphql.ResolveParams) bson.M {
