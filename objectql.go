@@ -522,29 +522,31 @@ func (o *Objectql) FindList(ctx context.Context, objectApi string, options FindL
 	// filters
 	var buffer bytes.Buffer
 	buffer.WriteString("query {")
-	buffer.WriteString("data: " + objectApi + "(")
-	// { "_id": "xxxxxxxxx" }
-	if len(jsonData) > 0 {
-		buffer.WriteString(" filter:")
-		buffer.WriteString(`"`)
-		buffer.WriteString(escapeString(jsonData))
-		buffer.WriteString(`"`)
+	buffer.WriteString("data: " + objectApi)
+	if len(jsonData) > 0 || options.Skip != 0 || options.Top != 0 || options.Sort != "" {
+		buffer.WriteString("(")
+		if len(jsonData) > 0 {
+			buffer.WriteString(" filter:")
+			buffer.WriteString(`"`)
+			buffer.WriteString(escapeString(jsonData))
+			buffer.WriteString(`"`)
+		}
+		if options.Skip != 0 {
+			buffer.WriteString(" skip:")
+			buffer.WriteString(gconv.String(options.Skip))
+		}
+		if options.Top != 0 {
+			buffer.WriteString(" top:")
+			buffer.WriteString(gconv.String(options.Top))
+		}
+		if options.Sort != "" {
+			buffer.WriteString(" sort:")
+			buffer.WriteString(`"`)
+			buffer.WriteString(options.Sort)
+			buffer.WriteString(`"`)
+		}
+		buffer.WriteString(")")
 	}
-	if options.Skip != 0 {
-		buffer.WriteString(" skip:")
-		buffer.WriteString(gconv.String(options.Skip))
-	}
-	if options.Top != 0 {
-		buffer.WriteString(" top:")
-		buffer.WriteString(gconv.String(options.Top))
-	}
-	if options.Sort != "" {
-		buffer.WriteString(" sort:")
-		buffer.WriteString(`"`)
-		buffer.WriteString(options.Sort)
-		buffer.WriteString(`"`)
-	}
-	buffer.WriteString(")")
 	// 字段筛选
 	buffer.WriteString("{")
 	if len(options.Fields) > 0 {
