@@ -13,6 +13,7 @@ import (
 	"github.com/aundis/graphql"
 	"github.com/aundis/graphql/language/ast"
 	"github.com/gogf/gf/v2/container/gmap"
+	"github.com/gogf/gf/v2/os/gtime"
 	"github.com/gogf/gf/v2/util/gconv"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -743,6 +744,18 @@ func docToGrpahqlArgument(doc map[string]any) string {
 			buffer.WriteString(escapeString(n))
 			buffer.WriteString(`"`)
 		case time.Time:
+			buffer.WriteString(`"`)
+			buffer.WriteString(n.Format(time.RFC3339))
+			buffer.WriteString(`"`)
+		case *time.Time:
+			buffer.WriteString(`"`)
+			buffer.WriteString(n.Format(time.RFC3339))
+			buffer.WriteString(`"`)
+		case gtime.Time:
+			buffer.WriteString(`"`)
+			buffer.WriteString(n.Format(time.RFC3339))
+			buffer.WriteString(`"`)
+		case *gtime.Time:
 			buffer.WriteString(`"`)
 			buffer.WriteString(n.Format(time.RFC3339))
 			buffer.WriteString(`"`)
