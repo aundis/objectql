@@ -753,11 +753,11 @@ func docToGrpahqlArgument(doc map[string]any) string {
 			buffer.WriteString(`"`)
 		case gtime.Time:
 			buffer.WriteString(`"`)
-			buffer.WriteString(n.Format(time.RFC3339))
+			buffer.WriteString(n.Layout(time.RFC3339))
 			buffer.WriteString(`"`)
 		case *gtime.Time:
 			buffer.WriteString(`"`)
-			buffer.WriteString(n.Format(time.RFC3339))
+			buffer.WriteString(n.Layout(time.RFC3339))
 			buffer.WriteString(`"`)
 		case nil:
 			buffer.WriteString(`null`)
