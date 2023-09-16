@@ -360,10 +360,12 @@ func (o *Objectql) relateResolver(ctx context.Context, p graphql.ResolveParams, 
 	return results, nil
 }
 
+// 如果是 user__expand 会将 user 添加进去
 func stringArrayToMongodbSelects(arr []string) bson.M {
 	result := bson.M{}
 	for _, item := range arr {
 		if strings.Contains(item, "__expand") {
+			result[strings.ReplaceAll(item, "__expand", "")] = 1
 			continue
 		}
 		result[item] = 1
