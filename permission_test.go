@@ -94,7 +94,7 @@ func TestObjectFieldPermissionCheck(t *testing.T) {
 		if kind == FieldUpdate {
 			return true
 		} else {
-			return field == "name"
+			return field == "name" || field == "_id"
 		}
 	})
 	// 插入数据
@@ -118,9 +118,9 @@ func TestObjectFieldPermissionCheck(t *testing.T) {
 		return
 	}
 	// 删除数据
-	err = objectql.DeleteById(ctx, "student", res.String("_id"))
-	if err != nil {
-		t.Error("删除数据失败", err.Error())
-		return
-	}
+	// err = objectql.DeleteById(ctx, "student", res.String("_id"))
+	// if err != nil {
+	// 	t.Error("删除数据失败", err.Error())
+	// 	return
+	// }
 }

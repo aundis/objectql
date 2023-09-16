@@ -2,6 +2,7 @@ package objectql
 
 import (
 	"context"
+	"time"
 
 	"github.com/aundis/graphql"
 	"go.mongodb.org/mongo-driver/bson"
@@ -40,6 +41,8 @@ func (o *Objectql) insertHandle(ctx context.Context, api string, doc map[string]
 		return "", err
 	}
 	// 数据库修改
+	// 添加创建时间
+	doc["createTime"] = time.Now()
 	err = formatValueToDatabase(object.Fields, doc)
 	if err != nil {
 		return "", err
@@ -110,6 +113,8 @@ func (o *Objectql) updateHandle(ctx context.Context, api string, id string, doc 
 		return err
 	}
 	// 数据库修改
+	// 添加修改时间
+	doc["updateTime"] = time.Now()
 	err = formatValueToDatabase(object.Fields, doc)
 	if err != nil {
 		return err

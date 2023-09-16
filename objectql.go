@@ -44,6 +44,29 @@ type Objectql struct {
 }
 
 func (o *Objectql) AddObject(object *Object) {
+	// 添加一些固有的字段
+	// 对象ID
+	object.Fields = append([]*Field{{
+		Type: Relate,
+		Data: &RelateData{
+			ObjectApi: object.Api,
+		},
+		Name:    "对象ID",
+		Api:     "_id",
+		Comment: "对象唯一标识",
+	}}, object.Fields...)
+	// 创建时间
+	object.Fields = append(object.Fields, &Field{
+		Type: DateTime,
+		Name: "创建时间",
+		Api:  "createTime",
+	})
+	// 修改时间
+	object.Fields = append(object.Fields, &Field{
+		Type: DateTime,
+		Name: "修改时间",
+		Api:  "updateTime",
+	})
 	o.list = append(o.list, object)
 }
 
@@ -231,16 +254,16 @@ func selectMapToQueryString(v bson.M) string {
 }
 
 func (o *Objectql) fullGraphqlObject(gobj *graphql.Object, object *Object) error {
-	gobj.AddFieldConfig("_id", &graphql.Field{
-		Type: graphql.String,
-		Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-			source, _ := p.Source.(bson.M)
-			if source != nil && source["_id"] != nil {
-				return source["_id"].(primitive.ObjectID).Hex(), nil
-			}
-			return nil, nil
-		},
-	})
+	// gobj.AddFieldConfig("_id", &graphql.Field{
+	// 	Type: graphql.String,
+	// 	Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+	// 		source, _ := p.Source.(bson.M)
+	// 		if source != nil && source["_id"] != nil {
+	// 			return source["_id"].(primitive.ObjectID).Hex(), nil
+	// 		}
+	// 		return nil, nil
+	// 	},
+	// })
 	for _, field := range object.Fields {
 		cur := field
 		tpe := o.toGraphqlType(cur, cur.Api)
@@ -255,7 +278,7 @@ func (o *Objectql) fullGraphqlObject(gobj *graphql.Object, object *Object) error
 			},
 			Description: cur.Comment,
 		})
-		if cur.Type == Relate {
+		if cur.Type == Relate && cur.Api != "_id" {
 			expandApi := cur.Api + "__expand"
 			tpe := o.toGraphqlType(cur, expandApi)
 			if isNull(tpe) {
@@ -772,7 +795,6 @@ func docToGrpahqlArgument(doc map[string]any) string {
 
 func getObjectFieldsQueryString(object *Object) string {
 	var result []string
-	result = append(result, "_id")
 	for _, field := range object.Fields {
 		if strings.Contains(field.Api, "__") {
 			continue

@@ -247,7 +247,7 @@ func formatMongoFilter(data interface{}) interface{} {
 func (o *Objectql) initObjectGraphqlMutation(mutations graphql.Fields, object *Object) {
 	fields := graphql.InputObjectConfigFieldMap{}
 	for _, cur := range object.Fields {
-		if cur.Type == Formula || cur.Type == Aggregation {
+		if cur.Type == Formula || cur.Type == Aggregation || cur.Api == "_id" {
 			continue
 		}
 		fields[cur.Api] = &graphql.InputObjectFieldConfig{
