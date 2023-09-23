@@ -1,39 +1,33 @@
 package objectql
 
-import (
-	"go.mongodb.org/mongo-driver/bson"
-)
-
-type Fields = []interface{}
-
 type InsertOptions struct {
-	Doc    bson.M
-	Fields Fields
+	Doc    map[string]any
+	Fields []string
 }
 
 type UpdateOptions struct {
-	Condition bson.M
-	Doc       bson.M
-	Fields    Fields
+	Condition map[string]any
+	Doc       map[string]any
+	Fields    []string
 }
 
 type UpdateByIdOptions struct {
-	Doc    bson.M
-	Fields Fields
+	Doc    map[string]any
+	Fields []string
 }
 
 type FindListOptions struct {
-	Condition bson.M
+	Condition map[string]any
 	Top       int
 	Skip      int
 	Sort      []string
-	Fields    Fields
+	Fields    []string
 }
 
 type FindOneOptions struct {
-	Condition bson.M
+	Condition map[string]any
 	Top       int
 	Skip      int
 	Sort      []string
-	Fields    Fields
+	Fields    []string
 }

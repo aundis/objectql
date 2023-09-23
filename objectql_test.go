@@ -131,7 +131,7 @@ func TestInsert(t *testing.T) {
 			"name": "小明",
 			"age":  13,
 		},
-		Fields: []interface{}{
+		Fields: []string{
 			"_id",
 		},
 	})
@@ -203,7 +203,7 @@ func TestUpdate(t *testing.T) {
 			"name": "小明",
 			"age":  13,
 		},
-		Fields: []interface{}{
+		Fields: []string{
 			"_id",
 		},
 	})
@@ -221,7 +221,7 @@ func TestUpdate(t *testing.T) {
 		Doc: bson.M{
 			"age": 20,
 		},
-		Fields: []interface{}{
+		Fields: []string{
 			"age",
 		},
 	})
@@ -281,7 +281,7 @@ func TestDelete(t *testing.T) {
 			"name": "小明",
 			"age":  13,
 		},
-		Fields: []interface{}{
+		Fields: []string{
 			"_id",
 		},
 	})
@@ -354,7 +354,7 @@ func TestFindOne(t *testing.T) {
 			"name": name,
 			"age":  13,
 		},
-		Fields: []interface{}{
+		Fields: []string{
 			"_id",
 		},
 	})
@@ -428,7 +428,7 @@ func TestFindList(t *testing.T) {
 				"name": name,
 				"age":  13,
 			},
-			Fields: []interface{}{
+			Fields: []string{
 				"_id",
 			},
 		})
@@ -503,7 +503,7 @@ func TestCount(t *testing.T) {
 				"name": name,
 				"age":  13,
 			},
-			Fields: []interface{}{
+			Fields: []string{
 				"_id",
 			},
 		})
@@ -621,7 +621,7 @@ func TestExtends(t *testing.T) {
 			Doc: map[string]any{
 				"names": []string{"a", "b", "c"},
 			},
-			Fields: Fields{"_id"},
+			Fields: []string{"_id"},
 		})
 		if err != nil {
 			t.Error(err)
@@ -641,7 +641,7 @@ func TestExtends(t *testing.T) {
 		return
 	}
 	// fmt.Println(res.Raw())
-	one, err := oql.FindOneById(ctx, "zhangpu", res.String("_id"), Fields{
+	one, err := oql.FindOneById(ctx, "zhangpu", res.String("_id"), []string{
 		"_id",
 		"records",
 		"records__expands { _id names }",

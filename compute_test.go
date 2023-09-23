@@ -60,7 +60,7 @@ func TestSelfCompute(t *testing.T) {
 			"hourly_wage": 30,
 			"duration":    8,
 		},
-		Fields: []interface{}{
+		Fields: []string{
 			"_id",
 			"salary",
 		},
@@ -80,7 +80,7 @@ func TestSelfCompute(t *testing.T) {
 			"hourly_wage": 100,
 			"duration":    8,
 		},
-		Fields: []interface{}{
+		Fields: []string{
 			"_id",
 			"salary",
 		},
@@ -165,7 +165,7 @@ func TestRelateCompute(t *testing.T) {
 			"name": "王健林",
 			"age":  60,
 		},
-		Fields: []interface{}{
+		Fields: []string{
 			"_id",
 		},
 	})
@@ -179,7 +179,7 @@ func TestRelateCompute(t *testing.T) {
 			"name": "马云",
 			"age":  50,
 		},
-		Fields: []interface{}{
+		Fields: []string{
 			"_id",
 		},
 	})
@@ -195,7 +195,7 @@ func TestRelateCompute(t *testing.T) {
 			"age":  25,
 			"boss": boss1Id,
 		},
-		Fields: []interface{}{
+		Fields: []string{
 			"_id",
 			"boss_name",
 		},
@@ -214,7 +214,7 @@ func TestRelateCompute(t *testing.T) {
 		Doc: map[string]interface{}{
 			"boss": boss2Id,
 		},
-		Fields: []interface{}{
+		Fields: []string{
 			"_id",
 			"boss_name",
 		},
@@ -233,7 +233,7 @@ func TestRelateCompute(t *testing.T) {
 		Doc: map[string]interface{}{
 			"boss": nil,
 		},
-		Fields: []interface{}{
+		Fields: []string{
 			"_id",
 			"boss_name",
 		},

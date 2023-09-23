@@ -103,7 +103,7 @@ func TestObjectFieldPermissionCheck(t *testing.T) {
 			"name": "小明",
 			"age":  13,
 		},
-		Fields: Fields{
+		Fields: []string{
 			"_id",
 			"name",
 			"age",

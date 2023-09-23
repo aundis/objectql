@@ -481,7 +481,7 @@ func (o *Objectql) Update(ctx context.Context, objectApi string, options UpdateO
 	rlist, err := o.WithTransaction(ctx, func(ctx context.Context) (interface{}, error) {
 		list, err := o.FindList(ctx, objectApi, FindListOptions{
 			Condition: options.Condition,
-			Fields:    Fields{"_id"},
+			Fields:    []string{"_id"},
 		})
 		if err != nil {
 			return nil, err
@@ -543,7 +543,7 @@ func (o *Objectql) Delete(ctx context.Context, objectApi string, conditions map[
 	_, err := o.WithTransaction(ctx, func(ctx context.Context) (interface{}, error) {
 		list, err := o.FindList(ctx, objectApi, FindListOptions{
 			Condition: conditions,
-			Fields:    Fields{"_id"},
+			Fields:    []string{"_id"},
 		})
 		if err != nil {
 			return nil, err
@@ -640,7 +640,7 @@ func (o *Objectql) FindList(ctx context.Context, objectApi string, options FindL
 	return RawArrayToEntityArray(list), nil
 }
 
-func (o *Objectql) FindOneById(ctx context.Context, objectApi, id string, fields ...Fields) (Entity, error) {
+func (o *Objectql) FindOneById(ctx context.Context, objectApi, id string, fields ...[]string) (Entity, error) {
 	options := FindOneOptions{
 		Condition: map[string]any{
 			"_id": id,
@@ -786,7 +786,7 @@ func (o *Objectql) DirectFindList(ctx context.Context, objectApi string, options
 	return o.FindList(ctx, objectApi, options)
 }
 
-func (o *Objectql) DirectFindOneById(ctx context.Context, objectApi, id string, fields ...Fields) (Entity, error) {
+func (o *Objectql) DirectFindOneById(ctx context.Context, objectApi, id string, fields ...[]string) (Entity, error) {
 	ctx = context.WithValue(ctx, blockEventsKey, true)
 	return o.FindOneById(ctx, objectApi, id, fields...)
 }
