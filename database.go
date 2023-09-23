@@ -72,13 +72,13 @@ func (o *Objectql) mongoFindOne(ctx context.Context, table string, filter bson.M
 	return result, nil
 }
 
-func (o *Objectql) mongoCount(ctx context.Context, table string, filter bson.M) (int64, error) {
-	count, err := o.getCollection(table).CountDocuments(ctx, filter)
-	if err != nil {
-		return 0, err
-	}
-	return count, nil
-}
+// func (o *Objectql) mongoCount(ctx context.Context, table string, filter bson.M) (int64, error) {
+// 	count, err := o.getCollection(table).CountDocuments(ctx, filter)
+// 	if err != nil {
+// 		return 0, err
+// 	}
+// 	return count, nil
+// }
 
 func (o *Objectql) mongoInsert(ctx context.Context, table string, doc bson.M) (string, error) {
 	insertResult, err := o.getCollection(table).InsertOne(ctx, doc)

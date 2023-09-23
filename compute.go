@@ -17,10 +17,10 @@ func (o *Objectql) onFieldChange(ctx context.Context, object *Object, id string,
 	if len(field.relations) > 0 {
 		for _, relation := range field.relations {
 			var err error
-			switch relation.TargetField.Type {
-			case Formula:
+			switch relation.TargetField.Type.(type) {
+			case *FormulaType:
 				err = o.formulaHandler(ctx, object, id, relation)
-			case Aggregation:
+			case *AggregationType:
 				err = o.aggregationHandler(ctx, object, id, relation, beforeValues)
 			default:
 				err = fmt.Errorf("target field kind %v not support", relation.TargetField.Type)
@@ -33,7 +33,7 @@ func (o *Objectql) onFieldChange(ctx context.Context, object *Object, id string,
 	return nil
 }
 
-func (o *Objectql) formulaHandler(ctx context.Context, object *Object, id string, info *RelationFiledInfo) error {
+func (o *Objectql) formulaHandler(ctx context.Context, object *Object, id string, info *relationFiledInfo) error {
 	var objectIds []string
 	if info.TargetField.Parent == object {
 		// 计算字段在自身
@@ -68,7 +68,7 @@ func (o *Objectql) formulaHandler(ctx context.Context, object *Object, id string
 	runner := formula.NewRunner()
 	runner.IdentifierResolver = o.resolverIdentifier
 	runner.SelectorExpressionResolver = o.resolveSelectorExpression
-	formulaData := info.TargetField.Data.(*FormulaData)
+	formulaData := info.TargetField.Type.(*FormulaType)
 	target := info.TargetField.Parent
 	for _, objectId := range objectIds {
 		runner.Set("object", target)
@@ -128,7 +128,7 @@ func (o *Objectql) resolveSelectorExpression(ctx context.Context, name string) (
 		return nil, fmt.Errorf("can't found field '%s' from object '%s'", name, object.Api)
 	}
 	// 获取相关表对象声明
-	relateObjectApi := field.Data.(*RelateData).ObjectApi
+	relateObjectApi := field.Type.(*RelateType).ObjectApi
 	valueField, err := FindFieldFromName(o.list, relateObjectApi, valueFieldApi)
 	if err != nil {
 		return nil, err
@@ -166,7 +166,7 @@ func (o *Objectql) resolveSelectorExpression(ctx context.Context, name string) (
 	return formula.FormatValue(v)
 }
 
-func (o *Objectql) aggregationHandler(ctx context.Context, object *Object, id string, info *RelationFiledInfo, beforeValues bson.M) error {
+func (o *Objectql) aggregationHandler(ctx context.Context, object *Object, id string, info *relationFiledInfo, beforeValues bson.M) error {
 	// 聚合2次, 修改前和修改后
 	// 修改前
 	if beforeValues != nil && beforeValues[info.ThroughField.Api] != nil {
@@ -192,7 +192,7 @@ func (o *Objectql) aggregationHandler(ctx context.Context, object *Object, id st
 }
 
 func (o *Objectql) aggregateField(ctx context.Context, object *Object, id string, field *Field) error {
-	adata := field.Data.(*AggregationData)
+	adata := field.Type.(*AggregationType)
 
 	// 聚合方法
 	funcStr := ""

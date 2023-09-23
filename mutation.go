@@ -43,7 +43,7 @@ func (o *Objectql) insertHandle(ctx context.Context, api string, doc map[string]
 	// 数据库修改
 	// 添加创建时间
 	doc["createTime"] = time.Now()
-	err = formatValueToDatabase(object.Fields, doc)
+	err = formatDocumentToDatabase(object.Fields, doc)
 	if err != nil {
 		return "", err
 	}
@@ -115,7 +115,7 @@ func (o *Objectql) updateHandle(ctx context.Context, api string, id string, doc 
 	// 数据库修改
 	// 添加修改时间
 	doc["updateTime"] = time.Now()
-	err = formatValueToDatabase(object.Fields, doc)
+	err = formatDocumentToDatabase(object.Fields, doc)
 	if err != nil {
 		return err
 	}

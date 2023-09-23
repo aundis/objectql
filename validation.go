@@ -28,36 +28,34 @@ func (o *Objectql) validateAssignable(field *Field, value interface{}) bool {
 		return true
 	}
 
-	simple := func(tpe FieldType, value interface{}) bool {
-		switch tpe {
-		case Int:
+	simple := func(tpe Type, value interface{}) bool {
+		switch tpe.(type) {
+		case *IntType:
 			return isIntLike(value)
-		case Float:
+		case *FloatType:
 			return isFloatLike(value)
-		case String:
+		case *StringType:
 			return isStringLick(value)
-		case Bool:
+		case *BoolType:
 			return isBoolLike(value)
-		case DateTime:
+		case *DateTimeType:
 			return isDateTimeLike(value)
 		default:
 			return false
 		}
 	}
 
-	switch field.Type {
-	case Int, Float, String, Bool, DateTime:
+	switch n := field.Type.(type) {
+	case *IntType, *FloatType, *StringType, *BoolType, *DateTimeType:
 		return simple(field.Type, value)
-	case Relate:
+	case *RelateType:
 		return value == nil || isStringLick(value)
-	case Formula:
-		data := field.Data.(*FormulaData)
-		return simple(data.Type, value)
-	case Aggregation:
-		data := field.Data.(*AggregationData)
-		return simple(data.Type, value)
+	case *FormulaType:
+		return simple(n.Type, value)
+	case *AggregationType:
+		return simple(n.Type, value)
 	}
-	return false
+	return true
 }
 
 func isIntLike(value interface{}) bool {

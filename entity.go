@@ -34,6 +34,22 @@ func (e Entity) Time(n string) time.Time {
 	return gconv.Time(e.v[n])
 }
 
+func (e Entity) Ints(n string) []int {
+	return gconv.Ints(e.v[n])
+}
+
+func (e Entity) Strings(n string) []string {
+	return gconv.Strings(e.v[n])
+}
+
+func (e Entity) Float32s(n string) []float32 {
+	return gconv.Float32s(e.v[n])
+}
+
+func (e Entity) Float64s(n string) []float64 {
+	return gconv.Float64s(e.v[n])
+}
+
 func (e Entity) IsNil() bool {
 	return e.v == nil
 }

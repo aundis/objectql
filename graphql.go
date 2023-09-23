@@ -247,11 +247,15 @@ func formatMongoFilter(data interface{}) interface{} {
 func (o *Objectql) initObjectGraphqlMutation(mutations graphql.Fields, object *Object) {
 	fields := graphql.InputObjectConfigFieldMap{}
 	for _, cur := range object.Fields {
-		if cur.Type == Formula || cur.Type == Aggregation || cur.Api == "_id" {
+		if cur.Api == "_id" {
+			continue
+		}
+		switch cur.Type.(type) {
+		case *ExpandType, *ExpandsType, *FormulaType, *AggregationType:
 			continue
 		}
 		fields[cur.Api] = &graphql.InputObjectFieldConfig{
-			Type: o.toInputGraphqlType(cur),
+			Type: o.toInputGraphqlType(cur.Type),
 		}
 	}
 	form := graphql.NewInputObject(graphql.InputObjectConfig{
@@ -365,7 +369,7 @@ func getSelectMapKeys(v bson.M) []string {
 func getObjectRelationObjectApis(object *Object) []string {
 	var result []string
 	for _, field := range object.Fields {
-		if field.Type == Relate {
+		if IsRelateType(field.Type) {
 			result = append(result, field.Api)
 		}
 	}
@@ -373,50 +377,53 @@ func getObjectRelationObjectApis(object *Object) []string {
 }
 
 // graphql mutation表单字段的类型
-func (o *Objectql) toInputGraphqlType(field *Field) graphql.Output {
-	switch field.Type {
-	case Bool, Int, Float, String, DateTime:
-		return o.basicToGrpuahType(field.Type)
-	case Relate:
+func (o *Objectql) toInputGraphqlType(tpe Type) graphql.Output {
+	switch n := tpe.(type) {
+	case *BoolType:
+		return graphql.Boolean
+	case *IntType:
+		return graphql.Int
+	case *FloatType:
+		return graphql.Float
+	case *StringType:
 		return graphql.String
+	case *DateTimeType:
+		return graphql.DateTime
+	case *RelateType:
+		return graphql.String
+	case *ArrayType:
+		return graphql.NewList(o.toInputGraphqlType(n.Type))
 	}
 	return nil
 }
 
 // graphql object对象定义的类型
-func (o *Objectql) toGraphqlType(field *Field, gapi string) graphql.Output {
-	switch field.Type {
-	case Bool, Int, Float, String, DateTime:
-		return o.basicToGrpuahType(field.Type)
-	case Relate:
-		if strings.Contains(gapi, "__expand") {
-			data := field.Data.(*RelateData)
-			return o.gobjects[data.ObjectApi]
-		} else {
-			return graphql.String
-		}
-	case Formula:
-		data := field.Data.(*FormulaData)
-		return o.basicToGrpuahType(data.Type)
-	case Aggregation:
-		data := field.Data.(*AggregationData)
-		return o.basicToGrpuahType(data.Type)
-	}
-	return nil
-}
-
-func (o *Objectql) basicToGrpuahType(tpe FieldType) graphql.Output {
-	switch tpe {
-	case Bool:
+func (o *Objectql) getGraphqlFieldType(tpe Type) graphql.Output {
+	switch n := tpe.(type) {
+	case *BoolType:
 		return graphql.Boolean
-	case Int:
+	case *IntType:
 		return graphql.Int
-	case Float:
+	case *FloatType:
 		return graphql.Float
-	case String:
+	case *StringType:
 		return graphql.String
-	case DateTime:
+	case *DateTimeType:
 		return graphql.DateTime
+	case *RelateType:
+		return graphql.String
+	case *ExpandType:
+		return o.gobjects[n.ObjectApi]
+	case *ExpandsType:
+		return graphql.NewList(o.gobjects[n.ObjectApi])
+	case *ObjectIDType:
+		return graphql.String
+	case *FormulaType:
+		return o.getGraphqlFieldType(n.Type)
+	case *AggregationType:
+		return o.getGraphqlFieldType(n.Type)
+	case *ArrayType:
+		return graphql.NewList(o.getGraphqlFieldType(n.Type))
 	}
 	return nil
 }

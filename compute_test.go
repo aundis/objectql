@@ -42,11 +42,7 @@ func TestSelfCompute(t *testing.T) {
 			{
 				Name: "薪资",
 				Api:  "salary",
-				Type: Formula,
-				Data: &FormulaData{
-					Formula: "hourly_wage * duration",
-					Type:    Float,
-				},
+				Type: NewFormula(Float, "hourly_wage * duration"),
 			},
 		},
 		Comment: "",
@@ -132,19 +128,12 @@ func TestRelateCompute(t *testing.T) {
 			{
 				Name: "老板",
 				Api:  "boss",
-				Type: Relate,
-				Data: &RelateData{
-					ObjectApi: "boss",
-				},
+				Type: NewRelate("boss"),
 			},
 			{
 				Name: "老板姓名",
 				Api:  "boss_name",
-				Type: Formula,
-				Data: &FormulaData{
-					Formula: "boss.name",
-					Type:    String,
-				},
+				Type: NewFormula(String, "boss.name"),
 			},
 		},
 		Comment: "",

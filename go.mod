@@ -4,7 +4,6 @@ go 1.18
 
 require (
 	github.com/aundis/graphql v1.0.0
-	github.com/mnmtanish/go-graphiql v0.0.0-20160921055525-cef5a61bd62b
 	go.mongodb.org/mongo-driver v1.12.0
 )
 
@@ -26,5 +25,6 @@ require (
 require (
 	github.com/aundis/formula v1.0.11
 	github.com/gogf/gf/v2 v2.4.4
+	github.com/mnmtanish/go-graphiql v0.0.0-20160921055525-cef5a61bd62b
 	github.com/shopspring/decimal v1.3.1 // indirect
 )

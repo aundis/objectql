@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 	"time"
 
@@ -47,14 +48,39 @@ func (o *Objectql) AddObject(object *Object) {
 	// 添加一些固有的字段
 	// 对象ID
 	object.Fields = append([]*Field{{
-		Type: Relate,
-		Data: &RelateData{
-			ObjectApi: object.Api,
-		},
+		Type:    ObjectID,
 		Name:    "对象ID",
 		Api:     "_id",
 		Comment: "对象唯一标识",
 	}}, object.Fields...)
+	// 添加一些关联对象 __expand __expands
+	var expands []*Field
+	for _, field := range object.Fields {
+		switch n := field.Type.(type) {
+		case *RelateType:
+			expands = append(expands, &Field{
+				Api:      field.Api + "__expand",
+				valueApi: field.Api,
+				Type: &ExpandType{
+					ObjectApi: n.ObjectApi,
+					FieldApi:  field.Api,
+				},
+			})
+		case *ArrayType:
+			if IsRelateType(n.Type) {
+				tpe := n.Type.(*RelateType)
+				expands = append(expands, &Field{
+					Api:      field.Api + "__expands",
+					valueApi: field.Api,
+					Type: &ExpandsType{
+						ObjectApi: tpe.ObjectApi,
+						FieldApi:  field.Api,
+					},
+				})
+			}
+		}
+	}
+	object.Fields = append(object.Fields, expands...)
 	// 创建时间
 	object.Fields = append(object.Fields, &Field{
 		Type: DateTime,
@@ -122,10 +148,10 @@ func (o *Objectql) parseFields() (err error) {
 	for _, object := range o.list {
 		// 解析统计和公式字段
 		for _, field := range object.Fields {
-			if field.Type == Aggregation {
+			switch field.Type.(type) {
+			case *AggregationType:
 				err = o.parseAggregationField(object, field)
-			}
-			if field.Type == Formula {
+			case *FormulaType:
 				err = o.parseFormulaField(object, field)
 			}
 			if err != nil {
@@ -137,7 +163,7 @@ func (o *Objectql) parseFields() (err error) {
 }
 
 func (o *Objectql) parseAggregationField(object *Object, field *Field) error {
-	adata := field.Data.(*AggregationData)
+	adata := field.Type.(*AggregationType)
 	// 解析引用的相关表字段
 	resolved, err := FindFieldFromName(o.list, adata.Object, adata.Relate)
 	if err != nil {
@@ -149,7 +175,7 @@ func (o *Objectql) parseAggregationField(object *Object, field *Field) error {
 	if err != nil {
 		return err
 	}
-	relateField.relations = append(relateField.relations, &RelationFiledInfo{
+	relateField.relations = append(relateField.relations, &relationFiledInfo{
 		ThroughField: relateField,
 		TargetField:  field,
 	})
@@ -158,7 +184,7 @@ func (o *Objectql) parseAggregationField(object *Object, field *Field) error {
 	if err != nil {
 		return err
 	}
-	beCountedField.relations = append(beCountedField.relations, &RelationFiledInfo{
+	beCountedField.relations = append(beCountedField.relations, &relationFiledInfo{
 		ThroughField: relateField,
 		TargetField:  field,
 	})
@@ -167,7 +193,7 @@ func (o *Objectql) parseAggregationField(object *Object, field *Field) error {
 
 func (o *Objectql) parseFormulaField(object *Object, field *Field) error {
 	var err error
-	fdata := field.Data.(*FormulaData)
+	fdata := field.Type.(*FormulaType)
 	fdata.sourceCode, err = formula.ParseSourceCode([]byte(fdata.Formula))
 	if err != nil {
 		return err
@@ -189,24 +215,24 @@ func (o *Objectql) parseFormulaField(object *Object, field *Field) error {
 		}
 
 		if len(arr) == 1 {
-			relatedField.relations = append(relatedField.relations, &RelationFiledInfo{
+			relatedField.relations = append(relatedField.relations, &relationFiledInfo{
 				ThroughField: nil,
 				TargetField:  field,
 			})
 		} else {
-			if relatedField.Type != Relate {
+			relate, ok := relatedField.Type.(*RelateType)
+			if !ok {
 				return fmt.Errorf("object %s field %s not a relate field", object.Api, arr[0])
 			}
-			relatedField.relations = append(relatedField.relations, &RelationFiledInfo{
+			relatedField.relations = append(relatedField.relations, &relationFiledInfo{
 				ThroughField: relatedField,
 				TargetField:  field,
 			})
-			relateData := relatedField.Data.(*RelateData)
-			beCountedField, err := FindFieldFromName(o.list, relateData.ObjectApi, arr[1])
+			beCountedField, err := FindFieldFromName(o.list, relate.ObjectApi, arr[1])
 			if err != nil {
 				return err
 			}
-			beCountedField.relations = append(beCountedField.relations, &RelationFiledInfo{
+			beCountedField.relations = append(beCountedField.relations, &relationFiledInfo{
 				ThroughField: relatedField,
 				TargetField:  field,
 			})
@@ -231,7 +257,7 @@ func (o *Objectql) preInitObjects() {
 				Type: graphql.String,
 			}
 			// 展开查询
-			if field.Type == Relate {
+			if IsRelateType(field.Type) {
 				fields[field.Api+"__expand"] = &graphql.Field{
 					Name: field.Api,
 					Type: graphql.String,
@@ -254,19 +280,9 @@ func selectMapToQueryString(v bson.M) string {
 }
 
 func (o *Objectql) fullGraphqlObject(gobj *graphql.Object, object *Object) error {
-	// gobj.AddFieldConfig("_id", &graphql.Field{
-	// 	Type: graphql.String,
-	// 	Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-	// 		source, _ := p.Source.(bson.M)
-	// 		if source != nil && source["_id"] != nil {
-	// 			return source["_id"].(primitive.ObjectID).Hex(), nil
-	// 		}
-	// 		return nil, nil
-	// 	},
-	// })
 	for _, field := range object.Fields {
 		cur := field
-		tpe := o.toGraphqlType(cur, cur.Api)
+		tpe := o.getGraphqlFieldType(cur.Type)
 		if isNull(tpe) {
 			return fmt.Errorf("can't resolve field '%s.%s' type", object.Api, cur.Api)
 		}
@@ -274,30 +290,17 @@ func (o *Objectql) fullGraphqlObject(gobj *graphql.Object, object *Object) error
 			Name: cur.Api,
 			Type: tpe,
 			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-				return o.graphqlFieldResolver(p.Context, p, cur, cur.Api)
+				return o.graphqlFieldResolver(p.Context, p, cur)
 			},
 			Description: cur.Comment,
 		})
-		if cur.Type == Relate && cur.Api != "_id" {
-			expandApi := cur.Api + "__expand"
-			tpe := o.toGraphqlType(cur, expandApi)
-			if isNull(tpe) {
-				return fmt.Errorf("can't resolve field '%s.%s' expand type", object.Api, cur.Api)
-			}
-			gobj.AddFieldConfig(expandApi, &graphql.Field{
-				Name: expandApi,
-				Type: tpe,
-				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					return o.graphqlFieldResolver(p.Context, p, cur, expandApi)
-				},
-				Description: cur.Comment,
-			})
-		}
 	}
 	return nil
 }
 
-func (o *Objectql) graphqlFieldResolver(ctx context.Context, p graphql.ResolveParams, field *Field, gapi string) (interface{}, error) {
+var graphqlResolveParamsKey = &struct{}{}
+
+func (o *Objectql) graphqlFieldResolver(ctx context.Context, p graphql.ResolveParams, field *Field) (interface{}, error) {
 	source, ok := p.Source.(bson.M)
 	if !ok {
 		return nil, errors.New("graphqlFieldResolver source not bson.M")
@@ -308,52 +311,87 @@ func (o *Objectql) graphqlFieldResolver(ctx context.Context, p graphql.ResolvePa
 		return nil, nil
 	}
 	// 格式化输出值
-	simpleHandle := func(fieldType FieldType, value interface{}) (interface{}, error) {
-		switch fieldType {
-		case Bool:
-			return boolOrNil(value), nil
-		case Int:
-			return intOrNil(value), nil
-		case Float:
-			return floatOrNil(value), nil
-		case String:
-			return stringOrNil(value), nil
-		case DateTime:
-			return dateTimeOrNil(value), nil
-		default:
-			return nil, fmt.Errorf("graphqlFieldResolver simple not support type(%v)", fieldType)
-		}
+	ctx = context.WithValue(ctx, graphqlResolveParamsKey, p)
+	valueApi := field.valueApi
+	if len(valueApi) == 0 {
+		valueApi = field.Api
 	}
-	value := source[field.Api]
-	switch field.Type {
-	case Bool, Int, Float, String, DateTime:
-		return simpleHandle(field.Type, value)
-	case Relate:
-		if value == nil {
-			return nil, nil
+	return o.fieldResolver(ctx, field.Type, source[valueApi])
+}
+
+func (o *Objectql) fieldResolver(ctx context.Context, fieldType Type, value interface{}) (interface{}, error) {
+	if isNull(value) {
+		return nil, nil
+	}
+	switch n := fieldType.(type) {
+	case *ObjectIDType:
+		return value.(primitive.ObjectID).Hex(), nil
+	case *BoolType:
+		return boolOrNil(value), nil
+	case *IntType:
+		return intOrNil(value), nil
+	case *FloatType:
+		return floatOrNil(value), nil
+	case *StringType:
+		return stringOrNil(value), nil
+	case *DateTimeType:
+		return dateTimeOrNil(value), nil
+	case *RelateType:
+		return value.(primitive.ObjectID).Hex(), nil
+	case *ExpandType:
+		if objectId, ok := value.(primitive.ObjectID); ok {
+			return o.expandFieldResolver(ctx, n.ObjectApi, objectId.Hex())
 		}
-		if strings.Contains(gapi, "__expand") {
-			objectId := value.(primitive.ObjectID).Hex()
-			data := field.Data.(*RelateData)
-			return o.relateResolver(ctx, p, data.ObjectApi, objectId)
-		} else {
-			return value.(primitive.ObjectID).Hex(), nil
+		return nil, nil
+	case *ExpandsType:
+		objectIds := gconv.Interfaces(value)
+		if len(objectIds) > 0 {
+			return o.expandsFieldResolver(ctx, n.ObjectApi, objectIds)
 		}
-	case Formula:
-		data := field.Data.(*FormulaData)
-		return simpleHandle(data.Type, value)
-	case Aggregation:
-		data := field.Data.(*AggregationData)
-		return simpleHandle(data.Type, value)
+		return nil, nil
+	case *FormulaType:
+		return o.fieldResolver(ctx, n.Type, value)
+	case *AggregationType:
+		return o.fieldResolver(ctx, n.Type, value)
+	case *ArrayType:
+		return o.arrayFieldResolver(ctx, n, value)
 	default:
-		return nil, fmt.Errorf("graphqlFieldResolver not support type(%v)", field.Type)
+		return nil, fmt.Errorf("fieldResolver not support type(%v)", fieldType)
 	}
 }
 
-func (o *Objectql) relateResolver(ctx context.Context, p graphql.ResolveParams, objectApi string, objectId string) (interface{}, error) {
+func (o *Objectql) arrayFieldResolver(ctx context.Context, tpe *ArrayType, value interface{}) (interface{}, error) {
+	sourceValue := reflect.ValueOf(value)
+	if sourceValue.Type() != nil && sourceValue.Type().Kind() != reflect.Array && sourceValue.Type().Kind() != reflect.Slice {
+		return nil, fmt.Errorf("arrayFieldResolver can't conv type %T to array", value)
+	}
+	sliceValue := reflect.MakeSlice(reflect.TypeOf([]any{}), 0, 0)
+	for i := 0; i < sourceValue.Len(); i++ {
+		evalue, err := o.fieldResolver(ctx, tpe.Type, sourceValue.Index(i).Interface())
+		if err != nil {
+			return nil, err
+		}
+		sliceValue = reflect.Append(sliceValue, reflect.ValueOf(evalue))
+	}
+	return sliceValue.Interface(), nil
+}
+
+func (o *Objectql) expandFieldResolver(ctx context.Context, objectApi string, objectId string) (interface{}, error) {
+	p := ctx.Value(graphqlResolveParamsKey).(graphql.ResolveParams)
 	selects := getGraphqlSelectFieldNames(p)
 	mgoSelects := stringArrayToMongodbSelects(selects)
 	results, err := o.mongoFindOne(ctx, objectApi, bson.M{"_id": ObjectIdFromHex(objectId)}, selectMapToQueryString(mgoSelects))
+	if err != nil {
+		return nil, err
+	}
+	return results, nil
+}
+
+func (o *Objectql) expandsFieldResolver(ctx context.Context, objectApi string, objectIds []interface{}) (interface{}, error) {
+	p := ctx.Value(graphqlResolveParamsKey).(graphql.ResolveParams)
+	selects := getGraphqlSelectFieldNames(p)
+	mgoSelects := stringArrayToMongodbSelects(selects)
+	results, err := o.mongoFindAll(ctx, objectApi, bson.M{"_id": bson.M{"$in": objectIds}}, selectMapToQueryString(mgoSelects))
 	if err != nil {
 		return nil, err
 	}
@@ -416,7 +454,11 @@ func (o *Objectql) Insert(ctx context.Context, objectApi string, options InsertO
 	buffer.WriteString("mutation {")
 	buffer.WriteString("data: " + objectApi + "__insert(")
 	buffer.WriteString(" doc:")
-	buffer.WriteString(docToGrpahqlArgument(options.Doc))
+	text, err := docToGrpahqlArgumentText(options.Doc)
+	if err != nil {
+		return Entity{}, err
+	}
+	buffer.WriteString(text)
 	buffer.WriteString(")")
 	//
 	buffer.WriteString("{")
@@ -474,7 +516,11 @@ func (o *Objectql) UpdateById(ctx context.Context, objectApi string, id string, 
 	buffer.WriteString(" _id:")
 	buffer.WriteString(`"` + id + `"`)
 	buffer.WriteString(" doc:")
-	buffer.WriteString(docToGrpahqlArgument(options.Doc))
+	text, err := docToGrpahqlArgumentText(options.Doc)
+	if err != nil {
+		return Entity{}, err
+	}
+	buffer.WriteString(text)
 	buffer.WriteString(")")
 	//
 	buffer.WriteString("{")
@@ -581,6 +627,7 @@ func (o *Objectql) FindList(ctx context.Context, objectApi string, options FindL
 	buffer.WriteString("}")
 	//
 	buffer.WriteString("}")
+	fmt.Println(buffer.String())
 	result := o.Do(ctx, buffer.String())
 	if len(result.Errors) > 0 {
 		return nil, result.Errors[0]
@@ -756,43 +803,76 @@ func (o *Objectql) DirectCount(ctx context.Context, objectApi string, conditions
 
 func (o *Objectql) DirectAggregate() {}
 
-func docToGrpahqlArgument(doc map[string]any) string {
+func docToGrpahqlArgumentText(doc map[string]any) (string, error) {
 	var buffer bytes.Buffer
 	buffer.WriteString("{")
 	for k, v := range doc {
 		buffer.WriteString(k)
 		buffer.WriteString(":")
 
-		switch n := v.(type) {
-		case string:
-			buffer.WriteString(`"`)
-			buffer.WriteString(escapeString(n))
-			buffer.WriteString(`"`)
-		case time.Time:
-			buffer.WriteString(`"`)
-			buffer.WriteString(n.Format(time.RFC3339))
-			buffer.WriteString(`"`)
-		case *time.Time:
-			buffer.WriteString(`"`)
-			buffer.WriteString(n.Format(time.RFC3339))
-			buffer.WriteString(`"`)
-		case gtime.Time:
-			buffer.WriteString(`"`)
-			buffer.WriteString(n.Layout(time.RFC3339))
-			buffer.WriteString(`"`)
-		case *gtime.Time:
-			buffer.WriteString(`"`)
-			buffer.WriteString(n.Layout(time.RFC3339))
-			buffer.WriteString(`"`)
-		case nil:
-			buffer.WriteString(`null`)
-		default:
-			buffer.WriteString(escapeString(gconv.String(n)))
+		err := writeGraphqlArgumentValue(&buffer, v)
+		if err != nil {
+			return "", err
 		}
 		buffer.WriteString(` `) // 加个空格
 	}
 	buffer.WriteString("}")
-	return buffer.String()
+	return buffer.String(), nil
+}
+
+func writeGraphqlArgumentValue(buffer *bytes.Buffer, value interface{}) error {
+	switch n := value.(type) {
+	case string:
+		buffer.WriteString(`"`)
+		buffer.WriteString(escapeString(n))
+		buffer.WriteString(`"`)
+		return nil
+	case time.Time:
+		buffer.WriteString(`"`)
+		buffer.WriteString(n.Format(time.RFC3339))
+		buffer.WriteString(`"`)
+		return nil
+	case *time.Time:
+		buffer.WriteString(`"`)
+		buffer.WriteString(n.Format(time.RFC3339))
+		buffer.WriteString(`"`)
+		return nil
+	case gtime.Time:
+		buffer.WriteString(`"`)
+		buffer.WriteString(n.Layout(time.RFC3339))
+		buffer.WriteString(`"`)
+		return nil
+	case *gtime.Time:
+		buffer.WriteString(`"`)
+		buffer.WriteString(n.Layout(time.RFC3339))
+		buffer.WriteString(`"`)
+		return nil
+	case nil:
+		buffer.WriteString(`null`)
+		return nil
+	default:
+		if isNull(value) {
+			buffer.WriteString(`null`)
+			return nil
+		}
+		sourceValue := reflect.ValueOf(value)
+		if sourceValue.Type().Kind() == reflect.Array || sourceValue.Type().Kind() == reflect.Slice {
+			buffer.WriteString("[")
+			for i := 0; i < sourceValue.Len(); i++ {
+				err := writeGraphqlArgumentValue(buffer, sourceValue.Index(i).Interface())
+				if err != nil {
+					return err
+				}
+				if i < sourceValue.Len()-1 {
+					buffer.WriteString(",")
+				}
+			}
+			buffer.WriteString("]")
+			return nil
+		}
+		buffer.WriteString(escapeString(gconv.String(n)))
+	}
+	return nil
 }
 
 func getObjectFieldsQueryString(object *Object) string {

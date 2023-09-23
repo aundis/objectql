@@ -25,16 +25,13 @@ func TestIssues1(t *testing.T) {
 			{
 				Name: "部门ID",
 				Api:  "departmentId",
-				Type: Relate,
-				Data: &RelateData{
-					ObjectApi: "xxxxxxxxxxxxx",
-				},
+				Type: NewRelate("xxxxxxxxxxxxx"),
 			},
 		},
 	})
 	err := oql.InitObjects()
-	if !(err != nil && err.Error() == "can't resolve field 'sysUser.departmentId' expand type") {
-		t.Error("except report error")
+	if !(err != nil && err.Error() == "can't resolve field 'sysUser.departmentId__expand' type") {
+		t.Error("except report error, got: ", err)
 	}
 }
 
@@ -55,45 +52,9 @@ func TestIssues1(t *testing.T) {
 // 				Type: String,
 // 			},
 // 			{
-// 				Name: "出生日期",
-// 				Api:  "date",
-// 				Type: DateTime,
-// 			},
-// 			{
-// 				Name: "年",
-// 				Api:  "year",
-// 				Type: Formula,
-// 				Data: &FormulaData{
-// 					Type:    Int,
-// 					Formula: "year(date)",
-// 				},
-// 			},
-// 			{
-// 				Name: "月",
-// 				Api:  "month",
-// 				Type: Formula,
-// 				Data: &FormulaData{
-// 					Type:    Int,
-// 					Formula: "month(date)",
-// 				},
-// 			},
-// 			{
-// 				Name: "日",
-// 				Api:  "day",
-// 				Type: Formula,
-// 				Data: &FormulaData{
-// 					Type:    Int,
-// 					Formula: "day(date)",
-// 				},
-// 			},
-// 			{
-// 				Name: "和",
-// 				Api:  "sum",
-// 				Type: Formula,
-// 				Data: &FormulaData{
-// 					Type:    Int,
-// 					Formula: "year%1000",
-// 				},
+// 				Name: "爱好",
+// 				Api:  "aih",
+// 				Type: NewArrayType(String),
 // 			},
 // 		},
 // 	})
@@ -116,7 +77,7 @@ func TestIssues1(t *testing.T) {
 // 			result := objectql.Do(context.Background(), params.Query)
 // 			// result := graphql.Do(graphql.Params{
 // 			// 	Schema:        objectql.gschema,
-// 			// 	RequestString: params.Query,
+// 			// 	RequesString: params.Query,
 // 			// 	Context: context.Background(),
 // 			// })
 // 			json.NewEncoder(w).Encode(result)
@@ -573,4 +534,121 @@ func TestCount(t *testing.T) {
 			return
 		}
 	}
+}
+
+func TestArray(t *testing.T) {
+	ctx := context.Background()
+	oql := New()
+	err := oql.InitMongodb(ctx, testMongodbUrl)
+	if err != nil {
+		t.Error("初始化数据库失败", err)
+		return
+	}
+	oql.AddObject(&Object{
+		Name: "记录",
+		Api:  "record",
+		Fields: []*Field{
+			{
+				Name: "姓名列表",
+				Api:  "names",
+				Type: NewArrayType(String),
+			},
+		},
+		Comment: "",
+	})
+	err = oql.InitObjects()
+	if err != nil {
+		t.Error("初始化对象失败", err)
+		return
+	}
+	res, err := oql.Insert(ctx, "record", InsertOptions{
+		Doc: map[string]any{
+			"names": []string{
+				"小明",
+				"小李",
+				"小金",
+			},
+		},
+	})
+	if err != nil {
+		t.Error("插入对象失败", err)
+		return
+	}
+	t.Log(res)
+}
+
+func TestExtends(t *testing.T) {
+	ctx := context.Background()
+	oql := New()
+	err := oql.InitMongodb(ctx, testMongodbUrl)
+	if err != nil {
+		t.Error("初始化数据库失败", err)
+		return
+	}
+	oql.AddObject(&Object{
+		Name: "账簿",
+		Api:  "zhangpu",
+		Fields: []*Field{
+			{
+				Name: "记录列表",
+				Api:  "records",
+				Type: NewArrayType(NewRelate("record")),
+			},
+		},
+		Comment: "",
+	})
+	oql.AddObject(&Object{
+		Name: "记录",
+		Api:  "record",
+		Fields: []*Field{
+			{
+				Name: "姓名列表",
+				Api:  "names",
+				Type: NewArrayType(String),
+			},
+		},
+		Comment: "",
+	})
+	err = oql.InitObjects()
+	if err != nil {
+		t.Error("初始化对象失败", err)
+		return
+	}
+	// 新增5条记录
+	var ids []string
+	for i := 0; i < 5; i++ {
+		res, err := oql.Insert(ctx, "record", InsertOptions{
+			Doc: map[string]any{
+				"names": []string{"a", "b", "c"},
+			},
+			Fields: Fields{"_id"},
+		})
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		ids = append(ids, res.String("_id"))
+	}
+	// fmt.Println(ids)
+	// 新增一条帐
+	res, err := oql.Insert(ctx, "zhangpu", InsertOptions{
+		Doc: map[string]any{
+			"records": ids,
+		},
+	})
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	// fmt.Println(res.Raw())
+	one, err := oql.FindOneById(ctx, "zhangpu", res.String("_id"), Fields{
+		"_id",
+		"records",
+		"records__expands { _id names }",
+	})
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	t.Log(one)
 }
