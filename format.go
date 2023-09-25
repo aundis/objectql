@@ -146,34 +146,43 @@ func formatArrayValueToDatebase(at *ArrayType, v interface{}) (interface{}, erro
 	return sliceValue.Interface(), nil
 }
 
-func formatComputedValue(field *Field, value interface{}) (interface{}, error) {
-	simpleHandle := func(tpe Type, value interface{}) (interface{}, error) {
-		switch tpe.(type) {
-		case *IntType:
-			return formula.ToInt(value)
-		case *FloatType:
-			return formula.ToFloat32(value)
-		case *BoolType:
-			return formula.ToString(value)
-		case *StringType:
-			return formula.ToString(value)
-		default:
-			return nil, fmt.Errorf("formatComputedValue simpleHandle unknown field type %v", tpe)
-		}
-	}
-
-	switch n := field.Type.(type) {
-	case *IntType, *FloatType, *BoolType, *StringType:
-		return simpleHandle(field.Type, value)
+func formatComputedValue(tpe Type, value interface{}) (interface{}, error) {
+	switch n := tpe.(type) {
+	case *IntType:
+		return formula.ToInt(value)
+	case *FloatType:
+		return formula.ToFloat32(value)
+	case *BoolType:
+		return formula.ToString(value)
+	case *StringType:
+		return formula.ToString(value)
 	case *RelateType:
-		return simpleHandle(String, value)
+		return formatComputedValue(String, value)
 	case *FormulaType:
-		return simpleHandle(n.Type, value)
+		return formatComputedValue(n.Type, value)
 	case *AggregationType:
-		return simpleHandle(n.Type, value)
+		return formatComputedValue(n.Type, value)
+	case *ArrayType:
+		return formatComputedArrayValue(n, value)
 	default:
-		return nil, fmt.Errorf("formatComputedValue unknown field type %v", field.Type)
+		return nil, fmt.Errorf("formatComputedValue unknown field type %T", tpe)
 	}
+}
+
+func formatComputedArrayValue(at *ArrayType, value interface{}) (interface{}, error) {
+	sourceValue := reflect.ValueOf(value)
+	if sourceValue.Type() != nil && sourceValue.Type().Kind() != reflect.Array && sourceValue.Type().Kind() != reflect.Slice {
+		return nil, fmt.Errorf("formatComputedArrayValue can't conv type %T to array", value)
+	}
+	sliceValue := reflect.MakeSlice(reflect.TypeOf([]any{}), 0, 0)
+	for i := 0; i < sourceValue.Len(); i++ {
+		evalue, err := formatComputedValue(at.Type, sourceValue.Index(i).Interface())
+		if err != nil {
+			return nil, err
+		}
+		sliceValue = reflect.Append(sliceValue, reflect.ValueOf(evalue))
+	}
+	return sliceValue.Interface(), nil
 }
 
 func getFieldComputeDefaultValue(field *Field) (interface{}, error) {

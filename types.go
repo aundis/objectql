@@ -125,57 +125,91 @@ const (
 	// Count
 )
 
-func IsObjectIDType(tpe Type) bool {
-	_, ok := tpe.(*ObjectIDType)
-	return ok
+// COMMAND
+
+type Command interface {
+	aCommand()
 }
 
-func IsIntType(tpe Type) bool {
-	_, ok := tpe.(*IntType)
-	return ok
+type ObjectqlFindOneByIdCommand struct {
+	Object string   `json:"object"`
+	ID     string   `json:"id"`
+	Fields []string `json:"fields"`
+	Result string   `json:"result"`
+	Direct bool     `json:"direct"`
 }
 
-func IsStringType(tpe Type) bool {
-	_, ok := tpe.(*StringType)
-	return ok
+type ObjectqlFindOneCommand struct {
+	Object    string         `json:"object"`
+	Condition map[string]any `json:"condition"`
+	Sort      []string       `json:"sort"`
+	Fields    []string       `json:"fields"`
+	Result    string         `json:"result"`
+	Direct    bool           `json:"direct"`
 }
 
-func IsBoolType(tpe Type) bool {
-	_, ok := tpe.(*BoolType)
-	return ok
+type ObjectqlFindListCommand struct {
+	Condition map[string]any `json:"condition"`
+	Top       int            `json:"top"`
+	Skip      int            `json:"skip"`
+	Sort      []string       `json:"sort"`
+	Fields    []string       `json:"fields"`
+	Object    string         `json:"object"`
+	Result    string         `json:"result"`
+	Direct    bool           `json:"direct"`
 }
 
-func IsFloatType(tpe Type) bool {
-	_, ok := tpe.(*FloatType)
-	return ok
+type ObjectqlCountCommand struct {
+	Condition map[string]any `json:"condition"`
+	Object    string         `json:"object"`
+	Result    string         `json:"result"`
+	Direct    bool           `json:"direct"`
 }
 
-func IsDateTimeType(tpe Type) bool {
-	_, ok := tpe.(*DateTimeType)
-	return ok
+type ObjectqlInsertCommand struct {
+	Doc    map[string]any `json:"doc"`
+	Fields []string       `json:"fields"`
+	Object string         `json:"object"`
+	Result string         `json:"result"`
+	Direct bool           `json:"direct"`
 }
 
-func IsRelateType(tpe Type) bool {
-	_, ok := tpe.(*RelateType)
-	return ok
+type ObjectqlUpdateByIdCommand struct {
+	ID     string         `json:"id"`
+	Doc    map[string]any `json:"doc"`
+	Fields []string       `json:"fields"`
+	Object string         `json:"object"`
+	Result string         `json:"result"`
+	Direct bool           `json:"direct"`
 }
 
-func IsFormulaType(tpe Type) bool {
-	_, ok := tpe.(*FormulaType)
-	return ok
+type ObjectqlUpdateCommand struct {
+	Condition map[string]any `json:"condition"`
+	Doc       map[string]any `json:"doc"`
+	Fields    []string       `json:"fields"`
+	Object    string         `json:"object"`
+	Result    string         `json:"result"`
+	Direct    bool           `json:"direct"`
 }
 
-func IsArrayType(tpe Type) bool {
-	_, ok := tpe.(*ArrayType)
-	return ok
+type ObjectqlDeleteByIdCommand struct {
+	ID     string `json:"id"`
+	Object string `json:"object"`
+	Direct bool   `json:"direct"`
 }
 
-func IsAggregationType(tpe Type) bool {
-	_, ok := tpe.(*AggregationType)
-	return ok
+type ObjectqlDeleteCommand struct {
+	Condition map[string]any `json:"condition"`
+	Object    string         `json:"object"`
+	Direct    bool           `json:"direct"`
 }
 
-func IsExpandType(tpe Type) bool {
-	_, ok := tpe.(*ExpandType)
-	return ok
-}
+func (c *ObjectqlFindOneByIdCommand) aCommand() {}
+func (c *ObjectqlFindOneCommand) aCommand()     {}
+func (c *ObjectqlFindListCommand) aCommand()    {}
+func (c *ObjectqlCountCommand) aCommand()       {}
+func (c *ObjectqlInsertCommand) aCommand()      {}
+func (c *ObjectqlUpdateByIdCommand) aCommand()  {}
+func (c *ObjectqlUpdateCommand) aCommand()      {}
+func (c *ObjectqlDeleteByIdCommand) aCommand()  {}
+func (c *ObjectqlDeleteCommand) aCommand()      {}

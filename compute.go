@@ -77,7 +77,7 @@ func (o *Objectql) formulaHandler(ctx context.Context, object *Object, id string
 		if err != nil {
 			return err
 		}
-		input, err := formatComputedValue(info.TargetField, value)
+		input, err := formatComputedValue(info.TargetField.Type, value)
 		if err != nil {
 			return err
 		}
@@ -109,7 +109,7 @@ func (o *Objectql) resolverIdentifier(ctx context.Context, name string) (interfa
 	if err != nil {
 		return nil, err
 	}
-	return formula.FormatValue(v)
+	return v, nil
 }
 
 func (o *Objectql) resolveSelectorExpression(ctx context.Context, name string) (interface{}, error) {
@@ -144,7 +144,7 @@ func (o *Objectql) resolveSelectorExpression(ctx context.Context, name string) (
 		if err != nil {
 			return nil, err
 		}
-		return formula.FormatValue(v)
+		return v, nil
 	}
 	// 查询相关表对应的值
 	relate, err := o.mongoFindOne(ctx, relateObjectApi, bson.M{"_id": one[relationFieldApi]}, valueFieldApi)
@@ -157,13 +157,13 @@ func (o *Objectql) resolveSelectorExpression(ctx context.Context, name string) (
 		if err != nil {
 			return nil, err
 		}
-		return formula.FormatValue(v)
+		return v, nil
 	}
 	v, err := formatDatabaseValueToCompute(valueField, relate[valueFieldApi])
 	if err != nil {
 		return nil, err
 	}
-	return formula.FormatValue(v)
+	return v, nil
 }
 
 func (o *Objectql) aggregationHandler(ctx context.Context, object *Object, id string, info *relationFiledInfo, beforeValues bson.M) error {

@@ -45,3 +45,58 @@ func isNull(i interface{}) bool {
 	}
 	return false
 }
+
+func IsObjectIDType(tpe Type) bool {
+	_, ok := tpe.(*ObjectIDType)
+	return ok
+}
+
+func IsIntType(tpe Type) bool {
+	_, ok := tpe.(*IntType)
+	return ok
+}
+
+func IsStringType(tpe Type) bool {
+	_, ok := tpe.(*StringType)
+	return ok
+}
+
+func IsBoolType(tpe Type) bool {
+	_, ok := tpe.(*BoolType)
+	return ok
+}
+
+func IsFloatType(tpe Type) bool {
+	_, ok := tpe.(*FloatType)
+	return ok
+}
+
+func IsDateTimeType(tpe Type) bool {
+	_, ok := tpe.(*DateTimeType)
+	return ok
+}
+
+func IsRelateType(tpe Type) bool {
+	_, ok := tpe.(*RelateType)
+	return ok
+}
+
+func IsFormulaType(tpe Type) bool {
+	_, ok := tpe.(*FormulaType)
+	return ok
+}
+
+func IsArrayType(tpe Type) bool {
+	_, ok := tpe.(*ArrayType)
+	return ok
+}
+
+func IsAggregationType(tpe Type) bool {
+	_, ok := tpe.(*AggregationType)
+	return ok
+}
+
+func IsExpandType(tpe Type) bool {
+	_, ok := tpe.(*ExpandType)
+	return ok
+}
