@@ -627,7 +627,7 @@ func (o *Objectql) FindList(ctx context.Context, objectApi string, options FindL
 	buffer.WriteString("}")
 	//
 	buffer.WriteString("}")
-	fmt.Println(buffer.String())
+	// fmt.Println(buffer.String())
 	result := o.Do(ctx, buffer.String())
 	if len(result.Errors) > 0 {
 		return nil, result.Errors[0]
