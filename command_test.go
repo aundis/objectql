@@ -66,6 +66,18 @@ func TestDoCommand(t *testing.T) {
 			Object: "person",
 			Result: "person3",
 		},
+		&FindOneByIdCommand{
+			Object: "person",
+			ID:     "$$ person3._id",
+			Result: "last1",
+		},
+		&FindOneCommand{
+			Condition: map[string]any{
+				"_id": "$$ last1._id",
+			},
+			Object: "person",
+			Result: "last12",
+		},
 	})
 	if err != nil {
 		t.Error(err)
