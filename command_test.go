@@ -39,7 +39,7 @@ func TestDoCommand(t *testing.T) {
 		return
 	}
 	res, err := oql.DoCommand(ctx, []Command{
-		&ObjectqlInsertCommand{
+		&InsertCommand{
 			Doc: map[string]any{
 				"name": "小明",
 				"age":  19,
@@ -48,7 +48,7 @@ func TestDoCommand(t *testing.T) {
 			Object: "person",
 			Result: "person1",
 		},
-		&ObjectqlInsertCommand{
+		&InsertCommand{
 			Doc: map[string]any{
 				"name": "小红",
 				"age":  "$$ person1.age + 10",
@@ -57,7 +57,7 @@ func TestDoCommand(t *testing.T) {
 			Object: "person",
 			Result: "person2",
 		},
-		&ObjectqlInsertCommand{
+		&InsertCommand{
 			Doc: map[string]any{
 				"name": "小刚",
 				"age":  "$$ person2.age + 10",

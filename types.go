@@ -131,7 +131,7 @@ type Command interface {
 	aCommand()
 }
 
-type ObjectqlFindOneByIdCommand struct {
+type FindOneByIdCommand struct {
 	Object string   `json:"object"`
 	ID     string   `json:"id"`
 	Fields []string `json:"fields"`
@@ -139,7 +139,7 @@ type ObjectqlFindOneByIdCommand struct {
 	Direct bool     `json:"direct"`
 }
 
-type ObjectqlFindOneCommand struct {
+type FindOneCommand struct {
 	Object    string         `json:"object"`
 	Condition map[string]any `json:"condition"`
 	Sort      []string       `json:"sort"`
@@ -148,7 +148,7 @@ type ObjectqlFindOneCommand struct {
 	Direct    bool           `json:"direct"`
 }
 
-type ObjectqlFindListCommand struct {
+type FindListCommand struct {
 	Condition map[string]any `json:"condition"`
 	Top       int            `json:"top"`
 	Skip      int            `json:"skip"`
@@ -159,14 +159,14 @@ type ObjectqlFindListCommand struct {
 	Direct    bool           `json:"direct"`
 }
 
-type ObjectqlCountCommand struct {
+type CountCommand struct {
 	Condition map[string]any `json:"condition"`
 	Object    string         `json:"object"`
 	Result    string         `json:"result"`
 	Direct    bool           `json:"direct"`
 }
 
-type ObjectqlInsertCommand struct {
+type InsertCommand struct {
 	Doc    map[string]any `json:"doc"`
 	Fields []string       `json:"fields"`
 	Object string         `json:"object"`
@@ -174,7 +174,7 @@ type ObjectqlInsertCommand struct {
 	Direct bool           `json:"direct"`
 }
 
-type ObjectqlUpdateByIdCommand struct {
+type UpdateByIdCommand struct {
 	ID     string         `json:"id"`
 	Doc    map[string]any `json:"doc"`
 	Fields []string       `json:"fields"`
@@ -183,7 +183,7 @@ type ObjectqlUpdateByIdCommand struct {
 	Direct bool           `json:"direct"`
 }
 
-type ObjectqlUpdateCommand struct {
+type UpdateCommand struct {
 	Condition map[string]any `json:"condition"`
 	Doc       map[string]any `json:"doc"`
 	Fields    []string       `json:"fields"`
@@ -192,24 +192,24 @@ type ObjectqlUpdateCommand struct {
 	Direct    bool           `json:"direct"`
 }
 
-type ObjectqlDeleteByIdCommand struct {
+type DeleteByIdCommand struct {
 	ID     string `json:"id"`
 	Object string `json:"object"`
 	Direct bool   `json:"direct"`
 }
 
-type ObjectqlDeleteCommand struct {
+type DeleteCommand struct {
 	Condition map[string]any `json:"condition"`
 	Object    string         `json:"object"`
 	Direct    bool           `json:"direct"`
 }
 
-func (c *ObjectqlFindOneByIdCommand) aCommand() {}
-func (c *ObjectqlFindOneCommand) aCommand()     {}
-func (c *ObjectqlFindListCommand) aCommand()    {}
-func (c *ObjectqlCountCommand) aCommand()       {}
-func (c *ObjectqlInsertCommand) aCommand()      {}
-func (c *ObjectqlUpdateByIdCommand) aCommand()  {}
-func (c *ObjectqlUpdateCommand) aCommand()      {}
-func (c *ObjectqlDeleteByIdCommand) aCommand()  {}
-func (c *ObjectqlDeleteCommand) aCommand()      {}
+func (c *FindOneByIdCommand) aCommand() {}
+func (c *FindOneCommand) aCommand()     {}
+func (c *FindListCommand) aCommand()    {}
+func (c *CountCommand) aCommand()       {}
+func (c *InsertCommand) aCommand()      {}
+func (c *UpdateByIdCommand) aCommand()  {}
+func (c *UpdateCommand) aCommand()      {}
+func (c *DeleteByIdCommand) aCommand()  {}
+func (c *DeleteCommand) aCommand()      {}

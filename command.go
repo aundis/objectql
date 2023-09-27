@@ -16,11 +16,11 @@ func (o *Objectql) DoCommand(ctx context.Context, commands []Command) (map[strin
 			var err error
 			var mapKey string
 			switch n := command.(type) {
-			case *ObjectqlFindOneByIdCommand:
+			case *FindOneByIdCommand:
 				mapKey = n.Result
 				ctx = context.WithValue(ctx, blockEventsKey, n.Direct)
 				result, err = o.FindOneById(ctx, n.Object, n.ID, n.Fields)
-			case *ObjectqlFindOneCommand:
+			case *FindOneCommand:
 				mapKey = n.Result
 				ctx = context.WithValue(ctx, blockEventsKey, n.Direct)
 				result, err = o.FindOne(ctx, n.Object, FindOneOptions{
@@ -28,7 +28,7 @@ func (o *Objectql) DoCommand(ctx context.Context, commands []Command) (map[strin
 					Sort:      n.Sort,
 					Fields:    n.Fields,
 				})
-			case *ObjectqlFindListCommand:
+			case *FindListCommand:
 				mapKey = n.Result
 				ctx = context.WithValue(ctx, blockEventsKey, n.Direct)
 				result, err = o.FindList(ctx, n.Object, FindListOptions{
@@ -38,11 +38,11 @@ func (o *Objectql) DoCommand(ctx context.Context, commands []Command) (map[strin
 					Sort:      n.Sort,
 					Fields:    n.Fields,
 				})
-			case *ObjectqlCountCommand:
+			case *CountCommand:
 				mapKey = n.Result
 				ctx = context.WithValue(ctx, blockEventsKey, n.Direct)
 				result, err = o.Count(ctx, n.Object, n.Condition)
-			case *ObjectqlInsertCommand:
+			case *InsertCommand:
 				mapKey = n.Result
 				err = o.computeDocument(ctx, n.Object, resultMap, n.Doc)
 				if err != nil {
@@ -53,7 +53,7 @@ func (o *Objectql) DoCommand(ctx context.Context, commands []Command) (map[strin
 					Doc:    n.Doc,
 					Fields: n.Fields,
 				})
-			case *ObjectqlUpdateByIdCommand:
+			case *UpdateByIdCommand:
 				mapKey = n.Result
 				err = o.computeDocument(ctx, n.Object, resultMap, n.Doc)
 				if err != nil {
@@ -64,7 +64,7 @@ func (o *Objectql) DoCommand(ctx context.Context, commands []Command) (map[strin
 					Doc:    n.Doc,
 					Fields: n.Fields,
 				})
-			case *ObjectqlUpdateCommand:
+			case *UpdateCommand:
 				mapKey = n.Result
 				err = o.computeDocument(ctx, n.Object, resultMap, n.Doc)
 				if err != nil {
@@ -76,10 +76,10 @@ func (o *Objectql) DoCommand(ctx context.Context, commands []Command) (map[strin
 					Doc:       n.Doc,
 					Fields:    n.Fields,
 				})
-			case *ObjectqlDeleteByIdCommand:
+			case *DeleteByIdCommand:
 				ctx = context.WithValue(ctx, blockEventsKey, n.Direct)
 				err = o.DeleteById(ctx, n.Object, n.ID)
-			case *ObjectqlDeleteCommand:
+			case *DeleteCommand:
 				ctx = context.WithValue(ctx, blockEventsKey, n.Direct)
 				err = o.Delete(ctx, n.Object, n.Condition)
 			}
