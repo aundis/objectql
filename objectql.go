@@ -454,7 +454,7 @@ func (o *Objectql) Insert(ctx context.Context, objectApi string, options InsertO
 	buffer.WriteString("mutation {")
 	buffer.WriteString("data: " + objectApi + "__insert(")
 	buffer.WriteString(" doc:")
-	text, err := docToGrpahqlArgumentText(options.Doc)
+	text, err := o.docToGrpahqlArgumentText(objectApi, options.Doc)
 	if err != nil {
 		return Entity{}, err
 	}
@@ -516,7 +516,7 @@ func (o *Objectql) UpdateById(ctx context.Context, objectApi string, id string, 
 	buffer.WriteString(" _id:")
 	buffer.WriteString(`"` + id + `"`)
 	buffer.WriteString(" doc:")
-	text, err := docToGrpahqlArgumentText(options.Doc)
+	text, err := o.docToGrpahqlArgumentText(objectApi, options.Doc)
 	if err != nil {
 		return Entity{}, err
 	}
@@ -803,10 +803,19 @@ func (o *Objectql) DirectCount(ctx context.Context, objectApi string, conditions
 
 func (o *Objectql) DirectAggregate() {}
 
-func docToGrpahqlArgumentText(doc map[string]any) (string, error) {
+func (o *Objectql) docToGrpahqlArgumentText(objectApi string, doc map[string]any) (string, error) {
+	object := FindObjectFromList(o.list, objectApi)
+	if object == nil {
+		return "", fmt.Errorf("can't found object '%s'", objectApi)
+	}
 	var buffer bytes.Buffer
 	buffer.WriteString("{")
 	for k, v := range doc {
+		field := FindFieldFromObject(object, k)
+		if field == nil {
+			return "", fmt.Errorf("can't found field '%s' from object '%s'", k, objectApi)
+		}
+
 		buffer.WriteString(k)
 		buffer.WriteString(":")
 
