@@ -634,8 +634,12 @@ func (o *Objectql) FindList(ctx context.Context, objectApi string, options FindL
 	}
 	data := result.Data.(map[string]interface{})["data"]
 	var list []map[string]interface{}
-	for _, v := range data.([]interface{}) {
-		list = append(list, v.(map[string]interface{}))
+	if v1, ok := data.([]interface{}); ok {
+		for _, v := range v1 {
+			if v2, ok := v.(map[string]interface{}); ok {
+				list = append(list, v2)
+			}
+		}
 	}
 	return RawArrayToEntityArray(list), nil
 }
