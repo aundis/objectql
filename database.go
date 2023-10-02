@@ -31,6 +31,8 @@ func (o *Objectql) WithTransaction(ctx context.Context, fn func(ctx context.Cont
 	if mongo.SessionFromContext(ctx) != nil {
 		return fn(ctx)
 	} else {
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
 		session, err := o.mongoClient.StartSession()
 		if err != nil {
 			return nil, err

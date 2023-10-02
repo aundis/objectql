@@ -35,6 +35,74 @@ func TestIssues1(t *testing.T) {
 	}
 }
 
+//  ended session was used
+
+// func TestSession(t *testing.T) {
+// 	ctx := context.Background()
+// 	ctx, cancel := context.WithCancel(ctx)
+// 	oql := New()
+// 	err := oql.InitMongodb(context.Background(), "mongodb://192.168.0.197:27017/?connect=direct")
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	oql.AddObject(&Object{
+// 		Name: "用户信息",
+// 		Api:  "person22",
+// 		Fields: []*Field{
+// 			{
+// 				Name: "姓名",
+// 				Api:  "name",
+// 				Type: String,
+// 			},
+// 			{
+// 				Name: "年龄",
+// 				Api:  "age",
+// 				Type: Int,
+// 			},
+// 		},
+// 	})
+// 	err = oql.InitObjects()
+// 	if err != nil {
+// 		t.Error(err)
+// 		return
+// 	}
+
+// 	cancel()
+
+// 	_, err = oql.Insert(ctx, "person22", InsertOptions{
+// 		Doc: map[string]interface{}{
+// 			"name": "小明",
+// 			"age":  13,
+// 		},
+// 	})
+// 	if err != nil {
+// 		t.Error(err)
+// 		return
+// 	}
+
+// 	_, err = oql.Insert(ctx, "person22", InsertOptions{
+// 		Doc: map[string]interface{}{
+// 			"name": "小明",
+// 			"age":  13,
+// 		},
+// 	})
+// 	if err != nil {
+// 		t.Error(err)
+// 		return
+// 	}
+
+// 	_, err = oql.Insert(ctx, "person22", InsertOptions{
+// 		Doc: map[string]interface{}{
+// 			"name": "小明",
+// 			"age":  13,
+// 		},
+// 	})
+// 	if err != nil {
+// 		t.Error(err)
+// 		return
+// 	}
+// }
+
 // func TestServer(t *testing.T) {
 // 	objectql := New()
 // 	err := objectql.InitMongodb(context.Background(), "mongodb://192.168.0.197:27017/?connect=direct")
