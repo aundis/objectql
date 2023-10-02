@@ -24,14 +24,14 @@ import (
 
 func New() *Objectql {
 	return &Objectql{
-		gobjects: map[string]*graphql.Object{},
+		gobjects: gmap.NewStrAnyMap(true),
 		eventMap: gmap.NewAnyAnyMap(true),
 	}
 }
 
 type Objectql struct {
 	list     []*Object
-	gobjects map[string]*graphql.Object
+	gobjects *gmap.StrAnyMap
 	gschema  graphql.Schema
 	// database
 	mongoClientOpts        *options.ClientOptions
@@ -111,14 +111,20 @@ func (o *Objectql) InitObjects() error {
 	mutations := graphql.Fields{}
 	for _, v := range o.list {
 		// 初始化Graphql对象的字段
-		err = o.fullGraphqlObject(o.gobjects[v.Api], v)
+		err = o.fullGraphqlObject(o.getGraphqlObject(v.Api), v)
 		if err != nil {
 			return err
 		}
 		// 初始化Graphql对象的query
-		o.initObjectGraphqlQuery(querys, v)
+		err = o.initObjectGraphqlQuery(querys, v)
+		if err != nil {
+			return err
+		}
 		// 初始化Graphql对象的mutation
-		o.initObjectGraphqlMutation(mutations, v)
+		err = o.initObjectGraphqlMutation(mutations, v)
+		if err != nil {
+			return err
+		}
 	}
 	// 初始化Graphql Schema
 	o.gschema, err = graphql.NewSchema(graphql.SchemaConfig{
@@ -264,10 +270,10 @@ func (o *Objectql) preInitObjects() {
 				}
 			}
 		}
-		o.gobjects[object.Api] = graphql.NewObject(graphql.ObjectConfig{
+		o.gobjects.Set(object.Api, graphql.NewObject(graphql.ObjectConfig{
 			Name:   object.Api,
 			Fields: fields,
-		})
+		}))
 	}
 }
 

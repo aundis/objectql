@@ -9,7 +9,7 @@ import (
 	"github.com/aundis/formula"
 )
 
-func (o *Objectql) DoCommand(ctx context.Context, commands []Command) (map[string]any, error) {
+func (o *Objectql) DoCommand(ctx context.Context, commands []Command, filter ...map[string]any) (map[string]any, error) {
 	result, err := o.WithTransaction(ctx, func(ctx context.Context) (interface{}, error) {
 		var this = map[string]any{}
 		for _, command := range commands {
@@ -95,7 +95,15 @@ func (o *Objectql) DoCommand(ctx context.Context, commands []Command) (map[strin
 	if err != nil {
 		return nil, err
 	}
-	return result.(map[string]any), nil
+	this := result.(map[string]any)
+	if len(filter) == 0 {
+		return this, nil
+	}
+	res, err := computeValue(ctx, this, filter[0])
+	if err != nil {
+		return nil, err
+	}
+	return res.(map[string]any), nil
 }
 
 func (o *Objectql) computeCommand(ctx context.Context, this map[string]any, command Command) (Command, error) {

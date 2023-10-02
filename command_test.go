@@ -78,6 +78,10 @@ func TestDoCommand(t *testing.T) {
 			Object: "person",
 			Result: "last12",
 		},
+	}, map[string]any{
+		"person1Name": "$$ [person1.name, person2.name, person3.name]",
+		"person2Name": "$$ person2.name",
+		"person3Name": "$$ person3.name",
 	})
 	if err != nil {
 		t.Error(err)

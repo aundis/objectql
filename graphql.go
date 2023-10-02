@@ -12,9 +12,16 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func (o *Objectql) initObjectGraphqlQuery(querys graphql.Fields, object *Object) {
+func (o *Objectql) getGraphqlObject(name string) *graphql.Object {
+	if o.gobjects.Contains(name) {
+		return o.gobjects.Get(name).(*graphql.Object)
+	}
+	return nil
+}
+
+func (o *Objectql) initObjectGraphqlQuery(querys graphql.Fields, object *Object) error {
 	querys[object.Api] = &graphql.Field{
-		Type: graphql.NewList(o.gobjects[object.Api]),
+		Type: graphql.NewList(o.getGraphqlObject(object.Api)),
 		Args: graphql.FieldConfigArgument{
 			"filter": &graphql.ArgumentConfig{
 				Type: graphql.String,
@@ -35,7 +42,7 @@ func (o *Objectql) initObjectGraphqlQuery(querys graphql.Fields, object *Object)
 	}
 
 	querys[object.Api+"__one"] = &graphql.Field{
-		Type: o.gobjects[object.Api],
+		Type: o.getGraphqlObject(object.Api),
 		Args: graphql.FieldConfigArgument{
 			"filter": &graphql.ArgumentConfig{
 				Type: graphql.String,
@@ -75,6 +82,8 @@ func (o *Objectql) initObjectGraphqlQuery(querys graphql.Fields, object *Object)
 			return o.graphqlQueryCountResolver(p.Context, p, object)
 		},
 	}
+
+	return nil
 }
 
 func (o *Objectql) graphqlQueryListResolver(ctx context.Context, p graphql.ResolveParams, object *Object) (interface{}, error) {
@@ -244,27 +253,11 @@ func formatMongoFilter(data interface{}) interface{} {
 	}
 }
 
-func (o *Objectql) initObjectGraphqlMutation(mutations graphql.Fields, object *Object) {
-	fields := graphql.InputObjectConfigFieldMap{}
-	for _, cur := range object.Fields {
-		if cur.Api == "_id" {
-			continue
-		}
-		switch cur.Type.(type) {
-		case *ExpandType, *ExpandsType, *FormulaType, *AggregationType:
-			continue
-		}
-		fields[cur.Api] = &graphql.InputObjectFieldConfig{
-			Type: o.toInputGraphqlType(cur.Type),
-		}
-	}
-	form := graphql.NewInputObject(graphql.InputObjectConfig{
-		Name:   object.Api + "__form",
-		Fields: fields,
-	})
+func (o *Objectql) initObjectGraphqlMutation(mutations graphql.Fields, object *Object) error {
+	form := o.getGrpahqlObjectMutationForm(object)
 	// 新增
 	mutations[object.Api+"__insert"] = &graphql.Field{
-		Type: o.gobjects[object.Api],
+		Type: o.getGraphqlObject(object.Api),
 		Args: graphql.FieldConfigArgument{
 			"doc": &graphql.ArgumentConfig{
 				Type: form,
@@ -276,7 +269,7 @@ func (o *Objectql) initObjectGraphqlMutation(mutations graphql.Fields, object *O
 	}
 	// 修改
 	mutations[object.Api+"__update"] = &graphql.Field{
-		Type: o.gobjects[object.Api],
+		Type: o.getGraphqlObject(object.Api),
 		Args: graphql.FieldConfigArgument{
 			"_id": &graphql.ArgumentConfig{
 				Type: graphql.String,
@@ -301,6 +294,27 @@ func (o *Objectql) initObjectGraphqlMutation(mutations graphql.Fields, object *O
 			return o.graphqlMutationDeleteResolver(p.Context, p, object)
 		},
 	}
+	return nil
+}
+
+func (o *Objectql) getGrpahqlObjectMutationForm(object *Object) graphql.Input {
+	fields := graphql.InputObjectConfigFieldMap{}
+	for _, cur := range object.Fields {
+		if cur.Api == "_id" {
+			continue
+		}
+		switch cur.Type.(type) {
+		case *ExpandType, *ExpandsType, *FormulaType, *AggregationType:
+			continue
+		}
+		fields[cur.Api] = &graphql.InputObjectFieldConfig{
+			Type: o.fieldTypeToInputGraphqlType(cur.Type),
+		}
+	}
+	return graphql.NewInputObject(graphql.InputObjectConfig{
+		Name:   object.Api + "__form",
+		Fields: fields,
+	})
 }
 
 func (o *Objectql) graphqlMutationInsertResolver(ctx context.Context, p graphql.ResolveParams, object *Object) (interface{}, error) {
@@ -377,7 +391,7 @@ func getObjectRelationObjectApis(object *Object) []string {
 }
 
 // graphql mutation表单字段的类型
-func (o *Objectql) toInputGraphqlType(tpe Type) graphql.Output {
+func (o *Objectql) fieldTypeToInputGraphqlType(tpe Type) graphql.Output {
 	switch n := tpe.(type) {
 	case *BoolType:
 		return graphql.Boolean
@@ -392,7 +406,7 @@ func (o *Objectql) toInputGraphqlType(tpe Type) graphql.Output {
 	case *RelateType:
 		return graphql.String
 	case *ArrayType:
-		return graphql.NewList(o.toInputGraphqlType(n.Type))
+		return graphql.NewList(o.fieldTypeToInputGraphqlType(n.Type))
 	}
 	return nil
 }
@@ -413,9 +427,9 @@ func (o *Objectql) getGraphqlFieldType(tpe Type) graphql.Output {
 	case *RelateType:
 		return graphql.String
 	case *ExpandType:
-		return o.gobjects[n.ObjectApi]
+		return o.getGraphqlObject(n.ObjectApi)
 	case *ExpandsType:
-		return graphql.NewList(o.gobjects[n.ObjectApi])
+		return graphql.NewList(o.getGraphqlObject(n.ObjectApi))
 	case *ObjectIDType:
 		return graphql.String
 	case *FormulaType:

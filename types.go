@@ -9,7 +9,16 @@ type Object struct {
 	Api     string
 	Fields  []*Field
 	Comment string
+	// Mutations []*Mutation
 }
+
+// type Mutation struct {
+// 	Name      string
+// 	Api       string
+// 	Comment   string
+// 	Handle    any
+// 	Validator map[string]any
+// }
 
 type Field struct {
 	Parent    *Object

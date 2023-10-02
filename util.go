@@ -3,6 +3,7 @@ package objectql
 import (
 	"fmt"
 	"reflect"
+	"strings"
 )
 
 func FindObjectFromList(list []*Object, api string) *Object {
@@ -99,4 +100,13 @@ func IsAggregationType(tpe Type) bool {
 func IsExpandType(tpe Type) bool {
 	_, ok := tpe.(*ExpandType)
 	return ok
+}
+
+// STRING
+
+func firstLower(s string) string {
+	if len(s) == 0 {
+		return s
+	}
+	return strings.ToLower(string(s[0])) + s[1:]
 }
