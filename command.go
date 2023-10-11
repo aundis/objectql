@@ -189,6 +189,13 @@ func (o *Objectql) computeCommand(ctx context.Context, this map[string]any, comm
 		}
 		n.Condition = r.(map[string]any)
 		return n, nil
+	case *HandleCommand:
+		r, err := computeValue(ctx, this, n.Args)
+		if err != nil {
+			return nil, err
+		}
+		n.Args = r.(map[string]any)
+		return n, nil
 	default:
 		return nil, fmt.Errorf("computeCommand error: unknown command type %T", command)
 	}
