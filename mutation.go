@@ -9,6 +9,13 @@ import (
 )
 
 func (o *Objectql) insertHandle(ctx context.Context, api string, doc map[string]interface{}) (string, error) {
+	res, err := o.WithTransaction(ctx, func(ctx context.Context) (interface{}, error) {
+		return o.insertHandleRaw(ctx, api, doc)
+	})
+	return res.(string), err
+}
+
+func (o *Objectql) insertHandleRaw(ctx context.Context, api string, doc map[string]interface{}) (string, error) {
 	object := FindObjectFromList(o.list, api)
 	if object == nil {
 		return "", ErrNotFoundObject
@@ -71,6 +78,13 @@ func (o *Objectql) insertHandle(ctx context.Context, api string, doc map[string]
 }
 
 func (o *Objectql) updateHandle(ctx context.Context, api string, id string, doc map[string]interface{}, permissionBlock bool) error {
+	_, err := o.WithTransaction(ctx, func(ctx context.Context) (interface{}, error) {
+		return nil, o.updateHandleRaw(ctx, api, id, doc, permissionBlock)
+	})
+	return err
+}
+
+func (o *Objectql) updateHandleRaw(ctx context.Context, api string, id string, doc map[string]interface{}, permissionBlock bool) error {
 	var err error
 	object := FindObjectFromList(o.list, api)
 	if object == nil {
@@ -143,6 +157,13 @@ func (o *Objectql) updateHandle(ctx context.Context, api string, id string, doc 
 }
 
 func (o *Objectql) deleteHandle(ctx context.Context, api string, id string) error {
+	_, err := o.WithTransaction(ctx, func(ctx context.Context) (interface{}, error) {
+		return nil, o.deleteHandleRaw(ctx, api, id)
+	})
+	return err
+}
+
+func (o *Objectql) deleteHandleRaw(ctx context.Context, api string, id string) error {
 	object := FindObjectFromList(o.list, api)
 	if object == nil {
 		return ErrNotFoundObject

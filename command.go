@@ -75,6 +75,14 @@ func (o *Objectql) DoCommand(ctx context.Context, commands []Command, filter ...
 			case *DeleteCommand:
 				ctx = context.WithValue(ctx, blockEventsKey, n.Direct)
 				err = o.Delete(ctx, n.Object, n.Condition)
+			case *HandleCommand:
+				if o.isQueryHandle(n.Object, n.Command) {
+					result, err = o.Query(ctx, n.Object, n.Command, n.Args, n.Fields)
+				} else if o.isMutationHandle(n.Object, n.Command) {
+					result, err = o.Mutation(ctx, n.Object, n.Command, n.Args, n.Fields)
+				} else {
+					err = fmt.Errorf("not found command '%s' from '%s", n.Command, n.Object)
+				}
 			}
 			if err != nil {
 				return nil, err

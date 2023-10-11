@@ -2,8 +2,11 @@ package objectql
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
+	"github.com/gogf/gf/v2/os/gctx"
+	"github.com/gogf/gf/v2/util/gconv"
 	"github.com/gogf/gf/v2/util/guid"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -14,6 +17,113 @@ type GraphqlQueryReq struct {
 	Query     string `json:"query"`
 	Variables string `json:"variables"`
 }
+
+type getNameReq struct {
+	Number int `v:"min:100"`
+	Age    int `v:"min:10"`
+}
+
+type getNameRes struct {
+	Index int
+	Name  string `json:"name2"`
+}
+
+func TestQuery(t *testing.T) {
+	ctx := context.Background()
+	oql := New()
+	err := oql.InitMongodb(ctx, testMongodbUrl)
+	if err != nil {
+		t.Error("初始化数据库失败", err)
+		return
+	}
+
+	oql.AddObject(&Object{
+		Name: "学生",
+		Api:  "student",
+		Fields: []*Field{
+			{
+				Name: "姓名",
+				Api:  "name",
+				Type: String,
+			},
+			{
+				Name: "年龄",
+				Api:  "age",
+				Type: Int,
+			},
+		},
+		Comment: "",
+		Querys: []*Handle{
+			{
+				Name: "获取姓名",
+				Api:  "getName",
+				Resolve: func(ctx context.Context, req getNameReq) (string, error) {
+					return fmt.Sprintf("%d,%d", req.Age, req.Number), nil
+				},
+			},
+		},
+	})
+	err = oql.InitObjects(ctx)
+	if err != nil {
+		t.Error("初始化对象失败", err)
+		return
+	}
+
+	res, err := oql.Query(ctx, "student", "getName", map[string]any{
+		"age":    10,
+		"number": 200,
+	})
+	if err != nil {
+		t.Error("初始化对象失败", err)
+		return
+	}
+	if gconv.String(res) != "10,200" {
+		t.Errorf("except 10,200 but got %s", gconv.String(res))
+		return
+	}
+}
+
+// func TestMutation(t *testing.T) {
+// 	ctx := context.Background()
+// 	objectql := New()
+// 	err := objectql.InitMongodb(ctx, testMongodbUrl)
+// 	if err != nil {
+// 		t.Error("初始化数据库失败", err)
+// 		return
+// 	}
+
+// 	objectql.AddObject(&Object{
+// 		Name: "学生",
+// 		Api:  "student",
+// 		Fields: []*Field{
+// 			{
+// 				Name: "姓名",
+// 				Api:  "name",
+// 				Type: String,
+// 			},
+// 			{
+// 				Name: "年龄",
+// 				Api:  "age",
+// 				Type: Int,
+// 			},
+// 		},
+// 		Comment: "",
+// 		Querys: []*Query{
+// 			{
+// 				Name: "获取姓名",
+// 				Api:  "getName",
+// 				Handle: func(ctx context.Context, req getNameReq) (getNameRes, error) {
+// 					return getNameRes{Index: req.Age, Name: fmt.Sprintf("%d,%d", req.Age, req.Number)}, nil
+// 				},
+// 			},
+// 		},
+// 	})
+// 	err = objectql.InitObjects(ctx)
+// 	if err != nil {
+// 		t.Error("初始化对象失败", err)
+// 		return
+// 	}
+// }
 
 // 引用类型的字段引用不到对象时, 出现空指针引用的问题 #1
 func TestIssues1(t *testing.T) {
@@ -29,81 +139,114 @@ func TestIssues1(t *testing.T) {
 			},
 		},
 	})
-	err := oql.InitObjects()
+	err := oql.InitObjects(gctx.New())
 	if !(err != nil && err.Error() == "can't resolve field 'sysUser.departmentId__expand' type") {
 		t.Error("except report error, got: ", err)
 	}
 }
 
-//  ended session was used
-
-// func TestSession(t *testing.T) {
-// 	ctx := context.Background()
-// 	ctx, cancel := context.WithCancel(ctx)
+// func TestQuery(t *testing.T) {
 // 	oql := New()
-// 	err := oql.InitMongodb(context.Background(), "mongodb://192.168.0.197:27017/?connect=direct")
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	oql.AddObject(&Object{
-// 		Name: "用户信息",
-// 		Api:  "person22",
+// 	oql.AddObject(&objectql.Object{
+// 		Name: "任务日志",
+// 		Api:  "sysTaskLog",
 // 		Fields: []*Field{
 // 			{
-// 				Name: "姓名",
-// 				Api:  "name",
+// 				Name: "任务ID",
+// 				Api:  "task",
+// 				Type: NewRelate("sysTask"),
+// 			},
+// 			{
+// 				Name: "任务名称",
+// 				Api:  "taskName",
 // 				Type: String,
 // 			},
 // 			{
-// 				Name: "年龄",
-// 				Api:  "age",
+// 				Name: "状态",
+// 				Api:  "status",
+// 				Type: Bool,
+// 			},
+// 			{
+// 				Name: "描述",
+// 				Api:  "detail",
+// 				Type: String,
+// 			},
+// 			{
+// 				Name: "消耗时间",
+// 				Api:  "consumeTime",
 // 				Type: Int,
 // 			},
 // 		},
 // 	})
-// 	err = oql.InitObjects()
-// 	if err != nil {
-// 		t.Error(err)
-// 		return
-// 	}
-
-// 	cancel()
-
-// 	_, err = oql.Insert(ctx, "person22", InsertOptions{
-// 		Doc: map[string]interface{}{
-// 			"name": "小明",
-// 			"age":  13,
-// 		},
-// 	})
-// 	if err != nil {
-// 		t.Error(err)
-// 		return
-// 	}
-
-// 	_, err = oql.Insert(ctx, "person22", InsertOptions{
-// 		Doc: map[string]interface{}{
-// 			"name": "小明",
-// 			"age":  13,
-// 		},
-// 	})
-// 	if err != nil {
-// 		t.Error(err)
-// 		return
-// 	}
-
-// 	_, err = oql.Insert(ctx, "person22", InsertOptions{
-// 		Doc: map[string]interface{}{
-// 			"name": "小明",
-// 			"age":  13,
-// 		},
-// 	})
-// 	if err != nil {
-// 		t.Error(err)
-// 		return
-// 	}
 // }
 
+//  ended session was used
+
+func TestSession(t *testing.T) {
+	ctx := context.Background()
+	oql := New()
+	err := oql.InitMongodb(context.Background(), "mongodb://192.168.0.197:27017/?connect=direct")
+	if err != nil {
+		panic(err)
+	}
+	oql.AddObject(&Object{
+		Name: "用户信息",
+		Api:  "person22",
+		Fields: []*Field{
+			{
+				Name: "姓名",
+				Api:  "name",
+				Type: String,
+			},
+			{
+				Name: "年龄",
+				Api:  "age",
+				Type: Int,
+			},
+		},
+	})
+	err = oql.InitObjects(ctx)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	_, err = oql.Insert(ctx, "person22", InsertOptions{
+		Doc: map[string]interface{}{
+			"name": "小明",
+			"age":  13,
+		},
+	})
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	_, err = oql.Insert(ctx, "person22", InsertOptions{
+		Doc: map[string]interface{}{
+			"name": "小明",
+			"age":  13,
+		},
+	})
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	_, err = oql.Insert(ctx, "person22", InsertOptions{
+		Doc: map[string]interface{}{
+			"name": "小明",
+			"age":  13,
+		},
+	})
+	if err != nil {
+		t.Error(err)
+		return
+	}
+}
+
 // func TestServer(t *testing.T) {
+// 	ctx := context.Background()
 // 	objectql := New()
 // 	err := objectql.InitMongodb(context.Background(), "mongodb://192.168.0.197:27017/?connect=direct")
 // 	if err != nil {
@@ -125,10 +268,23 @@ func TestIssues1(t *testing.T) {
 // 				Type: NewArrayType(String),
 // 			},
 // 		},
+// 		Querys: []*Query{
+// 			{
+// 				Name: "获取姓名",
+// 				Api:  "getName",
+// 				Handle: func(ctx context.Context, req *getNameReq) (*getNameRes, error) {
+// 					// return &getNameRes{Index: req.Age, Name: fmt.Sprintf("%d,%d", req.Age, req.Number)}, nil
+// 					return nil, nil
+// 				},
+// 				// Handle: func(ctx context.Context, req getNameReq) (bool, error) {
+// 				// 	return true, nil
+// 				// },
+// 			},
+// 		},
 // 	})
 
 // 	// 初始化
-// 	err = objectql.InitObjects()
+// 	err = objectql.InitObjects(ctx)
 // 	if err != nil {
 // 		panic(err)
 // 	}
@@ -158,7 +314,7 @@ func TestIssues1(t *testing.T) {
 // 	http.HandleFunc("/", graphiql.ServeGraphiQL)
 
 // 	// 启动服务器
-// 	fmt.Println("Listening on :8080")
+// 	fmt.Println("Listening on1 :8080")
 // 	http.ListenAndServe(":8080", nil)
 // }
 
@@ -188,7 +344,7 @@ func TestInsert(t *testing.T) {
 		},
 		Comment: "",
 	})
-	err = objectql.InitObjects()
+	err = objectql.InitObjects(ctx)
 	if err != nil {
 		t.Error("初始化对象失败", err)
 		return
@@ -260,7 +416,7 @@ func TestUpdate(t *testing.T) {
 		},
 		Comment: "",
 	})
-	err = objectql.InitObjects()
+	err = objectql.InitObjects(ctx)
 	if err != nil {
 		t.Error("初始化对象失败", err)
 		return
@@ -338,7 +494,7 @@ func TestDelete(t *testing.T) {
 		},
 		Comment: "",
 	})
-	err = objectql.InitObjects()
+	err = objectql.InitObjects(ctx)
 	if err != nil {
 		t.Error("初始化对象失败", err)
 		return
@@ -410,7 +566,7 @@ func TestFindOne(t *testing.T) {
 		},
 		Comment: "",
 	})
-	err = objectql.InitObjects()
+	err = objectql.InitObjects(ctx)
 	if err != nil {
 		t.Error("初始化对象失败", err)
 		return
@@ -482,7 +638,7 @@ func TestFindList(t *testing.T) {
 		},
 		Comment: "",
 	})
-	err = objectql.InitObjects()
+	err = objectql.InitObjects(ctx)
 	if err != nil {
 		t.Error("初始化对象失败", err)
 		return
@@ -557,7 +713,7 @@ func TestCount(t *testing.T) {
 		},
 		Comment: "",
 	})
-	err = objectql.InitObjects()
+	err = objectql.InitObjects(ctx)
 	if err != nil {
 		t.Error("初始化对象失败", err)
 		return
@@ -624,7 +780,7 @@ func TestArray(t *testing.T) {
 		},
 		Comment: "",
 	})
-	err = oql.InitObjects()
+	err = oql.InitObjects(ctx)
 	if err != nil {
 		t.Error("初始化对象失败", err)
 		return
@@ -677,7 +833,7 @@ func TestExtends(t *testing.T) {
 		},
 		Comment: "",
 	})
-	err = oql.InitObjects()
+	err = oql.InitObjects(ctx)
 	if err != nil {
 		t.Error("初始化对象失败", err)
 		return

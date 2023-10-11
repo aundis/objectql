@@ -41,7 +41,7 @@ func TestInsertBefore(t *testing.T) {
 		},
 		Comment: "",
 	})
-	err = objectql.InitObjects()
+	err = objectql.InitObjects(ctx)
 	if err != nil {
 		t.Error("初始化对象失败", err)
 		return
@@ -104,7 +104,7 @@ func TestInsertAfter(t *testing.T) {
 		},
 		Comment: "",
 	})
-	err = objectql.InitObjects()
+	err = objectql.InitObjects(ctx)
 	if err != nil {
 		t.Error("初始化对象失败", err)
 		return
@@ -167,7 +167,7 @@ func TestUpdateBefore(t *testing.T) {
 		},
 		Comment: "",
 	})
-	err = objectql.InitObjects()
+	err = objectql.InitObjects(ctx)
 	if err != nil {
 		t.Error("初始化对象失败", err)
 		return
@@ -247,7 +247,7 @@ func TestUpdateAfter(t *testing.T) {
 		},
 		Comment: "",
 	})
-	err = objectql.InitObjects()
+	err = objectql.InitObjects(ctx)
 	if err != nil {
 		t.Error("初始化对象失败", err)
 		return
@@ -327,7 +327,7 @@ func TestDeleteBefore(t *testing.T) {
 		},
 		Comment: "",
 	})
-	err = objectql.InitObjects()
+	err = objectql.InitObjects(ctx)
 	if err != nil {
 		t.Error("初始化对象失败", err)
 		return
@@ -396,7 +396,7 @@ func TestDeleteAfter(t *testing.T) {
 		},
 		Comment: "",
 	})
-	err = objectql.InitObjects()
+	err = objectql.InitObjects(ctx)
 	if err != nil {
 		t.Error("初始化对象失败", err)
 		return

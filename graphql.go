@@ -2,9 +2,14 @@ package objectql
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"reflect"
+	"regexp"
 	"strings"
 
 	"github.com/aundis/graphql"
+	"github.com/gogf/gf/v2/frame/g"
 	"github.com/gogf/gf/v2/util/gconv"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -19,7 +24,7 @@ func (o *Objectql) getGraphqlObject(name string) *graphql.Object {
 	return nil
 }
 
-func (o *Objectql) initObjectGraphqlQuery(querys graphql.Fields, object *Object) error {
+func (o *Objectql) initObjectGraphqlQuery(ctx context.Context, querys graphql.Fields, object *Object) error {
 	querys[object.Api] = &graphql.Field{
 		Type: graphql.NewList(o.getGraphqlObject(object.Api)),
 		Args: graphql.FieldConfigArgument{
@@ -83,6 +88,28 @@ func (o *Objectql) initObjectGraphqlQuery(querys graphql.Fields, object *Object)
 		},
 	}
 
+	// 自定义mutation
+	for _, handle := range object.Querys {
+		err := o.validateHandle(handle)
+		if err != nil {
+			return err
+		}
+		args, err := o.getGraphqlArgsFromHandle(ctx, handle)
+		if err != nil {
+			return err
+		}
+		rtn, err := o.getGraphqlReturnFromHandle(ctx, handle)
+		if err != nil {
+			return err
+		}
+		querys[object.Api+"__"+handle.Api] = &graphql.Field{
+			Type: rtn,
+			Args: args,
+			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+				return o.handleGraphqlResovler(p.Context, p, handle)
+			},
+		}
+	}
 	return nil
 }
 
@@ -253,7 +280,7 @@ func formatMongoFilter(data interface{}) interface{} {
 	}
 }
 
-func (o *Objectql) initObjectGraphqlMutation(mutations graphql.Fields, object *Object) error {
+func (o *Objectql) initObjectGraphqlMutation(ctx context.Context, mutations graphql.Fields, object *Object) error {
 	form := o.getGrpahqlObjectMutationForm(object)
 	// 新增
 	mutations[object.Api+"__insert"] = &graphql.Field{
@@ -294,7 +321,163 @@ func (o *Objectql) initObjectGraphqlMutation(mutations graphql.Fields, object *O
 			return o.graphqlMutationDeleteResolver(p.Context, p, object)
 		},
 	}
+	// 自定义mutation
+	for _, handle := range object.Mutations {
+		err := o.validateHandle(handle)
+		if err != nil {
+			return err
+		}
+		args, err := o.getGraphqlArgsFromHandle(ctx, handle)
+		if err != nil {
+			return err
+		}
+		rtn, err := o.getGraphqlReturnFromHandle(ctx, handle)
+		if err != nil {
+			return err
+		}
+		mutations[object.Api+"__"+handle.Api] = &graphql.Field{
+			Type: rtn,
+			Args: args,
+			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+				return o.handleGraphqlResovler(p.Context, p, handle)
+			},
+		}
+	}
 	return nil
+}
+
+func (o *Objectql) validateHandle(handle *Handle) error {
+	// 获取函数的类型信息
+	fnType := reflect.TypeOf(handle.Resolve)
+	if fnType.Kind() != reflect.Func {
+		return errors.New("getGraphqlArgsFromMutation mutation handle must is function")
+	}
+	if fnType.NumIn() < 2 {
+		return errors.New("getGraphqlArgsFromMutation mutation handle must has 2 param")
+	}
+	// 第一个参数必须是 contxt.Context
+	if unPointer(fnType.In(0)).Name() != "Context" {
+		return errors.New("getGraphqlArgsFromMutation mutation handle first param type must is context.Context")
+	}
+	// 如果有第二个参数必须为结构体
+	if fnType.NumIn() == 2 && unPointer(fnType.In(1)).Kind() != reflect.Struct {
+		return errors.New("getGraphqlArgsFromMutation mutation handle two param must is struct")
+	}
+	// 检查返回值
+	if fnType.NumOut() < 2 {
+		return errors.New("getGraphqlArgsFromMutation mutation handle must has 2 return")
+	}
+	if fnType.Out(1).Name() != "error" {
+		return errors.New("getGraphqlArgsFromMutation mutation handle two return type must is error.Error")
+	}
+	handle.req = fnType.In(1)
+	handle.res = fnType.Out(0)
+	return nil
+}
+
+func unPointer(t reflect.Type) reflect.Type {
+	if t.Kind() == reflect.Pointer {
+		return unPointer(t.Elem())
+	}
+	return t
+}
+
+func (o *Objectql) handleGraphqlResovler(ctx context.Context, p graphql.ResolveParams, handle *Handle) (interface{}, error) {
+	v := reflect.New(unPointer(handle.req))
+	err := gconv.Struct(p.Args, v.Interface())
+	if err != nil {
+		return nil, err
+	}
+	// gvalid.CheckStruct
+	err = g.Validator().Data(v.Interface()).Run(ctx)
+	if err != nil {
+		return nil, err
+	}
+	// 反射调用
+	fn := reflect.ValueOf(handle.Resolve)
+	var args []reflect.Value
+	if handle.req.Kind() == reflect.Pointer {
+		args = []reflect.Value{reflect.ValueOf(ctx), reflect.ValueOf(v.Interface())}
+	} else {
+		args = []reflect.Value{reflect.ValueOf(ctx), v.Elem()}
+	}
+	result := fn.Call(args)
+	if !result[1].IsNil() {
+		return nil, result[1].Interface().(error)
+	}
+	if handle.res.Kind() == reflect.Pointer && result[0].IsNil() {
+		return nil, nil
+	}
+	return formatHandleReturnValue(result[0].Interface()), nil
+}
+
+func formatHandleReturnValue(v interface{}) interface{} {
+	t := reflect.TypeOf(v)
+	switch t.Kind() {
+	case reflect.Array, reflect.Slice:
+		return formatHandleArrayReturnValue(v)
+	case reflect.Struct:
+		return formatHandleStructReturnValue(v)
+	case reflect.Pointer:
+		vo := reflect.ValueOf(v)
+		return formatHandleReturnValue(vo.Elem().Interface())
+	default:
+		return v
+	}
+}
+
+func formatHandleArrayReturnValue(source interface{}) interface{} {
+	result := []interface{}{}
+	sourceValue := reflect.ValueOf(source)
+	for i := 0; i < sourceValue.Len(); i++ {
+		evalue := formatHandleReturnValue(sourceValue.Index(i).Interface())
+		result = append(result, evalue)
+	}
+	return result
+}
+
+func formatHandleStructReturnValue(source interface{}) interface{} {
+	result := map[string]interface{}{}
+	v := reflect.ValueOf(source)
+	for i := 0; i < v.NumField(); i++ {
+		field := v.Field(i)
+		ft := v.Type().Field(i)
+		tag := ft.Tag.Get("json")
+		if len(tag) > 0 {
+			result[tag] = formatHandleReturnValue(field.Interface())
+		} else {
+			result[firstLower(ft.Name)] = formatHandleReturnValue(field.Interface())
+		}
+	}
+	return result
+}
+
+var tarnsKind = struct{}{}
+
+func (o *Objectql) getGraphqlArgsFromHandle(ctx context.Context, handle *Handle) (graphql.FieldConfigArgument, error) {
+	ctx = context.WithValue(ctx, tarnsKind, "input")
+	fnType := reflect.TypeOf(handle.Resolve)
+	gt, err := o.goTypeToGraphqlInputOrOutputType(ctx, fnType.In(1))
+	if err != nil {
+		return nil, err
+	}
+	result := graphql.FieldConfigArgument{}
+	for name, field := range gt.(*graphql.InputObject).Fields() {
+		result[name] = &graphql.ArgumentConfig{
+			Type: field.Type,
+		}
+	}
+	return result, nil
+}
+
+func (o *Objectql) getGraphqlReturnFromHandle(ctx context.Context, mutation *Handle) (graphql.Output, error) {
+	ctx = context.WithValue(ctx, tarnsKind, "output")
+	fnType := reflect.TypeOf(mutation.Resolve)
+	gt, err := o.goTypeToGraphqlInputOrOutputType(ctx, fnType.Out(0))
+	if err != nil {
+		return nil, err
+	}
+	return gt, nil
 }
 
 func (o *Objectql) getGrpahqlObjectMutationForm(object *Object) graphql.Input {
@@ -388,6 +571,106 @@ func getObjectRelationObjectApis(object *Object) []string {
 		}
 	}
 	return result
+}
+
+func (o *Objectql) goTypeToGraphqlInputOrOutputType(ctx context.Context, tpe reflect.Type) (graphql.Output, error) {
+	switch tpe.Kind() {
+	case reflect.Bool:
+		return graphql.Boolean, nil
+	case reflect.Int:
+		return graphql.Int, nil
+	case reflect.Int8:
+		return graphql.Int, nil
+	case reflect.Int16:
+		return graphql.Int, nil
+	case reflect.Int32:
+		return graphql.Int, nil
+	case reflect.Int64:
+		return graphql.Int, nil
+	case reflect.Uint:
+		return graphql.Int, nil
+	case reflect.Uint8:
+		return graphql.Int, nil
+	case reflect.Uint16:
+		return graphql.Int, nil
+	case reflect.Uint32:
+		return graphql.Int, nil
+	case reflect.Uint64:
+		return graphql.Int, nil
+	case reflect.Uintptr:
+		return graphql.Int, nil
+	case reflect.Float32:
+		return graphql.Float, nil
+	case reflect.Float64:
+		return graphql.Float, nil
+	case reflect.String:
+		return graphql.String, nil
+	case reflect.Pointer:
+		return o.goTypeToGraphqlInputOrOutputType(ctx, tpe.Elem())
+	case reflect.Array, reflect.Slice:
+		et, err := o.goTypeToGraphqlInputOrOutputType(ctx, tpe.Elem())
+		if err != nil {
+			return nil, err
+		}
+		return graphql.NewList(et), nil
+	case reflect.Struct:
+		return o.goStructTypeToGraphqlInputOrOutputType(ctx, tpe)
+	default:
+		return nil, fmt.Errorf("paramTypeToGraphqlInputType not support kind %v", tpe.Kind())
+	}
+}
+
+var pattern = regexp.MustCompile(`[\./]`)
+
+func (o *Objectql) goStructTypeToGraphqlInputOrOutputType(ctx context.Context, tpe reflect.Type) (graphql.Output, error) {
+	kind := ctx.Value(tarnsKind).(string)
+	objectName := kind + "_" + pattern.ReplaceAllString(tpe.PkgPath(), "_") + "_" + tpe.Name()
+	if o.gstructTypes.Contains(objectName) {
+		return o.gstructTypes.Get(objectName).(graphql.Output), nil
+	}
+
+	raw := map[string]graphql.Output{}
+	for i := 0; i < tpe.NumField(); i++ {
+		field := tpe.Field(i)
+		if !field.IsExported() {
+			continue
+		}
+		tag := field.Tag.Get("json")
+		var gname string
+		if len(tag) > 0 {
+			gname = tag
+		} else {
+			gname = firstLower(field.Name)
+		}
+		gtype, err := o.goTypeToGraphqlInputOrOutputType(ctx, field.Type)
+		if err != nil {
+			return nil, err
+		}
+		raw[gname] = gtype
+	}
+
+	if kind == "input" {
+		fields := graphql.InputObjectConfigFieldMap{}
+		for name, tpe := range raw {
+			fields[name] = &graphql.InputObjectFieldConfig{Type: tpe}
+		}
+		return graphql.NewInputObject(graphql.InputObjectConfig{
+			Name:   objectName,
+			Fields: fields,
+		}), nil
+	} else {
+		fields := graphql.Fields{}
+		for name, tpe := range raw {
+			fields[name] = &graphql.Field{
+				Name: name,
+				Type: tpe,
+			}
+		}
+		return graphql.NewObject(graphql.ObjectConfig{
+			Name:   objectName,
+			Fields: fields,
+		}), nil
+	}
 }
 
 // graphql mutation表单字段的类型

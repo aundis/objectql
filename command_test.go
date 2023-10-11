@@ -33,7 +33,7 @@ func TestDoCommand(t *testing.T) {
 		},
 		Comment: "",
 	})
-	err = oql.InitObjects()
+	err = oql.InitObjects(ctx)
 	if err != nil {
 		t.Error("初始化对象失败", err)
 		return

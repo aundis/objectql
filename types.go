@@ -1,24 +1,28 @@
 package objectql
 
 import (
+	"reflect"
+
 	"github.com/aundis/formula"
 )
 
 type Object struct {
-	Name    string
-	Api     string
-	Fields  []*Field
-	Comment string
-	// Mutations []*Mutation
+	Name      string
+	Api       string
+	Fields    []*Field
+	Comment   string
+	Querys    []*Handle
+	Mutations []*Handle
 }
 
-// type Mutation struct {
-// 	Name      string
-// 	Api       string
-// 	Comment   string
-// 	Handle    any
-// 	Validator map[string]any
-// }
+type Handle struct {
+	Name    string
+	Api     string
+	Comment string
+	Resolve any
+	req     reflect.Type
+	res     reflect.Type
+}
 
 type Field struct {
 	Parent    *Object
@@ -140,6 +144,13 @@ type Command interface {
 	aCommand()
 }
 
+type HandleCommand struct {
+	Object  string         `json:"object"`
+	Command string         `json:"command"`
+	Fields  []string       `json:"fields"`
+	Args    map[string]any `json:"args"`
+}
+
 type FindOneByIdCommand struct {
 	Object string   `json:"object"`
 	ID     string   `json:"id"`
@@ -213,6 +224,7 @@ type DeleteCommand struct {
 	Direct    bool           `json:"direct"`
 }
 
+func (c *HandleCommand) aCommand()      {}
 func (c *FindOneByIdCommand) aCommand() {}
 func (c *FindOneCommand) aCommand()     {}
 func (c *FindListCommand) aCommand()    {}

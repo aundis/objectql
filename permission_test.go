@@ -32,7 +32,7 @@ func TestObjectPermissionCheck(t *testing.T) {
 		},
 		Comment: "",
 	})
-	err = objectql.InitObjects()
+	err = objectql.InitObjects(ctx)
 	if err != nil {
 		t.Error("初始化对象失败", err)
 		return
@@ -84,7 +84,7 @@ func TestObjectFieldPermissionCheck(t *testing.T) {
 		},
 		Comment: "",
 	})
-	err = objectql.InitObjects()
+	err = objectql.InitObjects(ctx)
 	if err != nil {
 		t.Error("初始化对象失败", err)
 		return

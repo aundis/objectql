@@ -24,15 +24,18 @@ import (
 
 func New() *Objectql {
 	return &Objectql{
-		gobjects: gmap.NewStrAnyMap(true),
-		eventMap: gmap.NewAnyAnyMap(true),
+		gobjects:     gmap.NewStrAnyMap(true),
+		eventMap:     gmap.NewAnyAnyMap(true),
+		gstructTypes: gmap.NewStrAnyMap(true),
 	}
 }
 
 type Objectql struct {
-	list     []*Object
-	gobjects *gmap.StrAnyMap
-	gschema  graphql.Schema
+	list       []*Object
+	gobjects   *gmap.StrAnyMap
+	gschema    graphql.Schema
+	gquerys    graphql.Fields
+	gmutations graphql.Fields
 	// database
 	mongoClientOpts        *options.ClientOptions
 	mongoClient            *mongo.Client
@@ -42,6 +45,8 @@ type Objectql struct {
 	// permission
 	objectPermissionCheckHandler      ObjectPermissionCheckHandler
 	objectFieldPermissionCheckHandler ObjectFieldPermissionCheckHandler
+	// struct types
+	gstructTypes *gmap.StrAnyMap
 }
 
 func (o *Objectql) AddObject(object *Object) {
@@ -96,7 +101,7 @@ func (o *Objectql) AddObject(object *Object) {
 	o.list = append(o.list, object)
 }
 
-func (o *Objectql) InitObjects() error {
+func (o *Objectql) InitObjects(ctx context.Context) error {
 	// 初始化字段的parent
 	o.initFieldParent()
 	// 解析字段的引用关系
@@ -107,8 +112,8 @@ func (o *Objectql) InitObjects() error {
 	// 预初始化所有对象
 	o.preInitObjects()
 	//
-	querys := graphql.Fields{}
-	mutations := graphql.Fields{}
+	o.gquerys = graphql.Fields{}
+	o.gmutations = graphql.Fields{}
 	for _, v := range o.list {
 		// 初始化Graphql对象的字段
 		err = o.fullGraphqlObject(o.getGraphqlObject(v.Api), v)
@@ -116,12 +121,12 @@ func (o *Objectql) InitObjects() error {
 			return err
 		}
 		// 初始化Graphql对象的query
-		err = o.initObjectGraphqlQuery(querys, v)
+		err = o.initObjectGraphqlQuery(ctx, o.gquerys, v)
 		if err != nil {
 			return err
 		}
 		// 初始化Graphql对象的mutation
-		err = o.initObjectGraphqlMutation(mutations, v)
+		err = o.initObjectGraphqlMutation(ctx, o.gmutations, v)
 		if err != nil {
 			return err
 		}
@@ -130,14 +135,22 @@ func (o *Objectql) InitObjects() error {
 	o.gschema, err = graphql.NewSchema(graphql.SchemaConfig{
 		Query: graphql.NewObject(graphql.ObjectConfig{
 			Name:   "RootQuery",
-			Fields: querys,
+			Fields: o.gquerys,
 		}),
 		Mutation: graphql.NewObject(graphql.ObjectConfig{
 			Name:   "Mutation",
-			Fields: mutations,
+			Fields: o.gmutations,
 		}),
 	})
 	return err
+}
+
+func (o *Objectql) isMutationHandle(object string, name string) bool {
+	return o.gmutations[object+"__"+name] != nil
+}
+
+func (o *Objectql) isQueryHandle(object string, name string) bool {
+	return o.gquerys[object+"__"+name] != nil
 }
 
 func (o *Objectql) initFieldParent() {
@@ -431,23 +444,104 @@ func getGraphqlSelectFieldNames(p graphql.ResolveParams) []string {
 }
 
 func (o *Objectql) Do(ctx context.Context, request string) *graphql.Result {
-	r, _ := o.WithTransaction(ctx, func(ctx context.Context) (interface{}, error) {
-		result := graphql.Do(graphql.Params{
-			Schema:        o.gschema,
-			RequestString: request,
-			Context:       ctx,
-		})
-		// 如果发生了错误要回馈到WithTransaction,事务才能回滚
-		// result 也进行返回是要兼容网页版的graphql
-		if len(result.Errors) > 0 {
-			return result, result.Errors[0]
-		}
-		return result, nil
+	return graphql.Do(graphql.Params{
+		Schema:        o.gschema,
+		RequestString: request,
+		Context:       ctx,
 	})
-	if v, ok := r.(*graphql.Result); ok {
-		return v
+}
+
+// 调用用户定义的query和mutation
+func (o *Objectql) Query(ctx context.Context, objectApi string, method string, param map[string]any, fields ...[]string) (any, error) {
+	object := FindObjectFromList(o.list, objectApi)
+	if object == nil {
+		return nil, fmt.Errorf("not found object '%s'", objectApi)
 	}
-	return nil
+	fullName := objectApi + "__" + method
+	gquery := o.gquerys[fullName]
+	if gquery == nil {
+		return nil, fmt.Errorf("not found object '%s'", objectApi)
+	}
+	var buffer bytes.Buffer
+	buffer.WriteString("{")
+	buffer.WriteString("data: " + fullName)
+	if len(param) > 0 {
+		buffer.WriteString("(")
+		text, err := o.mapToGrpahqlFormat(param)
+		if err != nil {
+			return Entity{}, err
+		}
+		text = strings.Trim(text, "{")
+		text = strings.Trim(text, "}")
+		buffer.WriteString(text)
+		buffer.WriteString(")")
+	}
+	if len(fields) > 0 {
+		buffer.WriteString("{")
+		buffer.WriteString(strings.Join(fields[0], ","))
+		buffer.WriteString("}")
+	} else if gobj, ok := gquery.Type.(*graphql.Object); ok {
+		writeGraphqlOutputFieldQueryString(buffer, gobj)
+	}
+	//
+	buffer.WriteString("}")
+	result := o.Do(ctx, buffer.String())
+	if len(result.Errors) > 0 {
+		return Entity{}, result.Errors[0]
+	}
+	return result.Data.(map[string]interface{})["data"], nil
+}
+
+func (o *Objectql) Mutation(ctx context.Context, objectApi string, method string, param map[string]any, fields ...[]string) (any, error) {
+	object := FindObjectFromList(o.list, objectApi)
+	if object == nil {
+		return nil, fmt.Errorf("not found object '%s'", objectApi)
+	}
+	fullName := objectApi + "__" + method
+	gmutation := o.gmutations[fullName]
+	if gmutation == nil {
+		return nil, fmt.Errorf("not found object '%s'", objectApi)
+	}
+	var buffer bytes.Buffer
+	buffer.WriteString("mutation {")
+	buffer.WriteString("data: " + fullName)
+	if len(param) > 0 {
+		buffer.WriteString("(")
+		text, err := o.mapToGrpahqlFormat(param)
+		if err != nil {
+			return Entity{}, err
+		}
+		text = strings.Trim(text, "{")
+		text = strings.Trim(text, "}")
+		buffer.WriteString(text)
+		buffer.WriteString(")")
+	}
+	if len(fields) > 0 {
+		buffer.WriteString("{")
+		buffer.WriteString(strings.Join(fields[0], ","))
+		buffer.WriteString("}")
+	} else if gobj, ok := gmutation.Type.(*graphql.Object); ok {
+		writeGraphqlOutputFieldQueryString(buffer, gobj)
+	}
+	//
+	buffer.WriteString("}")
+	result := o.Do(ctx, buffer.String())
+	if len(result.Errors) > 0 {
+		return Entity{}, result.Errors[0]
+	}
+	return result.Data.(map[string]interface{})["data"], nil
+}
+
+func writeGraphqlOutputFieldQueryString(buffer bytes.Buffer, object *graphql.Object) {
+	buffer.WriteString("{")
+	for name, fd := range object.Fields() {
+		buffer.WriteString(name)
+		buffer.WriteString(" ")
+		if gobj, ok := fd.Type.(*graphql.Object); ok {
+			writeGraphqlOutputFieldQueryString(buffer, gobj)
+		}
+	}
+	buffer.WriteString("}")
 }
 
 // 增删改查接口
@@ -812,6 +906,22 @@ func (o *Objectql) DirectCount(ctx context.Context, objectApi string, conditions
 }
 
 func (o *Objectql) DirectAggregate() {}
+
+func (o *Objectql) mapToGrpahqlFormat(doc map[string]any) (string, error) {
+	var buffer bytes.Buffer
+	buffer.WriteString("{")
+	for k, v := range doc {
+		buffer.WriteString(k)
+		buffer.WriteString(":")
+		err := writeGraphqlArgumentValue(&buffer, v)
+		if err != nil {
+			return "", err
+		}
+		buffer.WriteString(" ")
+	}
+	buffer.WriteString("}")
+	return buffer.String(), nil
+}
 
 func (o *Objectql) docToGrpahqlArgumentText(objectApi string, doc map[string]any) (string, error) {
 	object := FindObjectFromList(o.list, objectApi)
