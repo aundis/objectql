@@ -76,6 +76,7 @@ func (o *Objectql) DoCommand(ctx context.Context, commands []Command, filter ...
 				ctx = context.WithValue(ctx, blockEventsKey, n.Direct)
 				err = o.Delete(ctx, n.Object, n.Condition)
 			case *HandleCommand:
+				mapKey = n.Result
 				result, err = o.Call(ctx, n.Object, n.Command, n.Args, n.Fields)
 			}
 			if err != nil {

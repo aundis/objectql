@@ -150,6 +150,7 @@ type HandleCommand struct {
 	Command string         `json:"command"`
 	Fields  []string       `json:"fields"`
 	Args    map[string]any `json:"args"`
+	Result  string         `json:"result"`
 }
 
 type FindOneByIdCommand struct {
