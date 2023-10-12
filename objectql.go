@@ -490,7 +490,7 @@ func (o *Objectql) Query(ctx context.Context, objectApi string, method string, p
 		buffer.WriteString(text)
 		buffer.WriteString(")")
 	}
-	if len(fields) > 0 {
+	if len(fields) > 0 && len(fields[0]) > 0 {
 		buffer.WriteString("{")
 		buffer.WriteString(strings.Join(fields[0], ","))
 		buffer.WriteString("}")
@@ -530,7 +530,7 @@ func (o *Objectql) Mutation(ctx context.Context, objectApi string, method string
 		buffer.WriteString(text)
 		buffer.WriteString(")")
 	}
-	if len(fields) > 0 {
+	if len(fields) > 0 && len(fields[0]) > 0 {
 		buffer.WriteString("{")
 		buffer.WriteString(strings.Join(fields[0], ","))
 		buffer.WriteString("}")
