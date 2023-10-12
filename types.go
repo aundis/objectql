@@ -11,6 +11,7 @@ type Object struct {
 	Api       string
 	Fields    []*Field
 	Comment   string
+	Bind      any
 	Querys    []*Handle
 	Mutations []*Handle
 }

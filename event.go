@@ -18,12 +18,12 @@ const (
 	DeleteAfter
 )
 
-type InsertBeforeHandler func(ctx context.Context, doc map[string]interface{}) error
-type InsertAfterHandler func(ctx context.Context, id string, doc map[string]interface{}) error
-type UpdateBeoferHandler func(ctx context.Context, id string, doc map[string]interface{}) error
-type UpdateAfterHandler func(ctx context.Context, id string, doc map[string]interface{}) error
-type DeleteBeforeHandler func(ctx context.Context, id string) error
-type DeleteAfterHandler func(ctx context.Context, id string) error
+type InsertBeforeHandler = func(ctx context.Context, doc map[string]interface{}) error
+type InsertAfterHandler = func(ctx context.Context, id string, doc map[string]interface{}) error
+type UpdateBeoferHandler = func(ctx context.Context, id string, doc map[string]interface{}) error
+type UpdateAfterHandler = func(ctx context.Context, id string, doc map[string]interface{}) error
+type DeleteBeforeHandler = func(ctx context.Context, id string) error
+type DeleteAfterHandler = func(ctx context.Context, id string) error
 
 func (o *Objectql) ListenInsertBefore(table string, fn InsertBeforeHandler) {
 	o.Listen(table, InsertBefore, fn)

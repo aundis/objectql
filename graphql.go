@@ -356,11 +356,11 @@ func (o *Objectql) validateHandle(handle *Handle) error {
 		return errors.New("getGraphqlArgsFromMutation mutation handle must has 2 param")
 	}
 	// 第一个参数必须是 contxt.Context
-	if unPointer(fnType.In(0)).Name() != "Context" {
+	if unPointerType(fnType.In(0)).Name() != "Context" {
 		return errors.New("getGraphqlArgsFromMutation mutation handle first param type must is context.Context")
 	}
 	// 如果有第二个参数必须为结构体
-	if fnType.NumIn() == 2 && unPointer(fnType.In(1)).Kind() != reflect.Struct {
+	if fnType.NumIn() == 2 && unPointerType(fnType.In(1)).Kind() != reflect.Struct {
 		return errors.New("getGraphqlArgsFromMutation mutation handle two param must is struct")
 	}
 	// 检查返回值
@@ -375,15 +375,22 @@ func (o *Objectql) validateHandle(handle *Handle) error {
 	return nil
 }
 
-func unPointer(t reflect.Type) reflect.Type {
+func unPointerType(t reflect.Type) reflect.Type {
 	if t.Kind() == reflect.Pointer {
-		return unPointer(t.Elem())
+		return unPointerType(t.Elem())
+	}
+	return t
+}
+
+func unPointerValue(t reflect.Value) reflect.Value {
+	if t.Kind() == reflect.Pointer {
+		return unPointerValue(t.Elem())
 	}
 	return t
 }
 
 func (o *Objectql) handleGraphqlResovler(ctx context.Context, p graphql.ResolveParams, handle *Handle) (interface{}, error) {
-	v := reflect.New(unPointer(handle.req))
+	v := reflect.New(unPointerType(handle.req))
 	err := gconv.Struct(p.Args, v.Interface())
 	if err != nil {
 		return nil, err
@@ -633,6 +640,9 @@ func (o *Objectql) goStructTypeToGraphqlInputOrOutputType(ctx context.Context, t
 	for i := 0; i < tpe.NumField(); i++ {
 		field := tpe.Field(i)
 		if !field.IsExported() {
+			continue
+		}
+		if field.Name == "Meta" {
 			continue
 		}
 		tag := field.Tag.Get("json")

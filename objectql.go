@@ -111,10 +111,14 @@ func (o *Objectql) InitObjects(ctx context.Context) error {
 	}
 	// 预初始化所有对象
 	o.preInitObjects()
-	//
 	o.gquerys = graphql.Fields{}
 	o.gmutations = graphql.Fields{}
 	for _, v := range o.list {
+		// 初始化绑定对对象
+		err = o.bindObjectMethod(v, v.Bind)
+		if err != nil {
+			return err
+		}
 		// 初始化Graphql对象的字段
 		err = o.fullGraphqlObject(o.getGraphqlObject(v.Api), v)
 		if err != nil {
@@ -452,6 +456,16 @@ func (o *Objectql) Do(ctx context.Context, request string) *graphql.Result {
 }
 
 // 调用用户定义的query和mutation
+func (o *Objectql) Call(ctx context.Context, objectApi string, method string, param map[string]any, fields ...[]string) (any, error) {
+	if o.isMutationHandle(objectApi, method) {
+		return o.Mutation(ctx, objectApi, method, param, fields...)
+	}
+	if o.isQueryHandle(objectApi, method) {
+		return o.Query(ctx, objectApi, method, param, fields...)
+	}
+	return nil, fmt.Errorf("object '%s' not found query or mutation '%s'", objectApi, method)
+}
+
 func (o *Objectql) Query(ctx context.Context, objectApi string, method string, param map[string]any, fields ...[]string) (any, error) {
 	object := FindObjectFromList(o.list, objectApi)
 	if object == nil {
