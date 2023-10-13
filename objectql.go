@@ -1050,7 +1050,10 @@ func (o *Objectql) GetObjectInfo(objectApi string) *ObjectInfo {
 	if object == nil {
 		return nil
 	}
-	info := &ObjectInfo{}
+	info := &ObjectInfo{
+		Name: object.Name,
+		Api:  object.Api,
+	}
 	for _, field := range object.Fields {
 		fapi := field.Api
 		if fapi == "_id" {
