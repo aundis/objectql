@@ -495,8 +495,8 @@ func (o *Objectql) Query(ctx context.Context, objectApi string, method string, p
 		buffer.WriteString("{")
 		buffer.WriteString(strings.Join(fields[0], ","))
 		buffer.WriteString("}")
-	} else if gobj, ok := gquery.Type.(*graphql.Object); ok {
-		writeGraphqlOutputFieldQueryString(buffer, gobj)
+	} else {
+		writeGraphqlOutputFieldQueryString(buffer, gquery.Type)
 	}
 	//
 	buffer.WriteString("}")
@@ -535,8 +535,8 @@ func (o *Objectql) Mutation(ctx context.Context, objectApi string, method string
 		buffer.WriteString("{")
 		buffer.WriteString(strings.Join(fields[0], ","))
 		buffer.WriteString("}")
-	} else if gobj, ok := gmutation.Type.(*graphql.Object); ok {
-		writeGraphqlOutputFieldQueryString(buffer, gobj)
+	} else {
+		writeGraphqlOutputFieldQueryString(buffer, gmutation.Type)
 	}
 	//
 	buffer.WriteString("}")
@@ -547,16 +547,21 @@ func (o *Objectql) Mutation(ctx context.Context, objectApi string, method string
 	return result.Data.(map[string]interface{})["data"], nil
 }
 
-func writeGraphqlOutputFieldQueryString(buffer bytes.Buffer, object *graphql.Object) {
-	buffer.WriteString("{")
-	for name, fd := range object.Fields() {
-		buffer.WriteString(name)
-		buffer.WriteString(" ")
-		if gobj, ok := fd.Type.(*graphql.Object); ok {
-			writeGraphqlOutputFieldQueryString(buffer, gobj)
+func writeGraphqlOutputFieldQueryString(buffer bytes.Buffer, gtype graphql.Output) {
+	switch n := gtype.(type) {
+	case *graphql.List:
+		writeGraphqlOutputFieldQueryString(buffer, n.OfType)
+	case *graphql.Object:
+		buffer.WriteString("{")
+		for name, fd := range n.Fields() {
+			buffer.WriteString(name)
+			buffer.WriteString(" ")
+			if gobj, ok := fd.Type.(*graphql.Object); ok {
+				writeGraphqlOutputFieldQueryString(buffer, gobj)
+			}
 		}
+		buffer.WriteString("}")
 	}
-	buffer.WriteString("}")
 }
 
 // 增删改查接口
