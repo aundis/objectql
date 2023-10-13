@@ -247,7 +247,7 @@ type ObjectInfo struct {
 
 type FieldInfo struct {
 	Name string `json:"name"`
-	Api  string `json:"age"`
+	Api  string `json:"api"`
 }
 
 type HandleInfo struct {

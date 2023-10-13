@@ -1092,7 +1092,7 @@ func (o *Objectql) GetObjectInfos() []*ObjectInfo {
 		result = append(result, o.GetObjectInfo(object.Api))
 	}
 	sort.Slice(result, func(i, j int) bool {
-		return result[i].Api < result[i].Api
+		return result[i].Api < result[j].Api
 	})
 	return result
 }
