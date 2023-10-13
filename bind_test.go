@@ -233,3 +233,57 @@ func TestBindStructArray(t *testing.T) {
 		return
 	}
 }
+
+type testOneResultHandleObjectSetNameReq struct {
+	g.Meta `kind:"mutation"`
+}
+
+type TestOneResultHandleObject struct{}
+
+func (to *TestOneResultHandleObject) SetName(ctx context.Context, req *testOneResultHandleObjectSetNameReq) error {
+	return nil
+}
+
+func TestOneResultHandle(t *testing.T) {
+	ctx := context.Background()
+	oql := New()
+	err := oql.InitMongodb(ctx, testMongodbUrl)
+	if err != nil {
+		t.Error("初始化数据库失败", err)
+		return
+	}
+
+	oql.AddObject(&Object{
+		Name: "学生",
+		Api:  "student",
+		Bind: &TestOneResultHandleObject{},
+		Fields: []*Field{
+			{
+				Name: "姓名",
+				Api:  "name",
+				Type: String,
+			},
+			{
+				Name: "年龄",
+				Api:  "age",
+				Type: Int,
+			},
+		},
+		Comment: "",
+	})
+	err = oql.InitObjects(ctx)
+	if err != nil {
+		t.Error("初始化对象失败", err)
+		return
+	}
+
+	res, err := oql.Call(ctx, "student", "setName", nil)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if res != true {
+		t.Errorf("except true but got %v", res)
+		return
+	}
+}

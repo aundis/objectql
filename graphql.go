@@ -364,14 +364,22 @@ func (o *Objectql) validateHandle(handle *Handle) error {
 		return errors.New("getGraphqlArgsFromMutation mutation handle two param must is struct")
 	}
 	// 检查返回值
-	if fnType.NumOut() < 2 {
-		return errors.New("getGraphqlArgsFromMutation mutation handle must has 2 return")
-	}
-	if fnType.Out(1).Name() != "error" {
-		return errors.New("getGraphqlArgsFromMutation mutation handle two return type must is error.Error")
+	if fnType.NumOut() == 2 {
+		if fnType.NumOut() < 2 {
+			return errors.New("getGraphqlArgsFromMutation mutation handle must has 2 return")
+		}
+		if fnType.Out(1).Name() != "error" {
+			return errors.New("getGraphqlArgsFromMutation mutation handle two return type must is error.Error")
+		}
+		handle.res = fnType.Out(0)
+	} else if fnType.NumOut() == 1 {
+		if fnType.Out(0).Name() != "error" {
+			return errors.New("getGraphqlArgsFromMutation mutation handle one return type must is error.Error")
+		}
+	} else {
+		return errors.New("getGraphqlArgsFromMutation mutation handle can only have 1 or 2 return type")
 	}
 	handle.req = fnType.In(1)
-	handle.res = fnType.Out(0)
 	return nil
 }
 
@@ -401,6 +409,7 @@ func (o *Objectql) handleGraphqlResovler(ctx context.Context, p graphql.ResolveP
 		return nil, err
 	}
 	// 反射调用
+	rt := reflect.TypeOf(handle.Resolve)
 	fn := reflect.ValueOf(handle.Resolve)
 	var args []reflect.Value
 	if handle.req.Kind() == reflect.Pointer {
@@ -409,13 +418,22 @@ func (o *Objectql) handleGraphqlResovler(ctx context.Context, p graphql.ResolveP
 		args = []reflect.Value{reflect.ValueOf(ctx), v.Elem()}
 	}
 	result := fn.Call(args)
-	if !result[1].IsNil() {
-		return nil, result[1].Interface().(error)
+	if rt.NumOut() == 1 {
+		// 只返回error, 那就返回一个bool类型值
+		if !result[0].IsNil() {
+			return false, result[0].Interface().(error)
+		}
+		return true, nil
+	} else {
+		// 带有自定义类型的返回值
+		if !result[1].IsNil() {
+			return nil, result[1].Interface().(error)
+		}
+		if handle.res.Kind() == reflect.Pointer && result[0].IsNil() {
+			return nil, nil
+		}
+		return formatHandleReturnValue(result[0].Interface()), nil
 	}
-	if handle.res.Kind() == reflect.Pointer && result[0].IsNil() {
-		return nil, nil
-	}
-	return formatHandleReturnValue(result[0].Interface()), nil
 }
 
 func formatHandleReturnValue(v interface{}) interface{} {
@@ -445,10 +463,10 @@ func formatHandleArrayReturnValue(source interface{}) interface{} {
 
 func formatHandleStructReturnValue(source interface{}) interface{} {
 	result := map[string]interface{}{}
-	v := reflect.ValueOf(source)
-	for i := 0; i < v.NumField(); i++ {
-		field := v.Field(i)
-		ft := v.Type().Field(i)
+	rv := reflect.ValueOf(source)
+	for i := 0; i < rv.NumField(); i++ {
+		field := rv.Field(i)
+		ft := rv.Type().Field(i)
 		tag := ft.Tag.Get("json")
 		if len(tag) > 0 {
 			result[tag] = formatHandleReturnValue(field.Interface())
@@ -480,6 +498,9 @@ func (o *Objectql) getGraphqlArgsFromHandle(ctx context.Context, handle *Handle)
 func (o *Objectql) getGraphqlReturnFromHandle(ctx context.Context, mutation *Handle) (graphql.Output, error) {
 	ctx = context.WithValue(ctx, tarnsKind, "output")
 	fnType := reflect.TypeOf(mutation.Resolve)
+	if fnType.NumOut() == 1 {
+		return graphql.Boolean, nil
+	}
 	gt, err := o.goTypeToGraphqlInputOrOutputType(ctx, fnType.Out(0))
 	if err != nil {
 		return nil, err

@@ -112,7 +112,7 @@ func parseQueryOrMutationMethod(method reflect.Type) (reflect.StructTag, bool) {
 	if method.NumIn() < 2 {
 		return "", false
 	}
-	if method.NumOut() < 2 {
+	if method.NumOut() == 0 || method.NumOut() > 2 {
 		return "", false
 	}
 	reqType := unPointerType(method.In(1))

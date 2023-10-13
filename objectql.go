@@ -476,7 +476,7 @@ func (o *Objectql) Query(ctx context.Context, objectApi string, method string, p
 	fullName := objectApi + "__" + method
 	gquery := o.gquerys[fullName]
 	if gquery == nil {
-		return nil, fmt.Errorf("not found object '%s'", objectApi)
+		return nil, fmt.Errorf("not found object '%s' query '%s'", objectApi, method)
 	}
 	var buffer bytes.Buffer
 	buffer.WriteString("{")
@@ -516,7 +516,7 @@ func (o *Objectql) Mutation(ctx context.Context, objectApi string, method string
 	fullName := objectApi + "__" + method
 	gmutation := o.gmutations[fullName]
 	if gmutation == nil {
-		return nil, fmt.Errorf("not found object '%s'", objectApi)
+		return nil, fmt.Errorf("not found object '%s' mutation '%s'", objectApi, method)
 	}
 	var buffer bytes.Buffer
 	buffer.WriteString("mutation {")

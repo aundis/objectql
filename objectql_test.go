@@ -23,11 +23,6 @@ type getNameReq struct {
 	Age    int `v:"min:10"`
 }
 
-type getNameRes struct {
-	Index int
-	Name  string `json:"name2"`
-}
-
 func TestQuery(t *testing.T) {
 	ctx := context.Background()
 	oql := New()
@@ -875,8 +870,4 @@ func TestExtends(t *testing.T) {
 		return
 	}
 	t.Log(one)
-}
-
-func TestGetInfo(t *testing.T) {
-
 }
