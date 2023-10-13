@@ -496,7 +496,7 @@ func (o *Objectql) Query(ctx context.Context, objectApi string, method string, p
 		buffer.WriteString(strings.Join(fields[0], ","))
 		buffer.WriteString("}")
 	} else {
-		writeGraphqlOutputFieldQueryString(buffer, gquery.Type)
+		writeGraphqlOutputFieldQueryString(&buffer, gquery.Type)
 	}
 	//
 	buffer.WriteString("}")
@@ -536,7 +536,7 @@ func (o *Objectql) Mutation(ctx context.Context, objectApi string, method string
 		buffer.WriteString(strings.Join(fields[0], ","))
 		buffer.WriteString("}")
 	} else {
-		writeGraphqlOutputFieldQueryString(buffer, gmutation.Type)
+		writeGraphqlOutputFieldQueryString(&buffer, gmutation.Type)
 	}
 	//
 	buffer.WriteString("}")
@@ -547,7 +547,7 @@ func (o *Objectql) Mutation(ctx context.Context, objectApi string, method string
 	return result.Data.(map[string]interface{})["data"], nil
 }
 
-func writeGraphqlOutputFieldQueryString(buffer bytes.Buffer, gtype graphql.Output) {
+func writeGraphqlOutputFieldQueryString(buffer *bytes.Buffer, gtype graphql.Output) {
 	switch n := gtype.(type) {
 	case *graphql.List:
 		writeGraphqlOutputFieldQueryString(buffer, n.OfType)
