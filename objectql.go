@@ -556,9 +556,7 @@ func writeGraphqlOutputFieldQueryString(buffer bytes.Buffer, gtype graphql.Outpu
 		for name, fd := range n.Fields() {
 			buffer.WriteString(name)
 			buffer.WriteString(" ")
-			if gobj, ok := fd.Type.(*graphql.Object); ok {
-				writeGraphqlOutputFieldQueryString(buffer, gobj)
-			}
+			writeGraphqlOutputFieldQueryString(buffer, fd.Type)
 		}
 		buffer.WriteString("}")
 	}
