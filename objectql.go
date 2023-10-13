@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"sort"
 	"strings"
 	"time"
 
@@ -1090,5 +1091,8 @@ func (o *Objectql) GetObjectInfos() []*ObjectInfo {
 	for _, object := range o.list {
 		result = append(result, o.GetObjectInfo(object.Api))
 	}
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].Api < result[i].Api
+	})
 	return result
 }
