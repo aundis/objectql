@@ -648,7 +648,7 @@ func (o *Objectql) goTypeToGraphqlInputOrOutputType(ctx context.Context, tpe ref
 	}
 }
 
-var pattern = regexp.MustCompile(`[\./]`)
+var pattern = regexp.MustCompile(`[\./-]`)
 
 func (o *Objectql) goStructTypeToGraphqlInputOrOutputType(ctx context.Context, tpe reflect.Type) (out graphql.Output, err error) {
 	kind := ctx.Value(tarnsKind).(string)
