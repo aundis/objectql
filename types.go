@@ -238,17 +238,17 @@ func (c *DeleteByIdCommand) aCommand()  {}
 func (c *DeleteCommand) aCommand()      {}
 
 type ObjectInfo struct {
-	Fields    []FieldInfo
-	Querys    []HandleInfo
-	Mutations []HandleInfo
+	Fields    []FieldInfo  `json:"fields"`
+	Querys    []HandleInfo `json:"querys"`
+	Mutations []HandleInfo `json:"mutations"`
 }
 
 type FieldInfo struct {
-	Name string
-	Api  string
+	Name string `json:"name"`
+	Api  string `json:"age"`
 }
 
 type HandleInfo struct {
-	Name string
-	Api  string
+	Name string `json:"name"`
+	Api  string `json:"api"`
 }
