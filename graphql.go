@@ -629,12 +629,18 @@ func (o *Objectql) goTypeToGraphqlInputOrOutputType(ctx context.Context, tpe ref
 
 var pattern = regexp.MustCompile(`[\./]`)
 
-func (o *Objectql) goStructTypeToGraphqlInputOrOutputType(ctx context.Context, tpe reflect.Type) (graphql.Output, error) {
+func (o *Objectql) goStructTypeToGraphqlInputOrOutputType(ctx context.Context, tpe reflect.Type) (out graphql.Output, err error) {
 	kind := ctx.Value(tarnsKind).(string)
 	objectName := kind + "_" + pattern.ReplaceAllString(tpe.PkgPath(), "_") + "_" + tpe.Name()
 	if o.gstructTypes.Contains(objectName) {
 		return o.gstructTypes.Get(objectName).(graphql.Output), nil
 	}
+	defer func() {
+		// 添加类型到缓存当中
+		if err == nil {
+			o.gstructTypes.Set(objectName, out)
+		}
+	}()
 
 	raw := map[string]graphql.Output{}
 	for i := 0; i < tpe.NumField(); i++ {
@@ -664,10 +670,11 @@ func (o *Objectql) goStructTypeToGraphqlInputOrOutputType(ctx context.Context, t
 		for name, tpe := range raw {
 			fields[name] = &graphql.InputObjectFieldConfig{Type: tpe}
 		}
-		return graphql.NewInputObject(graphql.InputObjectConfig{
+		out = graphql.NewInputObject(graphql.InputObjectConfig{
 			Name:   objectName,
 			Fields: fields,
-		}), nil
+		})
+		return
 	} else {
 		fields := graphql.Fields{}
 		for name, tpe := range raw {
@@ -676,10 +683,11 @@ func (o *Objectql) goStructTypeToGraphqlInputOrOutputType(ctx context.Context, t
 				Type: tpe,
 			}
 		}
-		return graphql.NewObject(graphql.ObjectConfig{
+		out = graphql.NewObject(graphql.ObjectConfig{
 			Name:   objectName,
 			Fields: fields,
-		}), nil
+		})
+		return
 	}
 }
 

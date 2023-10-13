@@ -189,3 +189,47 @@ func TestBindMethod(t *testing.T) {
 		return
 	}
 }
+
+type getObjectInfosReq struct {
+	g.Meta `kind:"query"`
+	Number int
+}
+
+type testBindStructArrayStruct struct{}
+
+func (t *testBindStructArrayStruct) GetObjectInfos(ctx context.Context, req *getObjectInfosReq) ([]*ObjectInfo, error) {
+	return nil, nil
+}
+
+func TestBindStructArray(t *testing.T) {
+	ctx := context.Background()
+	oql := New()
+	err := oql.InitMongodb(ctx, testMongodbUrl)
+	if err != nil {
+		t.Error("初始化数据库失败", err)
+		return
+	}
+
+	oql.AddObject(&Object{
+		Name: "学生",
+		Api:  "student",
+		Bind: &testBindStructArrayStruct{},
+		Fields: []*Field{
+			{
+				Name: "姓名",
+				Api:  "name",
+				Type: String,
+			},
+			{
+				Name: "年龄",
+				Api:  "age",
+				Type: Int,
+			},
+		},
+	})
+	err = oql.InitObjects(ctx)
+	if err != nil {
+		t.Error("初始化对象失败", err)
+		return
+	}
+}
