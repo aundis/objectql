@@ -236,3 +236,19 @@ func (c *UpdateByIdCommand) aCommand()  {}
 func (c *UpdateCommand) aCommand()      {}
 func (c *DeleteByIdCommand) aCommand()  {}
 func (c *DeleteCommand) aCommand()      {}
+
+type ObjectInfo struct {
+	Fields    []FieldInfo
+	Querys    []HandleInfo
+	Mutations []HandleInfo
+}
+
+type FieldInfo struct {
+	Name string
+	Api  string
+}
+
+type HandleInfo struct {
+	Name string
+	Api  string
+}

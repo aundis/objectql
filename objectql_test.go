@@ -876,3 +876,7 @@ func TestExtends(t *testing.T) {
 	}
 	t.Log(one)
 }
+
+func TestGetInfo(t *testing.T) {
+
+}

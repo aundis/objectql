@@ -15,6 +15,7 @@ import (
 	"github.com/aundis/graphql/language/ast"
 	"github.com/gogf/gf/v2/container/gmap"
 	"github.com/gogf/gf/v2/os/gtime"
+	"github.com/gogf/gf/v2/text/gstr"
 	"github.com/gogf/gf/v2/util/gconv"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -1039,4 +1040,49 @@ func stringsToGraphqlQuery(arr []string) string {
 		list = append(list, `"`+v+`"`)
 	}
 	return "[" + strings.Join(list, ",") + "]"
+}
+
+func (o *Objectql) GetObjectInfo(objectApi string) *ObjectInfo {
+	object := FindObjectFromList(o.list, objectApi)
+	if object == nil {
+		return nil
+	}
+	info := &ObjectInfo{}
+	for _, field := range object.Fields {
+		fapi := field.Api
+		if fapi == "_id" {
+			continue
+		}
+		if gstr.HasSuffix(fapi, "__expand") {
+			continue
+		}
+		if gstr.HasSuffix(fapi, "__expands") {
+			continue
+		}
+		info.Fields = append(info.Fields, FieldInfo{
+			Name: field.Name,
+			Api:  field.Api,
+		})
+	}
+	for _, query := range object.Querys {
+		info.Querys = append(info.Querys, HandleInfo{
+			Name: query.Name,
+			Api:  query.Api,
+		})
+	}
+	for _, mutation := range object.Mutations {
+		info.Mutations = append(info.Mutations, HandleInfo{
+			Name: mutation.Name,
+			Api:  mutation.Api,
+		})
+	}
+	return info
+}
+
+func (o *Objectql) GetObjectInfos() []*ObjectInfo {
+	var result []*ObjectInfo
+	for _, object := range o.list {
+		result = append(result, o.GetObjectInfo(object.Api))
+	}
+	return result
 }
