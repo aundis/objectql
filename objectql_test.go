@@ -72,7 +72,7 @@ func TestQuery(t *testing.T) {
 		return
 	}
 	if res.ToString() != "10,200" {
-		t.Errorf("except 10,200 but got %s", res.toAny())
+		t.Errorf("except 10,200 but got %s", res.ToAny())
 		return
 	}
 }

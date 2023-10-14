@@ -66,7 +66,7 @@ func (e *Var) ToStrAnyMap() map[string]any {
 	return e.cache
 }
 
-func (e *Var) toAny() any {
+func (e *Var) ToAny() any {
 	return e.v
 }
 
@@ -128,7 +128,7 @@ func (e *Var) mapValue(k string) any {
 func VarsToAnys(arr []*Var) []any {
 	var result []any
 	for _, item := range arr {
-		result = append(result, item.toAny())
+		result = append(result, item.ToAny())
 	}
 	return result
 }

@@ -120,7 +120,7 @@ func (o *Objectql) DoCommands(ctx context.Context, commands []Command, filter ..
 			if len(mapKey) > 0 {
 				switch n := result.(type) {
 				case *Var:
-					this[mapKey] = n.toAny()
+					this[mapKey] = n.ToAny()
 				case []*Var:
 					this[mapKey] = VarsToAnys(n)
 				default:
@@ -292,6 +292,8 @@ func (o *Objectql) computeCommandArgs(ctx context.Context, this map[string]any, 
 			return nil, err
 		}
 		return r, nil
+	case nil:
+		return nil, nil
 	default:
 		return nil, fmt.Errorf("computeCommandArgs error: unknown commandArgs type %T", args)
 	}
