@@ -7,87 +7,122 @@ import (
 	"strings"
 
 	"github.com/aundis/formula"
+	"github.com/gogf/gf/v2/text/gstr"
+	"github.com/gogf/gf/v2/util/gconv"
 )
 
-func (o *Objectql) DoCommand(ctx context.Context, commands []Command, filter ...map[string]any) (map[string]any, error) {
+func (o *Objectql) DoCommand(ctx context.Context, command Command) (*Var, error) {
+	command.Result = "data"
+	res, err := o.DoCommands(ctx, []Command{command})
+	if err != nil {
+		return nil, err
+	}
+	return res.Var("data"), nil
+}
+
+func (o *Objectql) DoCommands(ctx context.Context, commands []Command, filter ...map[string]any) (*Var, error) {
 	result, err := o.WithTransaction(ctx, func(ctx context.Context) (interface{}, error) {
 		var this = map[string]any{}
 		for _, command := range commands {
-			command, err := o.computeCommand(ctx, this, command)
+			arr := strings.Split(command.Call, ".")
+			if len(arr) != 2 {
+				return nil, fmt.Errorf("command call '%s' format error", command.Call)
+			}
+			objectApi := arr[0]
+			funcNamme := arr[1]
+			args, err := o.parseCommandArgs(&command)
+			if err != nil {
+				return nil, err
+			}
+			args, err = o.computeCommandArgs(ctx, this, objectApi, args)
 			if err != nil {
 				return nil, err
 			}
 
 			var result any
 			var mapKey string
-			switch n := command.(type) {
-			case *FindOneByIdCommand:
-				mapKey = n.Result
-				ctx = context.WithValue(ctx, blockEventsKey, n.Direct)
-				result, err = o.FindOneById(ctx, n.Object, n.ID, n.Fields)
-			case *FindOneCommand:
-				mapKey = n.Result
-				ctx = context.WithValue(ctx, blockEventsKey, n.Direct)
-				result, err = o.FindOne(ctx, n.Object, FindOneOptions{
-					Condition: n.Condition,
-					Sort:      n.Sort,
-					Fields:    n.Fields,
+			switch n := args.(type) {
+			case *FindOneByIdArgs:
+				mapKey = command.Result
+				result, err = o.FindOneById(ctx, objectApi, FindOneByIdOptions{
+					ID:     n.ID,
+					Fields: command.Fields,
+					Direct: n.Direct,
 				})
-			case *FindListCommand:
-				mapKey = n.Result
-				ctx = context.WithValue(ctx, blockEventsKey, n.Direct)
-				result, err = o.FindList(ctx, n.Object, FindListOptions{
-					Condition: n.Condition,
-					Top:       n.Top,
-					Skip:      n.Skip,
-					Sort:      n.Sort,
-					Fields:    n.Fields,
+			case *FindOneArgs:
+				mapKey = command.Result
+				result, err = o.FindOne(ctx, objectApi, FindOneOptions{
+					Filter: n.Filter,
+					Sort:   n.Sort,
+					Fields: command.Fields,
+					Direct: n.Direct,
 				})
-			case *CountCommand:
-				mapKey = n.Result
-				ctx = context.WithValue(ctx, blockEventsKey, n.Direct)
-				result, err = o.Count(ctx, n.Object, n.Condition)
-			case *InsertCommand:
-				mapKey = n.Result
-				ctx = context.WithValue(ctx, blockEventsKey, n.Direct)
-				result, err = o.Insert(ctx, n.Object, InsertOptions{
+			case *FindListArgs:
+				mapKey = command.Result
+				result, err = o.FindList(ctx, objectApi, FindListOptions{
+					Filter: n.Filter,
+					Top:    n.Top,
+					Skip:   n.Skip,
+					Sort:   n.Sort,
+					Fields: command.Fields,
+					Direct: n.Direct,
+				})
+			case *CountArgs:
+				mapKey = command.Result
+				result, err = o.Count(ctx, objectApi, CountOptions{
+					Filter: n.Filter,
+					Fields: command.Fields,
+					Direct: n.Direct,
+				})
+			case *InsertArgs:
+				mapKey = command.Result
+				result, err = o.Insert(ctx, objectApi, InsertOptions{
 					Doc:    n.Doc,
-					Fields: n.Fields,
+					Fields: command.Fields,
+					Direct: n.Direct,
 				})
-			case *UpdateByIdCommand:
-				mapKey = n.Result
-				ctx = context.WithValue(ctx, blockEventsKey, n.Direct)
-				result, err = o.UpdateById(ctx, n.Object, n.ID, UpdateByIdOptions{
+			case *UpdateByIdArgs:
+				mapKey = command.Result
+				result, err = o.UpdateById(ctx, objectApi, UpdateByIdOptions{
+					ID:     n.ID,
 					Doc:    n.Doc,
-					Fields: n.Fields,
+					Fields: command.Fields,
+					Direct: n.Direct,
 				})
-			case *UpdateCommand:
-				mapKey = n.Result
-				ctx = context.WithValue(ctx, blockEventsKey, n.Direct)
-				result, err = o.Update(ctx, n.Object, UpdateOptions{
-					Condition: n.Condition,
-					Doc:       n.Doc,
-					Fields:    n.Fields,
+			case *UpdateArgs:
+				mapKey = command.Result
+				result, err = o.Update(ctx, objectApi, UpdateOptions{
+					Filter: n.Filter,
+					Doc:    n.Doc,
+					Fields: command.Fields,
+					Direct: n.Direct,
 				})
-			case *DeleteByIdCommand:
-				ctx = context.WithValue(ctx, blockEventsKey, n.Direct)
-				err = o.DeleteById(ctx, n.Object, n.ID)
-			case *DeleteCommand:
-				ctx = context.WithValue(ctx, blockEventsKey, n.Direct)
-				err = o.Delete(ctx, n.Object, n.Condition)
-			case *HandleCommand:
-				mapKey = n.Result
-				result, err = o.Call(ctx, n.Object, n.Command, n.Args, n.Fields)
+			case *DeleteByIdArgs:
+				err = o.DeleteById(ctx, objectApi, DeleteByIdOptions{
+					ID:     n.ID,
+					Direct: n.Direct,
+				})
+			case *DeleteArgs:
+				err = o.Delete(ctx, objectApi, DeleteOptions{
+					Filter: n.Filter,
+					Direct: n.Direct,
+				})
+			case map[string]any:
+				mapKey = command.Result
+				result, err = o.Call(ctx, objectApi, funcNamme, n, command.Fields)
+			case nil:
+				mapKey = command.Result
+				result, err = o.Call(ctx, objectApi, funcNamme, nil, command.Fields)
 			}
 			if err != nil {
 				return nil, err
 			}
 			if len(mapKey) > 0 {
 				switch n := result.(type) {
-				case Entity:
-					this[mapKey] = n.Raw()
-				case []Entity:
-					this[mapKey] = EntityArrayToRawArray(n)
+				case *Var:
+					this[mapKey] = n.toAny()
+				case []*Var:
+					this[mapKey] = VarsToAnys(n)
 				default:
 					this[mapKey] = result
 				}
@@ -98,101 +133,167 @@ func (o *Objectql) DoCommand(ctx context.Context, commands []Command, filter ...
 	if err != nil {
 		return nil, err
 	}
-	this := result.(map[string]any)
 	if len(filter) == 0 {
-		return this, nil
+		return NewVar(result), nil
 	}
-	res, err := computeValue(ctx, this, filter[0])
+	res, err := computeValue(ctx, result.(map[string]any), filter[0])
 	if err != nil {
 		return nil, err
 	}
-	return res.(map[string]any), nil
+	return NewVar(res), nil
 }
 
-func (o *Objectql) computeCommand(ctx context.Context, this map[string]any, command Command) (Command, error) {
-	switch n := command.(type) {
-	case *FindOneByIdCommand:
+func (o *Objectql) parseCommandArgs(command *Command) (any, error) {
+	if gstr.HasSuffix(command.Call, ".insert") {
+		var args *InsertArgs
+		err := gconv.Struct(command.Args, &args)
+		if err != nil {
+			return nil, err
+		}
+		return args, nil
+	}
+	if gstr.HasSuffix(command.Call, ".delete") {
+		var args *DeleteArgs
+		err := gconv.Struct(command.Args, &args)
+		if err != nil {
+			return nil, err
+		}
+		return args, nil
+	}
+	if gstr.HasSuffix(command.Call, ".deleteById") {
+		var args *DeleteByIdArgs
+		err := gconv.Struct(command.Args, &args)
+		if err != nil {
+			return nil, err
+		}
+		return args, nil
+	}
+	if gstr.HasSuffix(command.Call, ".updateById") {
+		var args *UpdateByIdArgs
+		err := gconv.Struct(command.Args, &args)
+		if err != nil {
+			return nil, err
+		}
+		return args, nil
+	}
+	if gstr.HasSuffix(command.Call, ".update") {
+		var args *UpdateArgs
+		err := gconv.Struct(command.Args, &args)
+		if err != nil {
+			return nil, err
+		}
+		return args, nil
+	}
+	if gstr.HasSuffix(command.Call, ".findList") {
+		var args *FindListArgs
+		err := gconv.Struct(command.Args, &args)
+		if err != nil {
+			return nil, err
+		}
+		return args, nil
+	}
+	if gstr.HasSuffix(command.Call, ".findOne") {
+		var args *FindOneArgs
+		err := gconv.Struct(command.Args, &args)
+		if err != nil {
+			return nil, err
+		}
+		return args, nil
+	}
+	if gstr.HasSuffix(command.Call, ".findOneById") {
+		var args *FindOneByIdArgs
+		err := gconv.Struct(command.Args, &args)
+		if err != nil {
+			return nil, err
+		}
+		return args, nil
+	}
+	return command.Args, nil
+}
+
+func (o *Objectql) computeCommandArgs(ctx context.Context, this map[string]any, object string, args any) (any, error) {
+	switch n := args.(type) {
+	case *FindOneByIdArgs:
 		r, err := computeString(ctx, this, n.ID)
 		if err != nil {
 			return nil, err
 		}
 		n.ID = r.(string)
 		return n, nil
-	case *FindOneCommand:
-		r, err := computeValue(ctx, this, n.Condition)
+	case *FindOneArgs:
+		r, err := computeValue(ctx, this, n.Filter)
 		if err != nil {
 			return nil, err
 		}
-		n.Condition = r.(map[string]any)
+		n.Filter = r.(map[string]any)
 		return n, nil
-	case *FindListCommand:
-		r, err := computeValue(ctx, this, n.Condition)
+	case *FindListArgs:
+		r, err := computeValue(ctx, this, n.Filter)
 		if err != nil {
 			return nil, err
 		}
-		n.Condition = r.(map[string]any)
+		n.Filter = r.(map[string]any)
 		return n, nil
-	case *CountCommand:
-		r, err := computeValue(ctx, this, n.Condition)
+	case *CountArgs:
+		r, err := computeValue(ctx, this, n.Filter)
 		if err != nil {
 			return nil, err
 		}
-		n.Condition = r.(map[string]any)
+		n.Filter = r.(map[string]any)
 		return n, nil
-	case *InsertCommand:
-		r, err := o.computeDocument(ctx, n.Object, this, n.Doc)
+	case *InsertArgs:
+		r, err := o.computeDocument(ctx, object, this, n.Doc)
 		if err != nil {
 			return nil, err
 		}
 		n.Doc = r
 		return n, nil
-	case *UpdateByIdCommand:
+	case *UpdateByIdArgs:
 		r, err := computeString(ctx, this, n.ID)
 		if err != nil {
 			return nil, err
 		}
 		n.ID = r.(string)
-		doc, err := o.computeDocument(ctx, n.Object, this, n.Doc)
+		doc, err := o.computeDocument(ctx, object, this, n.Doc)
 		if err != nil {
 			return nil, err
 		}
 		n.Doc = doc
 		return n, nil
-	case *UpdateCommand:
-		r, err := computeValue(ctx, this, n.Condition)
+	case *UpdateArgs:
+		r, err := computeValue(ctx, this, n.Filter)
 		if err != nil {
 			return nil, err
 		}
-		n.Condition = r.(map[string]any)
-		doc, err := o.computeDocument(ctx, n.Object, this, n.Doc)
+		n.Filter = r.(map[string]any)
+		doc, err := o.computeDocument(ctx, object, this, n.Doc)
 		if err != nil {
 			return nil, err
 		}
 		n.Doc = doc
 		return n, nil
-	case *DeleteByIdCommand:
+	case *DeleteByIdArgs:
 		r, err := computeString(ctx, this, n.ID)
 		if err != nil {
 			return nil, err
 		}
 		n.ID = r.(string)
 		return n, nil
-	case *DeleteCommand:
-		r, err := computeValue(ctx, this, n.Condition)
+	case *DeleteArgs:
+		r, err := computeValue(ctx, this, n.Filter)
 		if err != nil {
 			return nil, err
 		}
-		n.Condition = r.(map[string]any)
+		n.Filter = r.(map[string]any)
 		return n, nil
-	case *HandleCommand:
-		r, err := computeValue(ctx, this, n.Args)
+	case map[string]any:
+		r, err := computeValue(ctx, this, n)
 		if err != nil {
 			return nil, err
 		}
-		n.Args = r.(map[string]any)
-		return n, nil
+		return r, nil
 	default:
-		return nil, fmt.Errorf("computeCommand error: unknown command type %T", command)
+		return nil, fmt.Errorf("computeCommandArgs error: unknown commandArgs type %T", args)
 	}
 }
 

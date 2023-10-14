@@ -24,6 +24,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+var blockEventsKey = &struct{}{}
+
 func New() *Objectql {
 	return &Objectql{
 		gobjects:     gmap.NewStrAnyMap(true),
@@ -458,7 +460,7 @@ func (o *Objectql) Do(ctx context.Context, request string) *graphql.Result {
 }
 
 // 调用用户定义的query和mutation
-func (o *Objectql) Call(ctx context.Context, objectApi string, method string, param map[string]any, fields ...[]string) (any, error) {
+func (o *Objectql) Call(ctx context.Context, objectApi string, method string, param map[string]any, fields ...[]string) (*Var, error) {
 	if o.isMutationHandle(objectApi, method) {
 		return o.Mutation(ctx, objectApi, method, param, fields...)
 	}
@@ -468,7 +470,7 @@ func (o *Objectql) Call(ctx context.Context, objectApi string, method string, pa
 	return nil, fmt.Errorf("object '%s' not found query or mutation '%s'", objectApi, method)
 }
 
-func (o *Objectql) Query(ctx context.Context, objectApi string, method string, param map[string]any, fields ...[]string) (any, error) {
+func (o *Objectql) Query(ctx context.Context, objectApi string, method string, param map[string]any, fields ...[]string) (*Var, error) {
 	object := FindObjectFromList(o.list, objectApi)
 	if object == nil {
 		return nil, fmt.Errorf("not found object '%s'", objectApi)
@@ -485,7 +487,7 @@ func (o *Objectql) Query(ctx context.Context, objectApi string, method string, p
 		buffer.WriteString("(")
 		text, err := o.mapToGrpahqlFormat(param)
 		if err != nil {
-			return Entity{}, err
+			return nil, err
 		}
 		text = strings.Trim(text, "{")
 		text = strings.Trim(text, "}")
@@ -503,12 +505,12 @@ func (o *Objectql) Query(ctx context.Context, objectApi string, method string, p
 	buffer.WriteString("}")
 	result := o.Do(ctx, buffer.String())
 	if len(result.Errors) > 0 {
-		return Entity{}, result.Errors[0]
+		return nil, result.Errors[0]
 	}
-	return result.Data.(map[string]interface{})["data"], nil
+	return NewVar(result.Data.(map[string]interface{})["data"]), nil
 }
 
-func (o *Objectql) Mutation(ctx context.Context, objectApi string, method string, param map[string]any, fields ...[]string) (any, error) {
+func (o *Objectql) Mutation(ctx context.Context, objectApi string, method string, param map[string]any, fields ...[]string) (*Var, error) {
 	object := FindObjectFromList(o.list, objectApi)
 	if object == nil {
 		return nil, fmt.Errorf("not found object '%s'", objectApi)
@@ -525,7 +527,7 @@ func (o *Objectql) Mutation(ctx context.Context, objectApi string, method string
 		buffer.WriteString("(")
 		text, err := o.mapToGrpahqlFormat(param)
 		if err != nil {
-			return Entity{}, err
+			return nil, err
 		}
 		text = strings.Trim(text, "{")
 		text = strings.Trim(text, "}")
@@ -543,9 +545,9 @@ func (o *Objectql) Mutation(ctx context.Context, objectApi string, method string
 	buffer.WriteString("}")
 	result := o.Do(ctx, buffer.String())
 	if len(result.Errors) > 0 {
-		return Entity{}, result.Errors[0]
+		return nil, result.Errors[0]
 	}
-	return result.Data.(map[string]interface{})["data"], nil
+	return NewVar(result.Data.(map[string]interface{})["data"]), nil
 }
 
 func writeGraphqlOutputFieldQueryString(buffer *bytes.Buffer, gtype graphql.Output) {
@@ -564,10 +566,11 @@ func writeGraphqlOutputFieldQueryString(buffer *bytes.Buffer, gtype graphql.Outp
 }
 
 // 增删改查接口
-func (o *Objectql) Insert(ctx context.Context, objectApi string, options InsertOptions) (Entity, error) {
+func (o *Objectql) Insert(ctx context.Context, objectApi string, options InsertOptions) (*Var, error) {
+	ctx = context.WithValue(ctx, blockEventsKey, options.Direct)
 	object := FindObjectFromList(o.list, objectApi)
 	if object == nil {
-		return Entity{}, fmt.Errorf("not found object '%s'", objectApi)
+		return nil, fmt.Errorf("not found object '%s'", objectApi)
 	}
 	var buffer bytes.Buffer
 	buffer.WriteString("mutation {")
@@ -575,69 +578,7 @@ func (o *Objectql) Insert(ctx context.Context, objectApi string, options InsertO
 	buffer.WriteString(" doc:")
 	text, err := o.docToGrpahqlArgumentText(objectApi, options.Doc)
 	if err != nil {
-		return Entity{}, err
-	}
-	buffer.WriteString(text)
-	buffer.WriteString(")")
-	//
-	buffer.WriteString("{")
-	if options.Fields != nil {
-		buffer.WriteString(strings.Join(gconv.Strings(options.Fields), ","))
-	} else {
-		buffer.WriteString(getObjectFieldsQueryString(object))
-	}
-	buffer.WriteString("}")
-	//
-	buffer.WriteString("}")
-	result := o.Do(ctx, buffer.String())
-	if len(result.Errors) > 0 {
-		return Entity{}, result.Errors[0]
-	}
-	return Entity{v: result.Data.(map[string]interface{})["data"].(map[string]interface{})}, nil
-}
-
-func (o *Objectql) Update(ctx context.Context, objectApi string, options UpdateOptions) ([]Entity, error) {
-	rlist, err := o.WithTransaction(ctx, func(ctx context.Context) (interface{}, error) {
-		list, err := o.FindList(ctx, objectApi, FindListOptions{
-			Condition: options.Condition,
-			Fields:    []string{"_id"},
-		})
-		if err != nil {
-			return nil, err
-		}
-		var result []Entity
-		for _, item := range list {
-			res, err := o.UpdateById(ctx, objectApi, item.String("_id"), UpdateByIdOptions{
-				Doc:    options.Doc,
-				Fields: options.Fields,
-			})
-			if err != nil {
-				return nil, err
-			}
-			result = append(result, res)
-		}
-		return result, nil
-	})
-	if err != nil {
 		return nil, err
-	}
-	return rlist.([]Entity), nil
-}
-
-func (o *Objectql) UpdateById(ctx context.Context, objectApi string, id string, options UpdateByIdOptions) (Entity, error) {
-	object := FindObjectFromList(o.list, objectApi)
-	if object == nil {
-		return Entity{}, fmt.Errorf("not found object '%s'", objectApi)
-	}
-	var buffer bytes.Buffer
-	buffer.WriteString("mutation {")
-	buffer.WriteString("data: " + objectApi + "__update(")
-	buffer.WriteString(" _id:")
-	buffer.WriteString(`"` + id + `"`)
-	buffer.WriteString(" doc:")
-	text, err := o.docToGrpahqlArgumentText(objectApi, options.Doc)
-	if err != nil {
-		return Entity{}, err
 	}
 	buffer.WriteString(text)
 	buffer.WriteString(")")
@@ -653,22 +594,92 @@ func (o *Objectql) UpdateById(ctx context.Context, objectApi string, id string, 
 	buffer.WriteString("}")
 	result := o.Do(ctx, buffer.String())
 	if len(result.Errors) > 0 {
-		return Entity{}, result.Errors[0]
+		return nil, result.Errors[0]
 	}
-	return Entity{v: result.Data.(map[string]interface{})["data"].(map[string]interface{})}, nil
+	return NewVar(result.Data.(map[string]interface{})["data"]), nil
 }
 
-func (o *Objectql) Delete(ctx context.Context, objectApi string, conditions map[string]any) error {
+func (o *Objectql) Update(ctx context.Context, objectApi string, options UpdateOptions) ([]*Var, error) {
+	ctx = context.WithValue(ctx, blockEventsKey, options.Direct)
+	rlist, err := o.WithTransaction(ctx, func(ctx context.Context) (interface{}, error) {
+		list, err := o.FindList(ctx, objectApi, FindListOptions{
+			Filter: options.Filter,
+			Fields: []string{
+				"_id",
+			},
+		})
+		if err != nil {
+			return nil, err
+		}
+		var result []*Var
+		for _, item := range list {
+			res, err := o.UpdateById(ctx, objectApi, UpdateByIdOptions{
+				ID:     item.String("_id"),
+				Doc:    options.Doc,
+				Fields: options.Fields,
+			})
+			if err != nil {
+				return nil, err
+			}
+			result = append(result, res)
+		}
+		return result, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return rlist.([]*Var), nil
+}
+
+func (o *Objectql) UpdateById(ctx context.Context, objectApi string, options UpdateByIdOptions) (*Var, error) {
+	ctx = context.WithValue(ctx, blockEventsKey, options.Direct)
+	object := FindObjectFromList(o.list, objectApi)
+	if object == nil {
+		return nil, fmt.Errorf("not found object '%s'", objectApi)
+	}
+	var buffer bytes.Buffer
+	buffer.WriteString("mutation {")
+	buffer.WriteString("data: " + objectApi + "__update(")
+	buffer.WriteString(" _id:")
+	buffer.WriteString(`"` + options.ID + `"`)
+	buffer.WriteString(" doc:")
+	text, err := o.docToGrpahqlArgumentText(objectApi, options.Doc)
+	if err != nil {
+		return nil, err
+	}
+	buffer.WriteString(text)
+	buffer.WriteString(")")
+	//
+	buffer.WriteString("{")
+	if len(options.Fields) > 0 {
+		buffer.WriteString(strings.Join(gconv.Strings(options.Fields), ","))
+	} else {
+		buffer.WriteString(getObjectFieldsQueryString(object))
+	}
+	buffer.WriteString("}")
+	//
+	buffer.WriteString("}")
+	result := o.Do(ctx, buffer.String())
+	if len(result.Errors) > 0 {
+		return nil, result.Errors[0]
+	}
+	return NewVar(result.Data.(map[string]interface{})["data"]), nil
+}
+
+func (o *Objectql) Delete(ctx context.Context, objectApi string, options DeleteOptions) error {
+	ctx = context.WithValue(ctx, blockEventsKey, options.Direct)
 	_, err := o.WithTransaction(ctx, func(ctx context.Context) (interface{}, error) {
 		list, err := o.FindList(ctx, objectApi, FindListOptions{
-			Condition: conditions,
-			Fields:    []string{"_id"},
+			Filter: options.Filter,
+			Fields: []string{"_id"},
 		})
 		if err != nil {
 			return nil, err
 		}
 		for _, item := range list {
-			err = o.DeleteById(ctx, objectApi, item.String("_id"))
+			err = o.DeleteById(ctx, objectApi, DeleteByIdOptions{
+				ID: item.String("_id"),
+			})
 			if err != nil {
 				return nil, err
 			}
@@ -678,7 +689,8 @@ func (o *Objectql) Delete(ctx context.Context, objectApi string, conditions map[
 	return err
 }
 
-func (o *Objectql) DeleteById(ctx context.Context, objectApi string, id string) error {
+func (o *Objectql) DeleteById(ctx context.Context, objectApi string, options DeleteByIdOptions) error {
+	ctx = context.WithValue(ctx, blockEventsKey, options.Direct)
 	object := FindObjectFromList(o.list, objectApi)
 	if object == nil {
 		return fmt.Errorf("not found object '%s'", objectApi)
@@ -687,7 +699,7 @@ func (o *Objectql) DeleteById(ctx context.Context, objectApi string, id string) 
 	buffer.WriteString("mutation {")
 	buffer.WriteString(objectApi + "__delete(")
 	buffer.WriteString(" _id:")
-	buffer.WriteString(`"` + id + `"`)
+	buffer.WriteString(`"` + options.ID + `"`)
 	buffer.WriteString(")")
 	buffer.WriteString("}")
 	result := o.Do(ctx, buffer.String())
@@ -697,14 +709,15 @@ func (o *Objectql) DeleteById(ctx context.Context, objectApi string, id string) 
 	return nil
 }
 
-func (o *Objectql) FindList(ctx context.Context, objectApi string, options FindListOptions) ([]Entity, error) {
+func (o *Objectql) FindList(ctx context.Context, objectApi string, options FindListOptions) ([]*Var, error) {
+	ctx = context.WithValue(ctx, blockEventsKey, options.Direct)
 	object := FindObjectFromList(o.list, objectApi)
 	if object == nil {
 		return nil, fmt.Errorf("not found object '%s'", objectApi)
 	}
 	var jsonData string
-	if options.Condition != nil {
-		jsn, err := json.Marshal(options.Condition)
+	if options.Filter != nil {
+		jsn, err := json.Marshal(options.Filter)
 		if err != nil {
 			return nil, err
 		}
@@ -752,39 +765,38 @@ func (o *Objectql) FindList(ctx context.Context, objectApi string, options FindL
 		return nil, result.Errors[0]
 	}
 	data := result.Data.(map[string]interface{})["data"]
-	var list []map[string]interface{}
+	var list []*Var
 	if v1, ok := data.([]interface{}); ok {
 		for _, v := range v1 {
 			if v2, ok := v.(map[string]interface{}); ok {
-				list = append(list, v2)
+				list = append(list, NewVar(v2))
 			}
 		}
 	}
-	return RawArrayToEntityArray(list), nil
+	return list, nil
 }
 
-func (o *Objectql) FindOneById(ctx context.Context, objectApi, id string, fields ...[]string) (Entity, error) {
-	options := FindOneOptions{
-		Condition: map[string]any{
-			"_id": id,
+func (o *Objectql) FindOneById(ctx context.Context, objectApi string, options FindOneByIdOptions) (*Var, error) {
+	ctx = context.WithValue(ctx, blockEventsKey, options.Direct)
+	return o.FindOne(ctx, objectApi, FindOneOptions{
+		Filter: map[string]any{
+			"_id": options.ID,
 		},
-	}
-	if len(fields) != 0 {
-		options.Fields = fields[0]
-	}
-	return o.FindOne(ctx, objectApi, options)
+		Fields: options.Fields,
+	})
 }
 
-func (o *Objectql) FindOne(ctx context.Context, objectApi string, options FindOneOptions) (Entity, error) {
+func (o *Objectql) FindOne(ctx context.Context, objectApi string, options FindOneOptions) (*Var, error) {
+	ctx = context.WithValue(ctx, blockEventsKey, options.Direct)
 	object := FindObjectFromList(o.list, objectApi)
 	if object == nil {
-		return Entity{}, fmt.Errorf("not found object '%s'", objectApi)
+		return nil, fmt.Errorf("not found object '%s'", objectApi)
 	}
 	var jsonData string
-	if options.Condition != nil {
-		jsn, err := json.Marshal(options.Condition)
+	if options.Filter != nil {
+		jsn, err := json.Marshal(options.Filter)
 		if err != nil {
-			return Entity{}, err
+			return nil, err
 		}
 		jsonData = string(jsn)
 	}
@@ -799,14 +811,14 @@ func (o *Objectql) FindOne(ctx context.Context, objectApi string, options FindOn
 		buffer.WriteString(escapeString(jsonData))
 		buffer.WriteString(`"`)
 	}
-	if options.Skip != 0 {
-		buffer.WriteString(" skip:")
-		buffer.WriteString(gconv.String(options.Skip))
-	}
-	if options.Top != 0 {
-		buffer.WriteString(" top:")
-		buffer.WriteString(gconv.String(options.Top))
-	}
+	// if args.Skip != 0 {
+	// 	buffer.WriteString(" skip:")
+	// 	buffer.WriteString(gconv.String(args.Skip))
+	// }
+	// if args.Top != 0 {
+	// 	buffer.WriteString(" top:")
+	// 	buffer.WriteString(gconv.String(options.Top))
+	// }
 	if len(options.Sort) > 0 {
 		buffer.WriteString(" sort:")
 		buffer.WriteString(`[`)
@@ -826,23 +838,20 @@ func (o *Objectql) FindOne(ctx context.Context, objectApi string, options FindOn
 	buffer.WriteString("}")
 	result := o.Do(ctx, buffer.String())
 	if len(result.Errors) > 0 {
-		return Entity{}, result.Errors[0]
+		return nil, result.Errors[0]
 	}
-	data := result.Data.(map[string]interface{})["data"]
-	if data == nil {
-		return Entity{}, nil
-	}
-	return Entity{v: data.(map[string]interface{})}, nil
+	return NewVar(result.Data.(map[string]interface{})["data"]), nil
 }
 
-func (o *Objectql) Count(ctx context.Context, objectApi string, conditions map[string]any) (int64, error) {
+func (o *Objectql) Count(ctx context.Context, objectApi string, options CountOptions) (int64, error) {
+	ctx = context.WithValue(ctx, blockEventsKey, options.Direct)
 	object := FindObjectFromList(o.list, objectApi)
 	if object == nil {
 		return 0, fmt.Errorf("not found object '%s'", objectApi)
 	}
 	var jsonData string
-	if conditions != nil {
-		jsn, err := json.Marshal(conditions)
+	if options.Filter != nil {
+		jsn, err := json.Marshal(options.Filter)
 		if err != nil {
 			return 0, err
 		}
@@ -873,58 +882,6 @@ func (o *Objectql) Count(ctx context.Context, objectApi string, conditions map[s
 }
 
 func (o *Objectql) Aggregate() {}
-
-type blockEvents struct{}
-
-var blockEventsKey = &blockEvents{}
-
-// Direct 通过context控制
-func (o *Objectql) DirectInsert(ctx context.Context, objectApi string, options InsertOptions) (Entity, error) {
-	ctx = context.WithValue(ctx, blockEventsKey, true)
-	return o.Insert(ctx, objectApi, options)
-}
-
-func (o *Objectql) DirectUpdate(ctx context.Context, objectApi string, options UpdateOptions) ([]Entity, error) {
-	ctx = context.WithValue(ctx, blockEventsKey, true)
-	return o.Update(ctx, objectApi, options)
-}
-
-func (o *Objectql) DirectUpdateById(ctx context.Context, objectApi string, id string, options UpdateByIdOptions) (Entity, error) {
-	ctx = context.WithValue(ctx, blockEventsKey, true)
-	return o.UpdateById(ctx, objectApi, id, options)
-}
-
-func (o *Objectql) DirectDelete(ctx context.Context, objectApi string, conditions map[string]any) error {
-	ctx = context.WithValue(ctx, blockEventsKey, true)
-	return o.Delete(ctx, objectApi, conditions)
-}
-
-func (o *Objectql) DirectDeleteById(ctx context.Context, objectApi string, id string) error {
-	ctx = context.WithValue(ctx, blockEventsKey, true)
-	return o.DeleteById(ctx, objectApi, id)
-}
-
-func (o *Objectql) DirectFindList(ctx context.Context, objectApi string, options FindListOptions) ([]Entity, error) {
-	ctx = context.WithValue(ctx, blockEventsKey, true)
-	return o.FindList(ctx, objectApi, options)
-}
-
-func (o *Objectql) DirectFindOneById(ctx context.Context, objectApi, id string, fields ...[]string) (Entity, error) {
-	ctx = context.WithValue(ctx, blockEventsKey, true)
-	return o.FindOneById(ctx, objectApi, id, fields...)
-}
-
-func (o *Objectql) DirectFindOne(ctx context.Context, objectApi string, options FindOneOptions) (Entity, error) {
-	ctx = context.WithValue(ctx, blockEventsKey, true)
-	return o.FindOne(ctx, objectApi, options)
-}
-
-func (o *Objectql) DirectCount(ctx context.Context, objectApi string, conditions map[string]any) (int64, error) {
-	ctx = context.WithValue(ctx, blockEventsKey, true)
-	return o.Count(ctx, objectApi, conditions)
-}
-
-func (o *Objectql) DirectAggregate() {}
 
 func (o *Objectql) mapToGrpahqlFormat(doc map[string]any) (string, error) {
 	var buffer bytes.Buffer

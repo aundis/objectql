@@ -191,7 +191,8 @@ func TestUpdateBefore(t *testing.T) {
 	}
 	// 更新对象
 	id := res.String("_id")
-	_, err = objectql.UpdateById(ctx, "staff", id, UpdateByIdOptions{
+	_, err = objectql.UpdateById(ctx, "staff", UpdateByIdOptions{
+		ID: id,
 		Doc: map[string]interface{}{
 			"age": 23,
 		},
@@ -205,7 +206,9 @@ func TestUpdateBefore(t *testing.T) {
 		return
 	}
 	// 删除对象
-	err = objectql.DeleteById(ctx, "staff", id)
+	err = objectql.DeleteById(ctx, "staff", DeleteByIdOptions{
+		ID: id,
+	})
 	if err != nil {
 		t.Error("删除对象错误", err)
 		return
@@ -271,7 +274,8 @@ func TestUpdateAfter(t *testing.T) {
 	}
 	// 更新对象
 	id := res.String("_id")
-	_, err = objectql.UpdateById(ctx, "staff", id, UpdateByIdOptions{
+	_, err = objectql.UpdateById(ctx, "staff", UpdateByIdOptions{
+		ID: id,
 		Doc: map[string]interface{}{
 			"age": 23,
 		},
@@ -285,7 +289,9 @@ func TestUpdateAfter(t *testing.T) {
 		return
 	}
 	// 删除对象
-	err = objectql.DeleteById(ctx, "staff", id)
+	err = objectql.DeleteById(ctx, "staff", DeleteByIdOptions{
+		ID: id,
+	})
 	if err != nil {
 		t.Error("删除对象错误", err)
 		return
@@ -350,7 +356,9 @@ func TestDeleteBefore(t *testing.T) {
 		return
 	}
 	// 删除对象
-	err = objectql.DeleteById(ctx, "staff", res.String("_id"))
+	err = objectql.DeleteById(ctx, "staff", DeleteByIdOptions{
+		ID: res.String("_id"),
+	})
 	if err == nil {
 		t.Error("未返回预期错误")
 		return
@@ -419,7 +427,9 @@ func TestDeleteAfter(t *testing.T) {
 		return
 	}
 	// 删除对象
-	err = objectql.DeleteById(ctx, "staff", res.String("_id"))
+	err = objectql.DeleteById(ctx, "staff", DeleteByIdOptions{
+		ID: res.String("_id"),
+	})
 	if err == nil {
 		t.Error("未返回预期错误")
 		return

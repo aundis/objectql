@@ -38,44 +38,52 @@ func TestDoCommand(t *testing.T) {
 		t.Error("初始化对象失败", err)
 		return
 	}
-	res, err := oql.DoCommand(ctx, []Command{
-		&InsertCommand{
-			Doc: map[string]any{
-				"name": "小明",
-				"age":  19,
-				"aih":  []string{"篮球", "足球"},
+	res, err := oql.DoCommands(ctx, []Command{
+		{
+			Call: "person.insert",
+			Args: InsertArgs{
+				Doc: map[string]any{
+					"name": "小明",
+					"age":  19,
+					"aih":  []string{"篮球", "足球"},
+				},
 			},
-			Object: "person",
 			Result: "person1",
 		},
-		&InsertCommand{
-			Doc: map[string]any{
-				"name": "小红",
-				"age":  "$$ person1.age + 10",
-				"aih":  []string{"唱歌"},
+		{
+			Call: "person.insert",
+			Args: InsertArgs{
+				Doc: map[string]any{
+					"name": "小红",
+					"age":  "$$ person1.age + 10",
+					"aih":  []string{"唱歌"},
+				},
 			},
-			Object: "person",
 			Result: "person2",
 		},
-		&InsertCommand{
-			Doc: map[string]any{
-				"name": "小刚",
-				"age":  "$$ person2.age + 10",
-				"aih":  "$$ mapToArr([person1, person2], '_id')",
+		{
+			Call: "person.insert",
+			Args: InsertArgs{
+				Doc: map[string]any{
+					"name": "小刚",
+					"age":  "$$ person2.age + 10",
+					"aih":  "$$ mapToArr([person1, person2], '_id')",
+				},
 			},
-			Object: "person",
 			Result: "person3",
 		},
-		&FindOneByIdCommand{
-			Object: "person",
-			ID:     "$$ person3._id",
+		{
+			Call: "person.findOneById",
+			Args: FindOneByIdArgs{
+				ID: "$$ person3._id",
+			},
 			Result: "last1",
 		},
-		&FindOneCommand{
-			Condition: map[string]any{
-				"_id": "$$ last1._id",
+		{
+			Call: "person.findOneById",
+			Args: FindOneByIdArgs{
+				ID: "$$ last1._id",
 			},
-			Object: "person",
 			Result: "last12",
 		},
 	}, map[string]any{

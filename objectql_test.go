@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/gogf/gf/v2/os/gctx"
-	"github.com/gogf/gf/v2/util/gconv"
 	"github.com/gogf/gf/v2/util/guid"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -72,8 +71,8 @@ func TestQuery(t *testing.T) {
 		t.Error("初始化对象失败", err)
 		return
 	}
-	if gconv.String(res) != "10,200" {
-		t.Errorf("except 10,200 but got %s", gconv.String(res))
+	if res.ToString() != "10,200" {
+		t.Errorf("except 10,200 but got %s", res.toAny())
 		return
 	}
 }
@@ -365,7 +364,7 @@ func TestInsert(t *testing.T) {
 	}
 	// 查找这个新创建的记录
 	one, err := objectql.FindOne(ctx, "student", FindOneOptions{
-		Condition: bson.M{
+		Filter: map[string]any{
 			"_id": id,
 		},
 	})
@@ -378,7 +377,9 @@ func TestInsert(t *testing.T) {
 		return
 	}
 	// 删除这条记录
-	err = objectql.DeleteById(ctx, "student", id)
+	err = objectql.DeleteById(ctx, "student", DeleteByIdOptions{
+		ID: id,
+	})
 	if err != nil {
 		t.Error("找不到记录")
 		return
@@ -436,7 +437,8 @@ func TestUpdate(t *testing.T) {
 		return
 	}
 	// 修改数据
-	one, err := objectql.UpdateById(ctx, "student", id, UpdateByIdOptions{
+	one, err := objectql.UpdateById(ctx, "student", UpdateByIdOptions{
+		ID: id,
 		Doc: bson.M{
 			"age": 20,
 		},
@@ -456,7 +458,9 @@ func TestUpdate(t *testing.T) {
 		t.Errorf("except age = 20 but got %d", one.Int("age"))
 	}
 	// 删除这条数据
-	err = objectql.DeleteById(ctx, "student", id)
+	err = objectql.DeleteById(ctx, "student", DeleteByIdOptions{
+		ID: id,
+	})
 	if err != nil {
 		t.Error(err)
 		return
@@ -514,14 +518,16 @@ func TestDelete(t *testing.T) {
 		return
 	}
 	// 删除这条数据
-	err = objectql.DeleteById(ctx, "student", id)
+	err = objectql.DeleteById(ctx, "student", DeleteByIdOptions{
+		ID: id,
+	})
 	if err != nil {
 		t.Error(err)
 		return
 	}
 	// 查找这个新创建的记录
 	one, err := objectql.FindOne(ctx, "student", FindOneOptions{
-		Condition: bson.M{
+		Filter: map[string]any{
 			"_id": id,
 		},
 	})
@@ -588,7 +594,7 @@ func TestFindOne(t *testing.T) {
 	}
 	// 查找
 	one, err := objectql.FindOne(ctx, "student", FindOneOptions{
-		Condition: map[string]interface{}{
+		Filter: map[string]interface{}{
 			"name": name,
 		},
 	})
@@ -601,7 +607,9 @@ func TestFindOne(t *testing.T) {
 		return
 	}
 	// 删除这条数据
-	err = objectql.DeleteById(ctx, "student", id)
+	err = objectql.DeleteById(ctx, "student", DeleteByIdOptions{
+		ID: id,
+	})
 	if err != nil {
 		t.Error(err)
 		return
@@ -659,7 +667,7 @@ func TestFindList(t *testing.T) {
 	}
 	// 查找列表
 	list, err := objectql.FindList(ctx, "student", FindListOptions{
-		Condition: map[string]interface{}{
+		Filter: map[string]interface{}{
 			"_id": map[string]interface{}{
 				"$in": ids,
 			},
@@ -675,7 +683,9 @@ func TestFindList(t *testing.T) {
 	}
 	// 清空插入的数据
 	for _, v := range ids {
-		err = objectql.DeleteById(ctx, "student", v)
+		err = objectql.DeleteById(ctx, "student", DeleteByIdOptions{
+			ID: v,
+		})
 		if err != nil {
 			t.Error("删除数据失败", err)
 			return
@@ -733,8 +743,10 @@ func TestCount(t *testing.T) {
 		ids = append(ids, res.String("_id"))
 	}
 	// 查找列表
-	count, err := objectql.Count(ctx, "student", map[string]interface{}{
-		"name": "小刚",
+	count, err := objectql.Count(ctx, "student", CountOptions{
+		Filter: map[string]interface{}{
+			"name": "小刚",
+		},
 	})
 	if err != nil {
 		t.Error("find list err:", err)
@@ -747,7 +759,9 @@ func TestCount(t *testing.T) {
 	// }
 	// 清空插入的数据
 	for _, v := range ids {
-		err = objectql.DeleteById(ctx, "student", v)
+		err = objectql.DeleteById(ctx, "student", DeleteByIdOptions{
+			ID: v,
+		})
 		if err != nil {
 			t.Error("删除数据失败", err)
 			return
@@ -860,10 +874,13 @@ func TestExtends(t *testing.T) {
 		return
 	}
 	// fmt.Println(res.Raw())
-	one, err := oql.FindOneById(ctx, "zhangpu", res.String("_id"), []string{
-		"_id",
-		"records",
-		"records__expands { _id names }",
+	one, err := oql.FindOneById(ctx, "zhangpu", FindOneByIdOptions{
+		ID: res.String("_id"),
+		Fields: []string{
+			"_id",
+			"records",
+			"records__expands { _id names }",
+		},
 	})
 	if err != nil {
 		t.Error(err)

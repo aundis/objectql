@@ -85,7 +85,8 @@ func TestBindListen(t *testing.T) {
 		return
 	}
 
-	_, err = oql.UpdateById(ctx, "student", res.String("_id"), UpdateByIdOptions{
+	_, err = oql.UpdateById(ctx, "student", UpdateByIdOptions{
+		ID: res.String("_id"),
 		Doc: map[string]any{
 			"name": "小明",
 			"age":  18,
@@ -96,7 +97,9 @@ func TestBindListen(t *testing.T) {
 		return
 	}
 
-	err = oql.DeleteById(ctx, "student", res.String("_id"))
+	err = oql.DeleteById(ctx, "student", DeleteByIdOptions{
+		ID: res.String("_id"),
+	})
 	if err != nil {
 		t.Error(err)
 		return
@@ -282,7 +285,7 @@ func TestOneResultHandle(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	if res != true {
+	if res.ToBool() != true {
 		t.Errorf("except true but got %v", res)
 		return
 	}

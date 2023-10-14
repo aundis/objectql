@@ -140,102 +140,63 @@ const (
 )
 
 // COMMAND
-
-type Command interface {
-	aCommand()
-}
-
-type HandleCommand struct {
-	Object  string         `json:"object"`
-	Command string         `json:"command"`
-	Fields  []string       `json:"fields"`
-	Args    map[string]any `json:"args"`
-	Result  string         `json:"result"`
-}
-
-type FindOneByIdCommand struct {
-	Object string   `json:"object"`
-	ID     string   `json:"id"`
+type Command struct {
+	Call   string   `json:"call"`
+	Args   any      `json:"args"`
 	Fields []string `json:"fields"`
 	Result string   `json:"result"`
-	Direct bool     `json:"direct"`
 }
 
-type FindOneCommand struct {
-	Object    string         `json:"object"`
-	Condition map[string]any `json:"condition"`
-	Sort      []string       `json:"sort"`
-	Fields    []string       `json:"fields"`
-	Result    string         `json:"result"`
-	Direct    bool           `json:"direct"`
-}
-
-type FindListCommand struct {
-	Condition map[string]any `json:"condition"`
-	Top       int            `json:"top"`
-	Skip      int            `json:"skip"`
-	Sort      []string       `json:"sort"`
-	Fields    []string       `json:"fields"`
-	Object    string         `json:"object"`
-	Result    string         `json:"result"`
-	Direct    bool           `json:"direct"`
-}
-
-type CountCommand struct {
-	Condition map[string]any `json:"condition"`
-	Object    string         `json:"object"`
-	Result    string         `json:"result"`
-	Direct    bool           `json:"direct"`
-}
-
-type InsertCommand struct {
-	Doc    map[string]any `json:"doc"`
-	Fields []string       `json:"fields"`
-	Object string         `json:"object"`
-	Result string         `json:"result"`
-	Direct bool           `json:"direct"`
-}
-
-type UpdateByIdCommand struct {
-	ID     string         `json:"id"`
-	Doc    map[string]any `json:"doc"`
-	Fields []string       `json:"fields"`
-	Object string         `json:"object"`
-	Result string         `json:"result"`
-	Direct bool           `json:"direct"`
-}
-
-type UpdateCommand struct {
-	Condition map[string]any `json:"condition"`
-	Doc       map[string]any `json:"doc"`
-	Fields    []string       `json:"fields"`
-	Object    string         `json:"object"`
-	Result    string         `json:"result"`
-	Direct    bool           `json:"direct"`
-}
-
-type DeleteByIdCommand struct {
+type FindOneByIdArgs struct {
 	ID     string `json:"id"`
-	Object string `json:"object"`
 	Direct bool   `json:"direct"`
 }
 
-type DeleteCommand struct {
-	Condition map[string]any `json:"condition"`
-	Object    string         `json:"object"`
-	Direct    bool           `json:"direct"`
+type FindOneArgs struct {
+	Filter map[string]any `json:"filter"`
+	Sort   []string       `json:"sort"`
+	Direct bool           `json:"direct"`
 }
 
-func (c *HandleCommand) aCommand()      {}
-func (c *FindOneByIdCommand) aCommand() {}
-func (c *FindOneCommand) aCommand()     {}
-func (c *FindListCommand) aCommand()    {}
-func (c *CountCommand) aCommand()       {}
-func (c *InsertCommand) aCommand()      {}
-func (c *UpdateByIdCommand) aCommand()  {}
-func (c *UpdateCommand) aCommand()      {}
-func (c *DeleteByIdCommand) aCommand()  {}
-func (c *DeleteCommand) aCommand()      {}
+type FindListArgs struct {
+	Filter map[string]any `json:"filter"`
+	Top    int            `json:"top"`
+	Skip   int            `json:"skip"`
+	Sort   []string       `json:"sort"`
+	Direct bool           `json:"direct"`
+}
+
+type CountArgs struct {
+	Filter map[string]any `json:"filter"`
+	Direct bool           `json:"direct"`
+}
+
+type InsertArgs struct {
+	Doc    map[string]any `json:"doc"`
+	Direct bool           `json:"direct"`
+}
+
+type UpdateByIdArgs struct {
+	ID     string         `json:"id"`
+	Doc    map[string]any `json:"doc"`
+	Direct bool           `json:"direct"`
+}
+
+type UpdateArgs struct {
+	Filter map[string]any `json:"filter"`
+	Doc    map[string]any `json:"doc"`
+	Direct bool           `json:"direct"`
+}
+
+type DeleteByIdArgs struct {
+	ID     string `json:"id"`
+	Direct bool   `json:"direct"`
+}
+
+type DeleteArgs struct {
+	Filter map[string]any `json:"filter"`
+	Direct bool           `json:"direct"`
+}
 
 type ObjectInfo struct {
 	Name      string       `json:"name"`
@@ -253,4 +214,64 @@ type FieldInfo struct {
 type HandleInfo struct {
 	Name string `json:"name"`
 	Api  string `json:"api"`
+}
+
+// OPTIONS
+
+type FindOneByIdOptions struct {
+	ID     string   `json:"id"`
+	Fields []string `json:"fields"`
+	Direct bool     `json:"direct"`
+}
+
+type FindOneOptions struct {
+	Filter map[string]any `json:"filter"`
+	Sort   []string       `json:"sort"`
+	Fields []string       `json:"fields"`
+	Direct bool           `json:"direct"`
+}
+
+type FindListOptions struct {
+	Filter map[string]any `json:"filter"`
+	Top    int            `json:"top"`
+	Skip   int            `json:"skip"`
+	Sort   []string       `json:"sort"`
+	Fields []string       `json:"fields"`
+	Direct bool           `json:"direct"`
+}
+
+type CountOptions struct {
+	Filter map[string]any `json:"filter"`
+	Fields []string       `json:"fields"`
+	Direct bool           `json:"direct"`
+}
+
+type InsertOptions struct {
+	Doc    map[string]any `json:"doc"`
+	Fields []string       `json:"fields"`
+	Direct bool           `json:"direct"`
+}
+
+type UpdateByIdOptions struct {
+	ID     string         `json:"id"`
+	Doc    map[string]any `json:"doc"`
+	Fields []string       `json:"fields"`
+	Direct bool           `json:"direct"`
+}
+
+type UpdateOptions struct {
+	Filter map[string]any `json:"filter"`
+	Doc    map[string]any `json:"doc"`
+	Fields []string       `json:"fields"`
+	Direct bool           `json:"direct"`
+}
+
+type DeleteByIdOptions struct {
+	ID     string `json:"id"`
+	Direct bool   `json:"direct"`
+}
+
+type DeleteOptions struct {
+	Filter map[string]any `json:"filter"`
+	Direct bool           `json:"direct"`
 }
