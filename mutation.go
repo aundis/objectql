@@ -77,6 +77,7 @@ func (o *Objectql) insertHandleRaw(ctx context.Context, api string, doc map[stri
 	return objectIdStr, nil
 }
 
+// permissionBlock 用于内部公式计算的时候屏蔽权限的校验
 func (o *Objectql) updateHandle(ctx context.Context, api string, id string, doc map[string]interface{}, permissionBlock bool) error {
 	_, err := o.WithTransaction(ctx, func(ctx context.Context) (interface{}, error) {
 		return nil, o.updateHandleRaw(ctx, api, id, doc, permissionBlock)

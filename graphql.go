@@ -400,8 +400,8 @@ func unPointerValue(t reflect.Value) reflect.Value {
 }
 
 func (o *Objectql) handleGraphqlResovler(ctx context.Context, p graphql.ResolveParams, object *Object, handle *Handle) (interface{}, error) {
-	if o.objectHandlePermissionCheckHandler != nil && !o.objectHandlePermissionCheckHandler(ctx, object.Api, handle.Name) {
-		return nil, fmt.Errorf("not handle %s.%s permission", object.Api, handle.Name)
+	if err := o.checkObjectHandlePermission(ctx, object.Api, handle.Name); err != nil {
+		return nil, err
 	}
 
 	v := reflect.New(unPointerType(handle.req))
