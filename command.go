@@ -212,6 +212,14 @@ func (o *Objectql) parseCommandArgs(command *Command) (any, error) {
 		}
 		return args, nil
 	}
+	if gstr.HasSuffix(command.Call, ".count") {
+		var args *CountArgs
+		err := gconv.Struct(command.Args, &args)
+		if err != nil {
+			return nil, err
+		}
+		return args, nil
+	}
 	return command.Args, nil
 }
 
