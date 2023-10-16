@@ -18,6 +18,7 @@ const (
 
 type ObjectPermissionCheckHandler func(ctx context.Context, object string, kind PermissionKind) bool
 type ObjectFieldPermissionCheckHandler func(ctx context.Context, object string, field string, kind PermissionKind) bool
+type ObjectHandlePermissionCheckHandler func(ctx context.Context, object string, name string) bool
 
 func (o *Objectql) SetObjectPermissionCheckHandler(fn ObjectPermissionCheckHandler) {
 	o.objectPermissionCheckHandler = fn
@@ -25,6 +26,10 @@ func (o *Objectql) SetObjectPermissionCheckHandler(fn ObjectPermissionCheckHandl
 
 func (o *Objectql) SetObjectFieldPermissionCheckHandler(fn ObjectFieldPermissionCheckHandler) {
 	o.objectFieldPermissionCheckHandler = fn
+}
+
+func (o *Objectql) SetObjectHandlePermissionCheckHandler(fn ObjectHandlePermissionCheckHandler) {
+	o.objectHandlePermissionCheckHandler = fn
 }
 
 func (o *Objectql) checkObjectPermission(ctx context.Context, object string, kind PermissionKind) error {

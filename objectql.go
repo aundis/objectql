@@ -47,8 +47,9 @@ type Objectql struct {
 	// event
 	eventMap *gmap.AnyAnyMap
 	// permission
-	objectPermissionCheckHandler      ObjectPermissionCheckHandler
-	objectFieldPermissionCheckHandler ObjectFieldPermissionCheckHandler
+	objectPermissionCheckHandler       ObjectPermissionCheckHandler
+	objectFieldPermissionCheckHandler  ObjectFieldPermissionCheckHandler
+	objectHandlePermissionCheckHandler ObjectHandlePermissionCheckHandler
 	// struct types
 	gstructTypes *gmap.StrAnyMap
 }

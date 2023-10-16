@@ -107,7 +107,7 @@ func (o *Objectql) initObjectGraphqlQuery(ctx context.Context, querys graphql.Fi
 			Type: rtn,
 			Args: args,
 			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-				return o.handleGraphqlResovler(p.Context, p, curHandle)
+				return o.handleGraphqlResovler(p.Context, p, object, curHandle)
 			},
 		}
 	}
@@ -341,7 +341,7 @@ func (o *Objectql) initObjectGraphqlMutation(ctx context.Context, mutations grap
 			Type: rtn,
 			Args: args,
 			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-				return o.handleGraphqlResovler(p.Context, p, curHandle)
+				return o.handleGraphqlResovler(p.Context, p, object, curHandle)
 			},
 		}
 	}
@@ -399,7 +399,11 @@ func unPointerValue(t reflect.Value) reflect.Value {
 	return t
 }
 
-func (o *Objectql) handleGraphqlResovler(ctx context.Context, p graphql.ResolveParams, handle *Handle) (interface{}, error) {
+func (o *Objectql) handleGraphqlResovler(ctx context.Context, p graphql.ResolveParams, object *Object, handle *Handle) (interface{}, error) {
+	if o.objectHandlePermissionCheckHandler != nil && !o.objectHandlePermissionCheckHandler(ctx, object.Api, handle.Name) {
+		return nil, fmt.Errorf("not handle %s.%s permission", object.Api, handle.Name)
+	}
+
 	v := reflect.New(unPointerType(handle.req))
 	err := gconv.Struct(p.Args, v.Interface())
 	if err != nil {
