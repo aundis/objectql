@@ -2,6 +2,7 @@ package objectql
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/gogf/gf/v2/frame/g"
@@ -243,7 +244,28 @@ type testOneResultHandleObjectSetNameReq struct {
 
 type TestOneResultHandleObject struct{}
 
-func (to *TestOneResultHandleObject) SetName(ctx context.Context, req *testOneResultHandleObjectSetNameReq) error {
+func (to *TestOneResultHandleObject) SetName1(ctx context.Context, req *testOneResultHandleObjectSetNameReq) error {
+	fmt.Println("SetName1")
+	return nil
+}
+
+func (to *TestOneResultHandleObject) SetName2(ctx context.Context, req *testOneResultHandleObjectSetNameReq) error {
+	fmt.Println("SetName2")
+	return nil
+}
+
+func (to *TestOneResultHandleObject) SetName3(ctx context.Context, req *testOneResultHandleObjectSetNameReq) error {
+	fmt.Println("SetName3")
+	return nil
+}
+
+func (to *TestOneResultHandleObject) SetName4(ctx context.Context, req *testOneResultHandleObjectSetNameReq) error {
+	fmt.Println("SetName4")
+	return nil
+}
+
+func (to *TestOneResultHandleObject) SetName5(ctx context.Context, req *testOneResultHandleObjectSetNameReq) error {
+	fmt.Println("SetName5")
 	return nil
 }
 
@@ -280,7 +302,7 @@ func TestOneResultHandle(t *testing.T) {
 		return
 	}
 
-	res, err := oql.Call(ctx, "student", "setName", nil)
+	res, err := oql.Call(ctx, "student", "setName2", nil)
 	if err != nil {
 		t.Error(err)
 		return

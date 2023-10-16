@@ -335,11 +335,12 @@ func (o *Objectql) initObjectGraphqlMutation(ctx context.Context, mutations grap
 		if err != nil {
 			return err
 		}
+		curHandle := handle
 		mutations[object.Api+"__"+handle.Api] = &graphql.Field{
 			Type: rtn,
 			Args: args,
 			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-				return o.handleGraphqlResovler(p.Context, p, handle)
+				return o.handleGraphqlResovler(p.Context, p, curHandle)
 			},
 		}
 	}

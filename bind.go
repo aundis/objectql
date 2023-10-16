@@ -80,25 +80,26 @@ func (o *Objectql) bindObjectQueryOrMutation(object *Object, v any) error {
 	rt := reflect.TypeOf(v)
 	rv := reflect.ValueOf(v)
 	for i := 0; i < rt.NumMethod(); i++ {
+		// fmt.Println(rt.Method(i).Func)
+	}
+	for i := 0; i < rt.NumMethod(); i++ {
 		method := rt.Method(i)
-		mv := rv.Method(i).Interface()
+		mv := rv.MethodByName(method.Name).Interface()
 		if tag, ok := parseQueryOrMutationMethod(reflect.TypeOf(mv)); ok {
 			switch tag.Get("kind") {
 			case "query":
-				mv := rv.MethodByName(method.Name)
 				object.Querys = append(object.Querys, &Handle{
 					Name:    tag.Get("name"),
 					Api:     firstLower(method.Name),
 					Comment: tag.Get("comment"),
-					Resolve: mv.Interface(),
+					Resolve: mv,
 				})
 			case "mutation":
-				mv := rv.MethodByName(method.Name)
 				object.Mutations = append(object.Mutations, &Handle{
 					Name:    tag.Get("name"),
 					Api:     firstLower(method.Name),
 					Comment: tag.Get("comment"),
-					Resolve: mv.Interface(),
+					Resolve: mv,
 				})
 			default:
 				return fmt.Errorf("bind object '%s' query or mutation error, not found kind %s", object.Api, tag.Get("kind"))
