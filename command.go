@@ -144,6 +144,10 @@ func (o *Objectql) DoCommands(ctx context.Context, commands []Command, filter ..
 }
 
 func (o *Objectql) parseCommandArgs(command *Command) (any, error) {
+	// 给定一个默认值，不然后面会出现nil错误
+	if command.Args == nil {
+		command.Args = map[string]any{}
+	}
 	if gstr.HasSuffix(command.Call, ".insert") {
 		var args *InsertArgs
 		err := gconv.Struct(command.Args, &args)
