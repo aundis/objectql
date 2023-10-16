@@ -16,9 +16,9 @@ const (
 	FieldUpdate
 )
 
-type ObjectPermissionCheckHandler func(ctx context.Context, object string, kind PermissionKind) bool
-type ObjectFieldPermissionCheckHandler func(ctx context.Context, object string, field string, kind PermissionKind) bool
-type ObjectHandlePermissionCheckHandler func(ctx context.Context, object string, name string) bool
+type ObjectPermissionCheckHandler func(ctx context.Context, object string, kind PermissionKind) (bool, error)
+type ObjectFieldPermissionCheckHandler func(ctx context.Context, object string, field string, kind PermissionKind) (bool, error)
+type ObjectHandlePermissionCheckHandler func(ctx context.Context, object string, name string) (bool, error)
 
 func (o *Objectql) SetObjectPermissionCheckHandler(fn ObjectPermissionCheckHandler) {
 	o.objectPermissionCheckHandler = fn
@@ -34,7 +34,11 @@ func (o *Objectql) SetObjectHandlePermissionCheckHandler(fn ObjectHandlePermissi
 
 func (o *Objectql) checkObjectPermission(ctx context.Context, object string, kind PermissionKind) error {
 	if o.objectPermissionCheckHandler != nil && !o.IsRootPermission(ctx) {
-		if !o.objectPermissionCheckHandler(ctx, object, ObjectInsert) {
+		has, err := o.objectPermissionCheckHandler(ctx, object, ObjectInsert)
+		if err != nil {
+			return err
+		}
+		if !has {
 			return fmt.Errorf("not object %s permission(%v)", object, kind)
 		}
 	}
@@ -57,7 +61,11 @@ func (o *Objectql) checkObjectFieldPermissionWithDocument(ctx context.Context, o
 
 func (o *Objectql) checkObjectFieldPermission(ctx context.Context, object string, field string, kind PermissionKind) error {
 	if o.objectFieldPermissionCheckHandler != nil && !o.IsRootPermission(ctx) {
-		if !o.objectFieldPermissionCheckHandler(ctx, object, field, kind) {
+		has, err := o.objectFieldPermissionCheckHandler(ctx, object, field, kind)
+		if err != nil {
+			return err
+		}
+		if !has {
 			return fmt.Errorf("not field %s.%s permission(%v)", object, field, kind)
 		}
 	}
@@ -66,7 +74,11 @@ func (o *Objectql) checkObjectFieldPermission(ctx context.Context, object string
 
 func (o *Objectql) checkObjectHandlePermission(ctx context.Context, object string, name string) error {
 	if o.objectHandlePermissionCheckHandler != nil && !o.IsRootPermission(ctx) {
-		if !o.objectHandlePermissionCheckHandler(ctx, object, name) {
+		has, err := o.objectHandlePermissionCheckHandler(ctx, object, name)
+		if err != nil {
+			return err
+		}
+		if !has {
 			return fmt.Errorf("not handle %s.%s permission", object, name)
 		}
 	}

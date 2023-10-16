@@ -38,8 +38,8 @@ func TestObjectPermissionCheck(t *testing.T) {
 		return
 	}
 
-	objectql.SetObjectPermissionCheckHandler(func(ctx context.Context, object string, kind PermissionKind) bool {
-		return false
+	objectql.SetObjectPermissionCheckHandler(func(ctx context.Context, object string, kind PermissionKind) (bool, error) {
+		return false, nil
 	})
 
 	_, err = objectql.Insert(ctx, "student", InsertOptions{
@@ -90,11 +90,11 @@ func TestObjectFieldPermissionCheck(t *testing.T) {
 		return
 	}
 	// 设定对象字段权限检查
-	objectql.SetObjectFieldPermissionCheckHandler(func(ctx context.Context, object, field string, kind PermissionKind) bool {
+	objectql.SetObjectFieldPermissionCheckHandler(func(ctx context.Context, object, field string, kind PermissionKind) (bool, error) {
 		if kind == FieldUpdate {
-			return true
+			return true, nil
 		} else {
-			return field == "name" || field == "_id"
+			return field == "name" || field == "_id", nil
 		}
 	})
 	// 插入数据
