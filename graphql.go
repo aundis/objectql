@@ -102,11 +102,12 @@ func (o *Objectql) initObjectGraphqlQuery(ctx context.Context, querys graphql.Fi
 		if err != nil {
 			return err
 		}
+		curHandle := handle
 		querys[object.Api+"__"+handle.Api] = &graphql.Field{
 			Type: rtn,
 			Args: args,
 			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-				return o.handleGraphqlResovler(p.Context, p, handle)
+				return o.handleGraphqlResovler(p.Context, p, curHandle)
 			},
 		}
 	}
