@@ -85,7 +85,7 @@ func (o *Objectql) checkObjectHandlePermission(ctx context.Context, object strin
 	return nil
 }
 
-var rootPermissionKey = &struct{}{}
+var rootPermissionKey = "objectql_rootPermissionKey"
 
 func (o *Objectql) WithRootPermission(ctx context.Context) context.Context {
 	return context.WithValue(ctx, rootPermissionKey, true)

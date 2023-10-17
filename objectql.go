@@ -24,7 +24,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var blockEventsKey = &struct{}{}
+var blockEventsKey = "objectql_blockEventsKey"
 
 func New() *Objectql {
 	return &Objectql{
