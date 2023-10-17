@@ -34,7 +34,7 @@ func (o *Objectql) SetObjectHandlePermissionCheckHandler(fn ObjectHandlePermissi
 
 func (o *Objectql) checkObjectPermission(ctx context.Context, object string, kind PermissionKind) error {
 	if o.objectPermissionCheckHandler != nil && !o.IsRootPermission(ctx) {
-		has, err := o.objectPermissionCheckHandler(ctx, object, ObjectInsert)
+		has, err := o.objectPermissionCheckHandler(ctx, object, kind)
 		if err != nil {
 			return err
 		}
