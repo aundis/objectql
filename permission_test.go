@@ -124,3 +124,62 @@ func TestObjectFieldPermissionCheck(t *testing.T) {
 	// 	return
 	// }
 }
+
+// func TestTime(t *testing.T) {
+// 	ctx := context.Background()
+// 	oql := New()
+// 	err := oql.InitMongodb(ctx, testMongodbUrl)
+// 	if err != nil {
+// 		t.Error("初始化数据库失败", err)
+// 		return
+// 	}
+
+// 	oql.AddObject(&Object{
+// 		Name: "任务日志",
+// 		Api:  "sysTaskLog",
+// 		Fields: []*Field{
+// 			{
+// 				Name: "任务名称",
+// 				Api:  "taskName",
+// 				Type: String,
+// 			},
+// 			{
+// 				Name: "状态",
+// 				Api:  "status",
+// 				Type: Bool,
+// 			},
+// 			{
+// 				Name: "描述",
+// 				Api:  "detail",
+// 				Type: String,
+// 			},
+// 			{
+// 				Name: "消耗时间",
+// 				Api:  "consumeTime",
+// 				Type: Int,
+// 			},
+// 		},
+// 	})
+
+// 	err = oql.InitObjects(ctx)
+// 	if err != nil {
+// 		t.Error("初始化对象失败", err)
+// 		return
+// 	}
+
+// 	for i := 0; i < 100; i++ {
+// 		start := time.Now().UnixMilli()
+// 		list, err := oql.FindList(ctx, "sysTaskLog", FindListOptions{})
+// 		if err != nil {
+// 			t.Error(err)
+// 			return
+// 		}
+// 		count, err := oql.Count(ctx, "sysTaskLog", CountOptions{})
+// 		if err != nil {
+// 			t.Error(err)
+// 			return
+// 		}
+// 		consumeTime := time.Now().UnixMilli() - start
+// 		t.Logf("消耗时间：%dms 列表个数: %d, %d", consumeTime, len(list), count)
+// 	}
+// }

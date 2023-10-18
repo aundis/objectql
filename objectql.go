@@ -446,6 +446,13 @@ func getGraphqlSelectFieldNames(p graphql.ResolveParams) []string {
 	var result []string
 	for _, selection := range p.Info.FieldASTs[0].SelectionSet.Selections {
 		if field, ok := selection.(*ast.Field); ok {
+			fieldName := field.Name.Value
+			if gstr.HasSuffix(fieldName, "__expand") {
+				result = append(result, gstr.Replace(fieldName, "__expand", ""))
+			}
+			if gstr.HasSuffix(fieldName, "__expands") {
+				result = append(result, gstr.Replace(fieldName, "__expands", ""))
+			}
 			result = append(result, field.Name.Value)
 		}
 	}
