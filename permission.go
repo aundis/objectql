@@ -3,6 +3,8 @@ package objectql
 import (
 	"context"
 	"fmt"
+
+	"github.com/gogf/gf/v2/text/gstr"
 )
 
 type PermissionKind int
@@ -70,6 +72,22 @@ func (o *Objectql) checkObjectFieldPermission(ctx context.Context, object string
 		}
 	}
 	return nil
+}
+
+func (o *Objectql) hasObjectFieldPermission(ctx context.Context, object string, field string, kind PermissionKind) (bool, error) {
+	if o.objectFieldPermissionCheckHandler != nil && !o.IsRootPermission(ctx) {
+		if field == "_id" {
+			return true, nil
+		}
+		if gstr.HasSuffix(field, "__expand") {
+			field = gstr.Replace(field, "__expand", "")
+		}
+		if gstr.HasSuffix(field, "__expands") {
+			field = gstr.Replace(field, "__expands", "")
+		}
+		return o.objectFieldPermissionCheckHandler(ctx, object, field, kind)
+	}
+	return true, nil
 }
 
 func (o *Objectql) checkObjectHandlePermission(ctx context.Context, object string, name string) error {

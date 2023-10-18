@@ -334,9 +334,14 @@ func (o *Objectql) graphqlFieldResolver(ctx context.Context, p graphql.ResolvePa
 		return nil, errors.New("graphqlFieldResolver source not bson.M")
 	}
 	// 字段权限校验(无权限返回null)
-	err := o.checkObjectFieldPermission(ctx, field.Parent.Api, field.Api, FieldQuery)
-	if err != nil {
-		return nil, nil
+	if field.Api != "_id" {
+		has, err := o.hasObjectFieldPermission(ctx, field.Parent.Api, field.Api, FieldQuery)
+		if err != nil {
+			return nil, err
+		}
+		if !has {
+			return nil, nil
+		}
 	}
 	// 格式化输出值
 	ctx = context.WithValue(ctx, graphqlResolveParamsKey, p)
