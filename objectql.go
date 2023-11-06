@@ -103,6 +103,12 @@ func (o *Objectql) AddObject(object *Object) {
 		Name: "修改时间",
 		Api:  "updateTime",
 	})
+	// 聚合查询数据
+	object.Fields = append(object.Fields, &Field{
+		Type: Any,
+		Name: "聚合查询数据",
+		Api:  "__aggregate",
+	})
 	o.list = append(o.list, object)
 }
 
@@ -894,7 +900,53 @@ func (o *Objectql) Count(ctx context.Context, objectApi string, options CountOpt
 	return gconv.Int64(data), nil
 }
 
-func (o *Objectql) Aggregate() {}
+func (o *Objectql) Aggregate(ctx context.Context, objectApi string, options AggregateOptions) ([]*Var, error) {
+	ctx = context.WithValue(ctx, blockEventsKey, options.Direct)
+	object := FindObjectFromList(o.list, objectApi)
+	if object == nil {
+		return nil, fmt.Errorf("not found object '%s'", objectApi)
+	}
+	var jsonData string
+	if options.Pipline != nil {
+		jsn, err := json.Marshal(options.Pipline)
+		if err != nil {
+			return nil, err
+		}
+		jsonData = string(jsn)
+	}
+	// filters
+	var buffer bytes.Buffer
+	buffer.WriteString("query {")
+	buffer.WriteString("data: " + objectApi + "__aggregate")
+	if len(jsonData) > 0 {
+		buffer.WriteString("(")
+		if len(jsonData) > 0 {
+			buffer.WriteString(" pipeline:")
+			buffer.WriteString(`"`)
+			buffer.WriteString(escapeString(jsonData))
+			buffer.WriteString(`"`)
+		}
+		buffer.WriteString(")")
+	}
+	// 字段筛选
+	// buffer.WriteString("{ __aggregate }")
+	//
+	buffer.WriteString("}")
+	result := o.Do(ctx, buffer.String())
+	if len(result.Errors) > 0 {
+		return nil, result.Errors[0]
+	}
+	data := result.Data.(map[string]interface{})["data"]
+	var list []*Var
+	if v1, ok := data.([]interface{}); ok {
+		for _, v := range v1 {
+			if v2, ok := v.(map[string]interface{}); ok {
+				list = append(list, NewVar(v2))
+			}
+		}
+	}
+	return list, nil
+}
 
 func (o *Objectql) mapToGrpahqlFormat(doc map[string]any) (string, error) {
 	var buffer bytes.Buffer

@@ -4,6 +4,9 @@ import (
 	"reflect"
 
 	"github.com/aundis/formula"
+	"github.com/aundis/graphql"
+	"github.com/aundis/graphql/language/ast"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type Object struct {
@@ -50,6 +53,7 @@ type StringType struct{}
 type BoolType struct{}
 type FloatType struct{}
 type DateTimeType struct{}
+type AnyType struct{}
 
 func (t *ObjectIDType) aType() {}
 func (t *IntType) aType()      {}
@@ -57,6 +61,7 @@ func (t *StringType) aType()   {}
 func (t *BoolType) aType()     {}
 func (t *FloatType) aType()    {}
 func (t *DateTimeType) aType() {}
+func (t *AnyType) aType()      {}
 
 var ObjectID = &ObjectIDType{}
 var Int = &IntType{}
@@ -64,6 +69,7 @@ var String = &StringType{}
 var Bool = &BoolType{}
 var Float = &FloatType{}
 var DateTime = &DateTimeType{}
+var Any = &AnyType{}
 
 type ExpandType struct {
 	ObjectApi string
@@ -240,6 +246,11 @@ type FindListOptions struct {
 	Direct bool           `json:"direct"`
 }
 
+type AggregateOptions struct {
+	Pipline []map[string]any `json:"filter"`
+	Direct  bool             `json:"direct"`
+}
+
 type CountOptions struct {
 	Filter map[string]any `json:"filter"`
 	Fields []string       `json:"fields"`
@@ -275,3 +286,20 @@ type DeleteOptions struct {
 	Filter map[string]any `json:"filter"`
 	Direct bool           `json:"direct"`
 }
+
+var graphqlAny = graphql.NewScalar(graphql.ScalarConfig{
+	Name:        "any",
+	Description: "interface{}",
+	Serialize: func(value interface{}) interface{} {
+		if v, ok := value.(primitive.M); ok {
+			return map[string]any(v)
+		}
+		return value
+	},
+	ParseValue: func(value interface{}) interface{} {
+		return value
+	},
+	ParseLiteral: func(valueAST ast.Value) interface{} {
+		return nil
+	},
+})

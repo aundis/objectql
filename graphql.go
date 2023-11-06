@@ -2,6 +2,7 @@ package objectql
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -43,6 +44,18 @@ func (o *Objectql) initObjectGraphqlQuery(ctx context.Context, querys graphql.Fi
 		},
 		Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 			return o.graphqlQueryListResolver(p.Context, p, object)
+		},
+	}
+
+	querys[object.Api+"__aggregate"] = &graphql.Field{
+		Type: graphql.NewList(graphqlAny),
+		Args: graphql.FieldConfigArgument{
+			"pipeline": &graphql.ArgumentConfig{
+				Type: graphql.String,
+			},
+		},
+		Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+			return o.graphqlQueryAggregateResolver(p.Context, p, object)
 		},
 	}
 
@@ -112,6 +125,47 @@ func (o *Objectql) initObjectGraphqlQuery(ctx context.Context, querys graphql.Fi
 		}
 	}
 	return nil
+}
+
+func (o *Objectql) graphqlQueryAggregateResolver(ctx context.Context, p graphql.ResolveParams, object *Object) (interface{}, error) {
+	// 对象权限检验
+	err := o.checkObjectPermission(ctx, object.Api, ObjectQuery)
+	if err != nil {
+		return nil, err
+	}
+	pipeline, err := o.parseMongoAggregatePipeline(ctx, p)
+	if err != nil {
+		return nil, err
+	}
+	cursor, err := o.getCollection(object.Api).Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, err
+	}
+	var list []bson.M
+	err = cursor.All(ctx, &list)
+	if err != nil {
+		return nil, err
+	}
+	var result []bson.M
+	for _, item := range list {
+		result = append(result, bson.M{
+			"__aggregate": item,
+		})
+	}
+	return list, nil
+}
+
+func (o *Objectql) parseMongoAggregatePipeline(ctx context.Context, p graphql.ResolveParams) ([]bson.M, error) {
+	pipeline := p.Args["pipeline"]
+	var result []bson.M
+	if v, ok := pipeline.(string); ok && len(v) > 0 {
+		// TODO: 详细了解一下UnmarshalExtJSON的用法
+		err := json.Unmarshal([]byte(v), &result)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return result, nil
 }
 
 func (o *Objectql) graphqlQueryListResolver(ctx context.Context, p graphql.ResolveParams, object *Object) (interface{}, error) {
@@ -517,7 +571,7 @@ func (o *Objectql) getGraphqlReturnFromHandle(ctx context.Context, mutation *Han
 func (o *Objectql) getGrpahqlObjectMutationForm(object *Object) graphql.Input {
 	fields := graphql.InputObjectConfigFieldMap{}
 	for _, cur := range object.Fields {
-		if cur.Api == "_id" {
+		if cur.Api == "_id" || cur.Api == "__aggregate" {
 			continue
 		}
 		switch cur.Type.(type) {
@@ -766,6 +820,8 @@ func (o *Objectql) getGraphqlFieldType(tpe Type) graphql.Output {
 		return o.getGraphqlFieldType(n.Type)
 	case *ArrayType:
 		return graphql.NewList(o.getGraphqlFieldType(n.Type))
+	case *AnyType:
+		return graphqlAny
 	}
 	return nil
 }
