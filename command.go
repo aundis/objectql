@@ -312,6 +312,13 @@ func (o *Objectql) computeCommandArgs(ctx context.Context, this map[string]any, 
 		}
 		n.Filter = r.(map[string]any)
 		return n, nil
+	case *AggregateArgs:
+		r, err := computeValue(ctx, this, n.Pipline)
+		if err != nil {
+			return nil, err
+		}
+		n.Pipline = r.([]map[string]any)
+		return n, nil
 	case map[string]any:
 		r, err := computeValue(ctx, this, n)
 		if err != nil {
