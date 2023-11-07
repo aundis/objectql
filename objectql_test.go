@@ -924,7 +924,7 @@ func TestAggregate(t *testing.T) {
 	}
 
 	_, err = oql.Aggregate(ctx, "person", AggregateOptions{
-		Pipline: []map[string]any{
+		Pipeline: []map[string]any{
 			{
 				"$group": map[string]any{
 					"_id": "$name",

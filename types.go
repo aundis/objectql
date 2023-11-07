@@ -173,8 +173,8 @@ type FindListArgs struct {
 }
 
 type AggregateArgs struct {
-	Pipline []map[string]any `json:"filter"`
-	Direct  bool             `json:"direct"`
+	Pipeline []map[string]any `json:"pipeline"`
+	Direct   bool             `json:"direct"`
 }
 
 type CountArgs struct {
@@ -252,8 +252,8 @@ type FindListOptions struct {
 }
 
 type AggregateOptions struct {
-	Pipline []map[string]any `json:"filter"`
-	Direct  bool             `json:"direct"`
+	Pipeline []map[string]any `json:"pipeline"`
+	Direct   bool             `json:"direct"`
 }
 
 type CountOptions struct {

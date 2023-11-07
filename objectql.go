@@ -935,8 +935,8 @@ func (o *Objectql) Aggregate(ctx context.Context, objectApi string, options Aggr
 		return nil, fmt.Errorf("not found object '%s'", objectApi)
 	}
 	var jsonData string
-	if options.Pipline != nil {
-		jsn, err := json.Marshal(options.Pipline)
+	if options.Pipeline != nil {
+		jsn, err := json.Marshal(options.Pipeline)
 		if err != nil {
 			return nil, err
 		}

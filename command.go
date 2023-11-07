@@ -110,8 +110,8 @@ func (o *Objectql) DoCommands(ctx context.Context, commands []Command, filter ..
 			case *AggregateArgs:
 				mapKey = command.Result
 				result, err = o.Aggregate(ctx, objectApi, AggregateOptions{
-					Pipline: n.Pipline,
-					Direct:  n.Direct,
+					Pipeline: n.Pipeline,
+					Direct:   n.Direct,
 				})
 			case map[string]any:
 				mapKey = command.Result
@@ -313,11 +313,11 @@ func (o *Objectql) computeCommandArgs(ctx context.Context, this map[string]any, 
 		n.Filter = r.(map[string]any)
 		return n, nil
 	case *AggregateArgs:
-		r, err := computeValue(ctx, this, n.Pipline)
+		r, err := computeValue(ctx, this, n.Pipeline)
 		if err != nil {
 			return nil, err
 		}
-		n.Pipline = r.([]map[string]any)
+		n.Pipeline = r.([]map[string]any)
 		return n, nil
 	case map[string]any:
 		r, err := computeValue(ctx, this, n)
