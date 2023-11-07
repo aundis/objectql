@@ -172,6 +172,11 @@ type FindListArgs struct {
 	Direct bool           `json:"direct"`
 }
 
+type AggregateArgs struct {
+	Pipline []map[string]any `json:"filter"`
+	Direct  bool             `json:"direct"`
+}
+
 type CountArgs struct {
 	Filter map[string]any `json:"filter"`
 	Direct bool           `json:"direct"`

@@ -107,6 +107,12 @@ func (o *Objectql) DoCommands(ctx context.Context, commands []Command, filter ..
 					Filter: n.Filter,
 					Direct: n.Direct,
 				})
+			case *AggregateArgs:
+				mapKey = command.Result
+				result, err = o.Aggregate(ctx, objectApi, AggregateOptions{
+					Pipline: n.Pipline,
+					Direct:  n.Direct,
+				})
 			case map[string]any:
 				mapKey = command.Result
 				result, err = o.Call(ctx, objectApi, funcNamme, n, command.Fields)
@@ -214,6 +220,14 @@ func (o *Objectql) parseCommandArgs(command *Command) (any, error) {
 	}
 	if gstr.HasSuffix(command.Call, ".count") {
 		var args *CountArgs
+		err := gconv.Struct(command.Args, &args)
+		if err != nil {
+			return nil, err
+		}
+		return args, nil
+	}
+	if gstr.HasSuffix(command.Call, ".aggregate") {
+		var args *AggregateArgs
 		err := gconv.Struct(command.Args, &args)
 		if err != nil {
 			return nil, err
