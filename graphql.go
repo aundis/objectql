@@ -146,12 +146,6 @@ func (o *Objectql) graphqlQueryAggregateResolver(ctx context.Context, p graphql.
 	if err != nil {
 		return nil, err
 	}
-	var result []bson.M
-	for _, item := range list {
-		result = append(result, bson.M{
-			"__aggregate": item,
-		})
-	}
 	return list, nil
 }
 
@@ -820,8 +814,6 @@ func (o *Objectql) getGraphqlFieldType(tpe Type) graphql.Output {
 		return o.getGraphqlFieldType(n.Type)
 	case *ArrayType:
 		return graphql.NewList(o.getGraphqlFieldType(n.Type))
-	case *AnyType:
-		return graphqlAny
 	}
 	return nil
 }

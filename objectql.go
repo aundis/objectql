@@ -18,6 +18,7 @@ import (
 	"github.com/gogf/gf/v2/os/gtime"
 	"github.com/gogf/gf/v2/text/gstr"
 	"github.com/gogf/gf/v2/util/gconv"
+	"github.com/samber/lo"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -102,12 +103,6 @@ func (o *Objectql) AddObject(object *Object) {
 		Type: DateTime,
 		Name: "修改时间",
 		Api:  "updateTime",
-	})
-	// 聚合查询数据
-	object.Fields = append(object.Fields, &Field{
-		Type: Any,
-		Name: "聚合查询数据",
-		Api:  "__aggregate",
 	})
 	o.list = append(o.list, object)
 }
@@ -385,7 +380,7 @@ func (o *Objectql) fieldResolver(ctx context.Context, fieldType Type, value inte
 	case *ExpandsType:
 		objectIds := gconv.Interfaces(value)
 		if len(objectIds) > 0 {
-			return o.expandsFieldResolver(ctx, n.ObjectApi, objectIds)
+			return o.expandsFieldResolver(ctx, n.ObjectApi, convInterfaces2ObjectIds(objectIds))
 		}
 		return nil, nil
 	case *FormulaType:
@@ -397,6 +392,16 @@ func (o *Objectql) fieldResolver(ctx context.Context, fieldType Type, value inte
 	default:
 		return nil, fmt.Errorf("fieldResolver not support type(%v)", fieldType)
 	}
+}
+
+func convInterfaces2ObjectIds(arr []interface{}) []primitive.ObjectID {
+	var result []primitive.ObjectID
+	for _, item := range arr {
+		if v, ok := item.(primitive.ObjectID); ok {
+			result = append(result, v)
+		}
+	}
+	return result
 }
 
 func (o *Objectql) arrayFieldResolver(ctx context.Context, tpe *ArrayType, value interface{}) (interface{}, error) {
@@ -426,15 +431,38 @@ func (o *Objectql) expandFieldResolver(ctx context.Context, objectApi string, ob
 	return results, nil
 }
 
-func (o *Objectql) expandsFieldResolver(ctx context.Context, objectApi string, objectIds []interface{}) (interface{}, error) {
+func (o *Objectql) expandsFieldResolver(ctx context.Context, objectApi string, objectIds []primitive.ObjectID) (interface{}, error) {
 	p := ctx.Value(graphqlResolveParamsKey).(graphql.ResolveParams)
 	selects := getGraphqlSelectFieldNames(p)
+	// 确保_id加入到查询当中, 排序需要用到
+	if lo.IndexOf(selects, "_id") == -1 {
+		selects = append(selects, "_id")
+	}
 	mgoSelects := stringArrayToMongodbSelects(selects)
 	results, err := o.mongoFindAll(ctx, objectApi, bson.M{"_id": bson.M{"$in": objectIds}}, selectMapToQueryString(mgoSelects))
 	if err != nil {
 		return nil, err
 	}
-	return results, nil
+	// 这里要进行排序后再进行返回
+	return sortByObjectIDs(results, objectIds), nil
+}
+
+func sortByObjectIDs(data []bson.M, order []primitive.ObjectID) []bson.M {
+	// 使用sort.Slice函数根据自定义比较函数对data进行排序
+	sort.Slice(data, func(i, j int) bool {
+		// 获取data中元素的_id字段值
+		idI := data[i]["_id"].(primitive.ObjectID)
+		idJ := data[j]["_id"].(primitive.ObjectID)
+
+		// 获取_id字段值在order数组中的索引
+		indexI := lo.IndexOf(order, idI)
+		indexJ := lo.IndexOf(order, idJ)
+
+		// 比较索引，返回排序结果
+		return indexI < indexJ
+	})
+
+	return data
 }
 
 // 如果是 user__expand 会将 user 添加进去
