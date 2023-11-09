@@ -41,7 +41,8 @@ func isNull(i interface{}) bool {
 		return true
 	}
 	vi := reflect.ValueOf(i)
-	if vi.Kind() == reflect.Ptr {
+	switch vi.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Map, reflect.Pointer, reflect.UnsafePointer, reflect.Interface, reflect.Slice:
 		return vi.IsNil()
 	}
 	return false
