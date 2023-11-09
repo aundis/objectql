@@ -321,7 +321,7 @@ func (o *Objectql) fullGraphqlObject(gobj *graphql.Object, object *Object) error
 			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 				return o.graphqlFieldResolver(p.Context, p, cur)
 			},
-			Description: cur.Comment,
+			Description: cur.Name + ":" + cur.Comment,
 		})
 	}
 	return nil

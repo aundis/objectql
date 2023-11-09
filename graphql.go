@@ -30,16 +30,20 @@ func (o *Objectql) initObjectGraphqlQuery(ctx context.Context, querys graphql.Fi
 		Type: graphql.NewList(o.getGraphqlObject(object.Api)),
 		Args: graphql.FieldConfigArgument{
 			"filter": &graphql.ArgumentConfig{
-				Type: graphql.String,
+				Type:        graphql.String,
+				Description: "过滤条件",
 			},
 			"top": &graphql.ArgumentConfig{
-				Type: graphql.Int,
+				Type:        graphql.Int,
+				Description: "返回数量限制",
 			},
 			"skip": &graphql.ArgumentConfig{
-				Type: graphql.Int,
+				Type:        graphql.Int,
+				Description: "跳过指定数量的返回结果，用于分页",
 			},
 			"sort": &graphql.ArgumentConfig{
-				Type: graphql.NewList(graphql.String),
+				Type:        graphql.NewList(graphql.String),
+				Description: "排序",
 			},
 		},
 		Resolve: func(p graphql.ResolveParams) (interface{}, error) {
@@ -63,16 +67,20 @@ func (o *Objectql) initObjectGraphqlQuery(ctx context.Context, querys graphql.Fi
 		Type: o.getGraphqlObject(object.Api),
 		Args: graphql.FieldConfigArgument{
 			"filter": &graphql.ArgumentConfig{
-				Type: graphql.String,
+				Type:        graphql.String,
+				Description: "过滤条件",
 			},
 			"top": &graphql.ArgumentConfig{
-				Type: graphql.Int,
+				Type:        graphql.Int,
+				Description: "返回数量限制",
 			},
 			"skip": &graphql.ArgumentConfig{
-				Type: graphql.Int,
+				Type:        graphql.Int,
+				Description: "跳过指定数量的返回结果，用于分页",
 			},
 			"sort": &graphql.ArgumentConfig{
-				Type: graphql.NewList(graphql.String),
+				Type:        graphql.NewList(graphql.String),
+				Description: "排序",
 			},
 		},
 		Resolve: func(p graphql.ResolveParams) (interface{}, error) {
@@ -84,16 +92,20 @@ func (o *Objectql) initObjectGraphqlQuery(ctx context.Context, querys graphql.Fi
 		Type: graphql.Int,
 		Args: graphql.FieldConfigArgument{
 			"filter": &graphql.ArgumentConfig{
-				Type: graphql.String,
+				Type:        graphql.String,
+				Description: "过滤条件",
 			},
 			"top": &graphql.ArgumentConfig{
-				Type: graphql.Int,
+				Type:        graphql.Int,
+				Description: "返回数量限制",
 			},
 			"skip": &graphql.ArgumentConfig{
-				Type: graphql.Int,
+				Type:        graphql.Int,
+				Description: "跳过指定数量的返回结果，用于分页",
 			},
 			"sort": &graphql.ArgumentConfig{
-				Type: graphql.NewList(graphql.String),
+				Type:        graphql.NewList(graphql.String),
+				Description: "排序",
 			},
 		},
 		Resolve: func(p graphql.ResolveParams) (interface{}, error) {
@@ -336,7 +348,8 @@ func (o *Objectql) initObjectGraphqlMutation(ctx context.Context, mutations grap
 		Type: o.getGraphqlObject(object.Api),
 		Args: graphql.FieldConfigArgument{
 			"doc": &graphql.ArgumentConfig{
-				Type: form,
+				Type:        form,
+				Description: "对象文档",
 			},
 		},
 		Resolve: func(p graphql.ResolveParams) (interface{}, error) {
@@ -348,10 +361,12 @@ func (o *Objectql) initObjectGraphqlMutation(ctx context.Context, mutations grap
 		Type: o.getGraphqlObject(object.Api),
 		Args: graphql.FieldConfigArgument{
 			"_id": &graphql.ArgumentConfig{
-				Type: graphql.String,
+				Type:        graphql.String,
+				Description: "对象id",
 			},
 			"doc": &graphql.ArgumentConfig{
-				Type: form,
+				Type:        form,
+				Description: "对象文档",
 			},
 		},
 		Resolve: func(p graphql.ResolveParams) (interface{}, error) {
@@ -363,7 +378,8 @@ func (o *Objectql) initObjectGraphqlMutation(ctx context.Context, mutations grap
 		Type: graphql.Boolean,
 		Args: graphql.FieldConfigArgument{
 			"_id": &graphql.ArgumentConfig{
-				Type: graphql.String,
+				Type:        graphql.String,
+				Description: "对象id",
 			},
 		},
 		Resolve: func(p graphql.ResolveParams) (interface{}, error) {
@@ -391,6 +407,7 @@ func (o *Objectql) initObjectGraphqlMutation(ctx context.Context, mutations grap
 			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 				return o.handleGraphqlResovler(p.Context, p, object, curHandle)
 			},
+			Description: handle.Comment,
 		}
 	}
 	return nil
@@ -718,6 +735,7 @@ func (o *Objectql) goStructTypeToGraphqlInputOrOutputType(ctx context.Context, t
 	}()
 
 	raw := map[string]graphql.Output{}
+	desc := map[string]string{}
 	for i := 0; i < tpe.NumField(); i++ {
 		field := tpe.Field(i)
 		if !field.IsExported() {
@@ -738,12 +756,16 @@ func (o *Objectql) goStructTypeToGraphqlInputOrOutputType(ctx context.Context, t
 			return nil, err
 		}
 		raw[gname] = gtype
+		desc[gname] = field.Tag.Get("desc")
 	}
 
 	if kind == "input" {
 		fields := graphql.InputObjectConfigFieldMap{}
 		for name, tpe := range raw {
-			fields[name] = &graphql.InputObjectFieldConfig{Type: tpe}
+			fields[name] = &graphql.InputObjectFieldConfig{
+				Type:        tpe,
+				Description: desc[name],
+			}
 		}
 		out = graphql.NewInputObject(graphql.InputObjectConfig{
 			Name:   objectName,
@@ -754,8 +776,9 @@ func (o *Objectql) goStructTypeToGraphqlInputOrOutputType(ctx context.Context, t
 		fields := graphql.Fields{}
 		for name, tpe := range raw {
 			fields[name] = &graphql.Field{
-				Name: name,
-				Type: tpe,
+				Name:        name,
+				Type:        tpe,
+				Description: desc[name],
 			}
 		}
 		out = graphql.NewObject(graphql.ObjectConfig{
