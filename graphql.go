@@ -134,6 +134,7 @@ func (o *Objectql) initObjectGraphqlQuery(ctx context.Context, querys graphql.Fi
 			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 				return o.handleGraphqlResovler(p.Context, p, object, curHandle)
 			},
+			Description: handle.Name + ": " + handle.Comment,
 		}
 	}
 	return nil
@@ -407,7 +408,7 @@ func (o *Objectql) initObjectGraphqlMutation(ctx context.Context, mutations grap
 			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 				return o.handleGraphqlResovler(p.Context, p, object, curHandle)
 			},
-			Description: handle.Comment,
+			Description: handle.Name + ": " + handle.Comment,
 		}
 	}
 	return nil
