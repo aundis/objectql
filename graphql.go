@@ -756,7 +756,7 @@ func (o *Objectql) goStructTypeToGraphqlInputOrOutputType(ctx context.Context, t
 			return nil, err
 		}
 		raw[gname] = gtype
-		desc[gname] = field.Tag.Get("desc")
+		desc[gname] = field.Tag.Get("comment")
 	}
 
 	if kind == "input" {
