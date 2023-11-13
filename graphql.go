@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/aundis/graphql"
 	"github.com/gogf/gf/v2/frame/g"
@@ -365,11 +366,15 @@ func preprocessMongoMapToId(value any) (primitive.ObjectID, error) {
 	return primitive.NilObjectID, fmt.Errorf("$toId value must is string")
 }
 
-func preprocessMongoMapToDate(value any) (*gtime.Time, error) {
+func preprocessMongoMapToDate(value any) (time.Time, error) {
 	if v, ok := value.(string); ok {
-		return gtime.StrToTime(v)
+		r, err := gtime.StrToTime(v)
+		if err != nil {
+			return time.Time{}, err
+		}
+		return r.Time, nil
 	}
-	return nil, fmt.Errorf("$toDate value must is string")
+	return time.Time{}, fmt.Errorf("$toDate value must is string")
 }
 
 func (o *Objectql) initObjectGraphqlMutation(ctx context.Context, mutations graphql.Fields, object *Object) error {
