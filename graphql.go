@@ -321,6 +321,7 @@ func (o *Objectql) parseMongoFindFilters(ctx context.Context, p graphql.ResolveP
 func preprocessMongoMap(data interface{}) (interface{}, error) {
 	switch n := data.(type) {
 	case primitive.M:
+		res := primitive.M{}
 		for k, v := range n {
 			switch k {
 			case "$toId":
@@ -338,10 +339,10 @@ func preprocessMongoMap(data interface{}) (interface{}, error) {
 				if err != nil {
 					return nil, err
 				}
-				n[k] = r
+				res[k] = r
 			}
 		}
-		return n, nil
+		return res, nil
 	case primitive.A:
 		var list primitive.A
 		for _, v := range n {
