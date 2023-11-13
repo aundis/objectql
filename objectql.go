@@ -826,8 +826,10 @@ func (o *Objectql) FindList(ctx context.Context, objectApi string, options FindL
 func (o *Objectql) FindOneById(ctx context.Context, objectApi string, options FindOneByIdOptions) (*Var, error) {
 	ctx = context.WithValue(ctx, blockEventsKey, options.Direct)
 	return o.FindOne(ctx, objectApi, FindOneOptions{
-		Filter: map[string]any{
-			"_id": options.ID,
+		Filter: M{
+			"_id": M{
+				"$toId": options.ID,
+			},
 		},
 		Fields: options.Fields,
 	})

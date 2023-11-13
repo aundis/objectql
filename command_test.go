@@ -64,7 +64,7 @@ func TestDoCommand(t *testing.T) {
 		{
 			Call: "person.insert",
 			Args: InsertArgs{
-				Doc: map[string]any{
+				Doc: M{
 					"name": "小刚",
 					"age":  "$$ person2.age + 10",
 					"aih":  "$$ mapToArr([person1, person2], '_id')",

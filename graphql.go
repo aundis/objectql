@@ -11,6 +11,7 @@ import (
 
 	"github.com/aundis/graphql"
 	"github.com/gogf/gf/v2/frame/g"
+	"github.com/gogf/gf/v2/os/gtime"
 	"github.com/gogf/gf/v2/util/gconv"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -304,7 +305,7 @@ func (o *Objectql) parseMongoFiledSelects(ctx context.Context, p graphql.Resolve
 	return nil
 }
 
-func (o *Objectql) parseMongoFindFilters(ctx context.Context, p graphql.ResolveParams) (bson.M, error) {
+func (o *Objectql) parseMongoFindFilters(ctx context.Context, p graphql.ResolveParams) (interface{}, error) {
 	filter := p.Args["filter"]
 	filterMgn := bson.M{}
 	if filter != nil && len(filter.(string)) > 0 {
@@ -314,32 +315,60 @@ func (o *Objectql) parseMongoFindFilters(ctx context.Context, p graphql.ResolveP
 			return nil, err
 		}
 	}
-	return formatMongoFilter(filterMgn).(bson.M), nil
+	return preprocessMongoMap(filterMgn)
 }
 
-func formatMongoFilter(data interface{}) interface{} {
+func preprocessMongoMap(data interface{}) (interface{}, error) {
 	switch n := data.(type) {
-	case string:
-		id, err := primitive.ObjectIDFromHex(n)
-		if err == nil {
-			return id
-		} else {
-			return n
-		}
 	case primitive.M:
 		for k, v := range n {
-			n[k] = formatMongoFilter(v)
+			switch k {
+			case "$toId":
+				if len(n) != 1 {
+					return nil, fmt.Errorf("$toId object contain multiple keys")
+				}
+				return preprocessMongoMapToId(v)
+			case "$toDate":
+				if len(n) != 1 {
+					return nil, fmt.Errorf("$toDate object contain multiple keys")
+				}
+				return preprocessMongoMapToDate(v)
+			default:
+				r, err := preprocessMongoMap(v)
+				if err != nil {
+					return nil, err
+				}
+				n[k] = r
+			}
 		}
-		return n
+		return n, nil
 	case primitive.A:
 		var list primitive.A
 		for _, v := range n {
-			list = append(list, formatMongoFilter(v))
+			r, err := preprocessMongoMap(v)
+			if err != nil {
+				return nil, err
+			}
+			list = append(list, r)
 		}
-		return list
+		return list, nil
 	default:
-		return data
+		return data, nil
 	}
+}
+
+func preprocessMongoMapToId(value any) (primitive.ObjectID, error) {
+	if v, ok := value.(string); ok {
+		return primitive.ObjectIDFromHex(v)
+	}
+	return primitive.NilObjectID, fmt.Errorf("$toId value must is string")
+}
+
+func preprocessMongoMapToDate(value any) (*gtime.Time, error) {
+	if v, ok := value.(string); ok {
+		return gtime.StrToTime(v)
+	}
+	return nil, fmt.Errorf("$toDate value must is string")
 }
 
 func (o *Objectql) initObjectGraphqlMutation(ctx context.Context, mutations graphql.Fields, object *Object) error {

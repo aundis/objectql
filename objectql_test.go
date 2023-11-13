@@ -364,8 +364,10 @@ func TestInsert(t *testing.T) {
 	}
 	// 查找这个新创建的记录
 	one, err := objectql.FindOne(ctx, "student", FindOneOptions{
-		Filter: map[string]any{
-			"_id": id,
+		Filter: M{
+			"_id": M{
+				"$toId": id,
+			},
 		},
 	})
 	if err != nil {
@@ -667,9 +669,9 @@ func TestFindList(t *testing.T) {
 	}
 	// 查找列表
 	list, err := objectql.FindList(ctx, "student", FindListOptions{
-		Filter: map[string]interface{}{
-			"_id": map[string]interface{}{
-				"$in": ids,
+		Filter: M{
+			"_id": M{
+				"$in": IdStrings2ConvMaps(ids),
 			},
 		},
 	})

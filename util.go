@@ -4,7 +4,11 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+
+	"github.com/samber/lo"
 )
+
+type M = map[string]any
 
 func FindObjectFromList(list []*Object, api string) *Object {
 	for _, item := range list {
@@ -110,4 +114,14 @@ func firstLower(s string) string {
 		return s
 	}
 	return strings.ToLower(string(s[0])) + s[1:]
+}
+
+// Mongo Map Helper
+
+func IdStrings2ConvMaps(ids []string) []M {
+	return lo.Map(ids, func(id string, index int) M {
+		return M{
+			"$toId": id,
+		}
+	})
 }
