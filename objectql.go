@@ -28,8 +28,8 @@ import (
 var blockEventsKey = "objectql_blockEventsKey"
 
 type ObjectqlOptiosn struct {
-	OwnerObject string
-	OwnerGetter func(ctx context.Context) (any, error)
+	OperatorObject string
+	GetOperator    func(ctx context.Context) (any, error)
 }
 
 func New(optinos ...ObjectqlOptiosn) *Objectql {
@@ -42,8 +42,8 @@ func New(optinos ...ObjectqlOptiosn) *Objectql {
 		eventMap:     gmap.NewAnyAnyMap(true),
 		gstructTypes: gmap.NewStrAnyMap(true),
 		// owner
-		ownerObject: option.OwnerObject,
-		ownerGetter: option.OwnerGetter,
+		operatorObject: option.OperatorObject,
+		getOperator:    option.GetOperator,
 	}
 }
 
@@ -66,8 +66,8 @@ type Objectql struct {
 	// struct types
 	gstructTypes *gmap.StrAnyMap
 	// owner
-	ownerObject string
-	ownerGetter func(ctx context.Context) (any, error)
+	operatorObject string
+	getOperator    func(ctx context.Context) (any, error)
 }
 
 func (o *Objectql) AddObject(object *Object) {
@@ -108,9 +108,9 @@ func (o *Objectql) AddObject(object *Object) {
 	}
 	object.Fields = append(object.Fields, expands...)
 	// 拥有者
-	if len(o.ownerObject) > 0 {
+	if len(o.operatorObject) > 0 {
 		object.Fields = append(object.Fields, &Field{
-			Type: NewRelate(o.ownerObject),
+			Type: NewRelate(o.operatorObject),
 			Name: "拥有者",
 			Api:  "owner",
 		})

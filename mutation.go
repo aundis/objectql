@@ -51,8 +51,8 @@ func (o *Objectql) insertHandleRaw(ctx context.Context, api string, doc map[stri
 	// 添加创建时间
 	doc["createTime"] = time.Now()
 	// 添加拥有者
-	if len(o.ownerObject) > 0 {
-		owner, err := o.ownerGetter(ctx)
+	if len(o.operatorObject) > 0 && o.getOperator != nil {
+		owner, err := o.getOperator(ctx)
 		if err != nil {
 			return "", err
 		}
