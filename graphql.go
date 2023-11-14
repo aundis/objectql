@@ -758,6 +758,11 @@ func (o *Objectql) goTypeToGraphqlInputOrOutputType(ctx context.Context, tpe ref
 var pattern = regexp.MustCompile(`[\./-]`)
 
 func (o *Objectql) goStructTypeToGraphqlInputOrOutputType(ctx context.Context, tpe reflect.Type) (out graphql.Output, err error) {
+	switch tpe {
+	case reflect.TypeOf(time.Time{}):
+		return graphql.DateTime, nil
+	}
+
 	kind := ctx.Value(tarnsKind).(string)
 	objectName := kind + "_" + pattern.ReplaceAllString(tpe.PkgPath(), "_") + "_" + tpe.Name()
 	if o.gstructTypes.Contains(objectName) {
