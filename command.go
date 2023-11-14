@@ -30,11 +30,11 @@ func (o *Objectql) DoCommands(ctx context.Context, commands []Command, filter ..
 			}
 			objectApi := arr[0]
 			funcNamme := arr[1]
-			args, err := o.parseCommandArgs(&command)
+			err := o.computeCommandArgs(ctx, this, &command)
 			if err != nil {
 				return nil, err
 			}
-			args, err = o.computeCommandArgs(ctx, this, objectApi, args)
+			args, err := o.convCommandArgs(&command)
 			if err != nil {
 				return nil, err
 			}
@@ -149,11 +149,23 @@ func (o *Objectql) DoCommands(ctx context.Context, commands []Command, filter ..
 	return NewVar(res), nil
 }
 
-func (o *Objectql) parseCommandArgs(command *Command) (any, error) {
+func (o *Objectql) computeCommandArgs(ctx context.Context, this map[string]any, command *Command) error {
 	// 给定一个默认值，不然后面会出现nil错误
 	if isNull(command.Args) {
 		command.Args = map[string]any{}
 	}
+	r, err := computeValue(ctx, this, command.Args)
+	if err != nil {
+		return err
+	}
+	if _, ok := r.(map[string]any); !ok {
+		return fmt.Errorf("command args computed after result value not map[string]any")
+	}
+	command.Args = r
+	return nil
+}
+
+func (o *Objectql) convCommandArgs(command *Command) (any, error) {
 	if gstr.HasSuffix(command.Call, ".insert") {
 		var args *InsertArgs
 		err := gconv.Struct(command.Args, &args)
@@ -237,131 +249,9 @@ func (o *Objectql) parseCommandArgs(command *Command) (any, error) {
 	return command.Args, nil
 }
 
-func (o *Objectql) computeCommandArgs(ctx context.Context, this map[string]any, object string, args any) (any, error) {
-	switch n := args.(type) {
-	case *FindOneByIdArgs:
-		r, err := computeString(ctx, this, n.ID)
-		if err != nil {
-			return nil, err
-		}
-		n.ID = r.(string)
-		return n, nil
-	case *FindOneArgs:
-		r, err := computeValue(ctx, this, n.Filter)
-		if err != nil {
-			return nil, err
-		}
-		n.Filter = r.(map[string]any)
-		return n, nil
-	case *FindListArgs:
-		r, err := computeValue(ctx, this, n.Filter)
-		if err != nil {
-			return nil, err
-		}
-		n.Filter = r.(map[string]any)
-		return n, nil
-	case *CountArgs:
-		r, err := computeValue(ctx, this, n.Filter)
-		if err != nil {
-			return nil, err
-		}
-		n.Filter = r.(map[string]any)
-		return n, nil
-	case *InsertArgs:
-		r, err := o.computeDocument(ctx, object, this, n.Doc)
-		if err != nil {
-			return nil, err
-		}
-		n.Doc = r
-		return n, nil
-	case *UpdateByIdArgs:
-		r, err := computeString(ctx, this, n.ID)
-		if err != nil {
-			return nil, err
-		}
-		n.ID = r.(string)
-		doc, err := o.computeDocument(ctx, object, this, n.Doc)
-		if err != nil {
-			return nil, err
-		}
-		n.Doc = doc
-		return n, nil
-	case *UpdateArgs:
-		r, err := computeValue(ctx, this, n.Filter)
-		if err != nil {
-			return nil, err
-		}
-		n.Filter = r.(map[string]any)
-		doc, err := o.computeDocument(ctx, object, this, n.Doc)
-		if err != nil {
-			return nil, err
-		}
-		n.Doc = doc
-		return n, nil
-	case *DeleteByIdArgs:
-		r, err := computeString(ctx, this, n.ID)
-		if err != nil {
-			return nil, err
-		}
-		n.ID = r.(string)
-		return n, nil
-	case *DeleteArgs:
-		r, err := computeValue(ctx, this, n.Filter)
-		if err != nil {
-			return nil, err
-		}
-		n.Filter = r.(map[string]any)
-		return n, nil
-	case *AggregateArgs:
-		r, err := computeValue(ctx, this, n.Pipeline)
-		if err != nil {
-			return nil, err
-		}
-		n.Pipeline = r.([]map[string]any)
-		return n, nil
-	case map[string]any:
-		r, err := computeValue(ctx, this, n)
-		if err != nil {
-			return nil, err
-		}
-		return r, nil
-	case nil:
-		return nil, nil
-	default:
-		return nil, fmt.Errorf("computeCommandArgs error: unknown commandArgs type %T", args)
-	}
-}
-
-func (o *Objectql) computeDocument(ctx context.Context, objectApi string, this map[string]any, doc map[string]any) (map[string]any, error) {
-	object := FindObjectFromList(o.list, objectApi)
-	if object == nil {
-		return nil, fmt.Errorf("computeDocument error: not found object %s", objectApi)
-	}
-	for k, v := range doc {
-		if str, ok := v.(string); ok && strings.HasPrefix(str, "$$ ") {
-			field := FindFieldFromObject(object, k)
-			if field == nil {
-				return nil, fmt.Errorf("computeDocument error: not found object %s field %s", objectApi, k)
-			}
-			value, err := computeString(ctx, this, v)
-			if err != nil {
-				return nil, err
-			}
-			input, err := formatComputedValue(field.Type, value)
-			if err != nil {
-				return nil, err
-			}
-			doc[k] = input
-		}
-	}
-	return doc, nil
-}
-
 func computeValue(ctx context.Context, this map[string]any, value any) (any, error) {
 	tpe := reflect.TypeOf(value)
 	switch tpe.Kind() {
-	case reflect.String:
-		return computeStringAndNormalizeNumber(ctx, this, value)
 	case reflect.Array, reflect.Slice:
 		return computeArray(ctx, this, value)
 	case reflect.Map:
@@ -381,6 +271,13 @@ func computeMap(ctx context.Context, this map[string]any, value any) (any, error
 		if err != nil {
 			return nil, err
 		}
+		if k.String() == "$formula" {
+			if sv.Len() > 1 {
+				return nil, fmt.Errorf("$formula object contain multiple key")
+			}
+			// 如果是公式，上面值已经计算过一次了，支持嵌套公式
+			return computeString(ctx, this, evalue)
+		}
 		result.SetMapIndex(k, reflect.ValueOf(evalue))
 	}
 	return result.Interface(), nil
@@ -399,20 +296,9 @@ func computeArray(ctx context.Context, this map[string]any, value any) (interfac
 	return result.Interface(), nil
 }
 
-func computeStringAndNormalizeNumber(ctx context.Context, this map[string]any, value any) (any, error) {
-	res, err := computeString(ctx, this, value)
-	if err != nil {
-		return nil, err
-	}
-	if formula.IsNumber(res) {
-		return formula.ToFloat64(res)
-	}
-	return res, nil
-}
-
 func computeString(ctx context.Context, this map[string]any, value any) (any, error) {
-	if str, ok := value.(string); ok && strings.HasPrefix(str, "$$ ") {
-		sourceCode, err := formula.ParseSourceCode([]byte(strings.Replace(str, "$$ ", "", 1)))
+	if str, ok := value.(string); ok {
+		sourceCode, err := formula.ParseSourceCode([]byte(str))
 		if err != nil {
 			return nil, err
 		}
@@ -422,7 +308,7 @@ func computeString(ctx context.Context, this map[string]any, value any) (any, er
 		runner.Set("this", this)
 		return runner.Resolve(ctx, sourceCode.Expression)
 	}
-	return value, nil
+	return nil, fmt.Errorf("formula type must is string, but got %T", value)
 }
 
 func resolverDocumentIdentifier(ctx context.Context, name string) (interface{}, error) {

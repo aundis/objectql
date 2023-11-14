@@ -27,11 +27,23 @@ import (
 
 var blockEventsKey = "objectql_blockEventsKey"
 
-func New() *Objectql {
+type ObjectqlOptiosn struct {
+	OwnerObject string
+	OwnerGetter func(ctx context.Context) (any, error)
+}
+
+func New(optinos ...ObjectqlOptiosn) *Objectql {
+	option := ObjectqlOptiosn{}
+	if len(optinos) > 0 {
+		option = optinos[0]
+	}
 	return &Objectql{
 		gobjects:     gmap.NewStrAnyMap(true),
 		eventMap:     gmap.NewAnyAnyMap(true),
 		gstructTypes: gmap.NewStrAnyMap(true),
+		// owner
+		ownerObject: option.OwnerObject,
+		ownerGetter: option.OwnerGetter,
 	}
 }
 
@@ -53,6 +65,9 @@ type Objectql struct {
 	objectHandlePermissionCheckHandler ObjectHandlePermissionCheckHandler
 	// struct types
 	gstructTypes *gmap.StrAnyMap
+	// owner
+	ownerObject string
+	ownerGetter func(ctx context.Context) (any, error)
 }
 
 func (o *Objectql) AddObject(object *Object) {
@@ -92,6 +107,14 @@ func (o *Objectql) AddObject(object *Object) {
 		}
 	}
 	object.Fields = append(object.Fields, expands...)
+	// 拥有者
+	if len(o.ownerObject) > 0 {
+		object.Fields = append(object.Fields, &Field{
+			Type: NewRelate(o.ownerObject),
+			Name: "拥有者",
+			Api:  "owner",
+		})
+	}
 	// 创建时间
 	object.Fields = append(object.Fields, &Field{
 		Type: DateTime,

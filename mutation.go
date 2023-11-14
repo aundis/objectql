@@ -50,6 +50,14 @@ func (o *Objectql) insertHandleRaw(ctx context.Context, api string, doc map[stri
 	// 数据库修改
 	// 添加创建时间
 	doc["createTime"] = time.Now()
+	// 添加拥有者
+	if len(o.ownerObject) > 0 {
+		owner, err := o.ownerGetter(ctx)
+		if err != nil {
+			return "", err
+		}
+		doc["owner"] = owner
+	}
 	err = formatDocumentToDatabase(object.Fields, doc)
 	if err != nil {
 		return "", err
