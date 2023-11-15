@@ -1,6 +1,7 @@
 package objectql
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"testing"
@@ -945,4 +946,12 @@ func TestAggregate(t *testing.T) {
 	// for _, v := range res {
 	// 	t.Log(v.ToAny())
 	// }
+}
+
+func TestWriteGraphqlArgumentValue(t *testing.T) {
+	var buffer bytes.Buffer
+	str := "hello"
+	writeGraphqlArgumentValue(&buffer, &str)
+	t.Log(buffer.String())
+	t.Log(str)
 }

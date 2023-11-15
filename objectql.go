@@ -1054,31 +1054,31 @@ func writeGraphqlArgumentValue(buffer *bytes.Buffer, value interface{}) error {
 		buffer.WriteString(escapeString(n))
 		buffer.WriteString(`"`)
 		return nil
-	case *string:
-		buffer.WriteString(`"`)
-		buffer.WriteString(escapeString(*n))
-		buffer.WriteString(`"`)
-		return nil
+	// case *string:
+	// 	buffer.WriteString(`"`)
+	// 	buffer.WriteString(escapeString(*n))
+	// 	buffer.WriteString(`"`)
+	// 	return nil
 	case time.Time:
 		buffer.WriteString(`"`)
 		buffer.WriteString(n.Format(time.RFC3339))
 		buffer.WriteString(`"`)
 		return nil
-	case *time.Time:
-		buffer.WriteString(`"`)
-		buffer.WriteString(n.Format(time.RFC3339))
-		buffer.WriteString(`"`)
-		return nil
+	// case *time.Time:
+	// 	buffer.WriteString(`"`)
+	// 	buffer.WriteString(n.Format(time.RFC3339))
+	// 	buffer.WriteString(`"`)
+	// 	return nil
 	case gtime.Time:
 		buffer.WriteString(`"`)
 		buffer.WriteString(n.Layout(time.RFC3339))
 		buffer.WriteString(`"`)
 		return nil
-	case *gtime.Time:
-		buffer.WriteString(`"`)
-		buffer.WriteString(n.Layout(time.RFC3339))
-		buffer.WriteString(`"`)
-		return nil
+	// case *gtime.Time:
+	// 	buffer.WriteString(`"`)
+	// 	buffer.WriteString(n.Layout(time.RFC3339))
+	// 	buffer.WriteString(`"`)
+	// 	return nil
 	case nil:
 		buffer.WriteString(`null`)
 		return nil
@@ -1096,6 +1096,13 @@ func writeGraphqlArgumentValue(buffer *bytes.Buffer, value interface{}) error {
 				}
 			}
 			buffer.WriteString("]")
+			return nil
+		}
+		if sourceValue.Type().Kind() == reflect.Pointer {
+			err := writeGraphqlArgumentValue(buffer, sourceValue.Elem().Interface())
+			if err != nil {
+				return err
+			}
 			return nil
 		}
 		buffer.WriteString(escapeString(gconv.String(n)))
