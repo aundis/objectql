@@ -250,6 +250,9 @@ func (o *Objectql) convCommandArgs(command *Command) (any, error) {
 }
 
 func computeValue(ctx context.Context, this map[string]any, value any) (any, error) {
+	if value == nil {
+		return nil, nil
+	}
 	tpe := reflect.TypeOf(value)
 	switch tpe.Kind() {
 	case reflect.Array, reflect.Slice:
