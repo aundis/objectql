@@ -46,7 +46,13 @@ func isNull(i interface{}) bool {
 	}
 	vi := reflect.ValueOf(i)
 	switch vi.Kind() {
-	case reflect.Chan, reflect.Func, reflect.Map, reflect.Pointer, reflect.UnsafePointer, reflect.Interface, reflect.Slice:
+	case reflect.Chan,
+		reflect.Func,
+		reflect.Map,
+		reflect.Pointer,
+		reflect.UnsafePointer,
+		reflect.Interface,
+		reflect.Slice:
 		return vi.IsNil()
 	}
 	return false

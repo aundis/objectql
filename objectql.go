@@ -1044,10 +1044,19 @@ func (o *Objectql) docToGrpahqlArgumentText(objectApi string, doc map[string]any
 }
 
 func writeGraphqlArgumentValue(buffer *bytes.Buffer, value interface{}) error {
+	if isNull(value) {
+		buffer.WriteString(`null`)
+		return nil
+	}
 	switch n := value.(type) {
 	case string:
 		buffer.WriteString(`"`)
 		buffer.WriteString(escapeString(n))
+		buffer.WriteString(`"`)
+		return nil
+	case *string:
+		buffer.WriteString(`"`)
+		buffer.WriteString(escapeString(*n))
 		buffer.WriteString(`"`)
 		return nil
 	case time.Time:
@@ -1074,10 +1083,6 @@ func writeGraphqlArgumentValue(buffer *bytes.Buffer, value interface{}) error {
 		buffer.WriteString(`null`)
 		return nil
 	default:
-		if isNull(value) {
-			buffer.WriteString(`null`)
-			return nil
-		}
 		sourceValue := reflect.ValueOf(value)
 		if sourceValue.Type().Kind() == reflect.Array || sourceValue.Type().Kind() == reflect.Slice {
 			buffer.WriteString("[")
