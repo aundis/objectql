@@ -91,6 +91,8 @@ func formatValueToDatabase(tpe Type, value interface{}) (interface{}, error) {
 		return formatArrayValueToDatebase(n, value)
 	case *FormulaType:
 		return formatValueToDatabase(n.Type, value)
+	case *AggregationType:
+		return formatValueToDatabase(n.Type, value)
 	default:
 		return nil, fmt.Errorf("formatValueToDatabase not support type(%T)", tpe)
 	}
