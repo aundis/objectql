@@ -197,6 +197,8 @@ func (o *Objectql) aggregateField(ctx context.Context, object *Object, id string
 	// 聚合方法
 	funcStr := ""
 	switch adata.Kind {
+	case Sum:
+		funcStr = "$sum"
 	case Avg:
 		funcStr = "$avg"
 	case Min:
