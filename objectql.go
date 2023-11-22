@@ -893,9 +893,7 @@ func (o *Objectql) FindOne(ctx context.Context, objectApi string, options FindOn
 	// }
 	if len(options.Sort) > 0 {
 		buffer.WriteString(" sort:")
-		buffer.WriteString(`[`)
 		buffer.WriteString(stringsToGraphqlQuery(options.Sort))
-		buffer.WriteString(`]`)
 	}
 	buffer.WriteString(")")
 	// 字段筛选
