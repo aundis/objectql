@@ -617,7 +617,11 @@ func (o *Objectql) Mutation(ctx context.Context, objectApi string, method string
 	if len(result.Errors) > 0 {
 		return nil, result.Errors[0]
 	}
-	return NewVar(result.Data.(map[string]interface{})["data"]), nil
+	data := result.Data.(map[string]interface{})["data"]
+	if isNull(data) {
+		return nil, nil
+	}
+	return NewVar(data), nil
 }
 
 func writeGraphqlOutputFieldQueryString(buffer *bytes.Buffer, gtype graphql.Output) {
@@ -666,7 +670,11 @@ func (o *Objectql) Insert(ctx context.Context, objectApi string, options InsertO
 	if len(result.Errors) > 0 {
 		return nil, result.Errors[0]
 	}
-	return NewVar(result.Data.(map[string]interface{})["data"]), nil
+	data := result.Data.(map[string]interface{})["data"]
+	if isNull(data) {
+		return nil, nil
+	}
+	return NewVar(data), nil
 }
 
 func (o *Objectql) Update(ctx context.Context, objectApi string, options UpdateOptions) ([]*Var, error) {
@@ -733,7 +741,11 @@ func (o *Objectql) UpdateById(ctx context.Context, objectApi string, options Upd
 	if len(result.Errors) > 0 {
 		return nil, result.Errors[0]
 	}
-	return NewVar(result.Data.(map[string]interface{})["data"]), nil
+	data := result.Data.(map[string]interface{})["data"]
+	if isNull(data) {
+		return nil, nil
+	}
+	return NewVar(data), nil
 }
 
 func (o *Objectql) Delete(ctx context.Context, objectApi string, options DeleteOptions) error {
@@ -910,7 +922,11 @@ func (o *Objectql) FindOne(ctx context.Context, objectApi string, options FindOn
 	if len(result.Errors) > 0 {
 		return nil, result.Errors[0]
 	}
-	return NewVar(result.Data.(map[string]interface{})["data"]), nil
+	data := result.Data.(map[string]interface{})["data"]
+	if isNull(data) {
+		return nil, nil
+	}
+	return NewVar(data), nil
 }
 
 func (o *Objectql) Count(ctx context.Context, objectApi string, options CountOptions) (int64, error) {
