@@ -32,7 +32,7 @@ func (o *Objectql) insertHandleRaw(ctx context.Context, api string, doc map[stri
 	}
 	// insertBefore 事件触发 (可以修改表单内容)
 	if ctx.Value(blockEventsKey) != true {
-		err = o.triggerInsertBefore(ctx, api, doc)
+		err = o.triggerInsertBefore(ctx, api, NewVar(doc))
 		if err != nil {
 			return "", err
 		}
@@ -77,7 +77,7 @@ func (o *Objectql) insertHandleRaw(ctx context.Context, api string, doc map[stri
 	}
 	// insertAfter 事件触发
 	if ctx.Value(blockEventsKey) != true {
-		err = o.triggerInsertAfter(ctx, api, objectIdStr, doc)
+		err = o.triggerInsertAfter(ctx, api, objectIdStr, NewVar(doc))
 		if err != nil {
 			return "", err
 		}
@@ -113,7 +113,7 @@ func (o *Objectql) updateHandleRaw(ctx context.Context, api string, id string, d
 	}
 	// updateBefore 事件触发 (可以修改表单内容)
 	if ctx.Value(blockEventsKey) != true {
-		err = o.triggerUpdateBefore(ctx, api, id, doc)
+		err = o.triggerUpdateBefore(ctx, api, id, NewVar(doc))
 		if err != nil {
 			return err
 		}
@@ -157,7 +157,7 @@ func (o *Objectql) updateHandleRaw(ctx context.Context, api string, id string, d
 	}
 	// updateAfter 事件触发
 	if ctx.Value(blockEventsKey) != true {
-		err = o.triggerUpdateAfter(ctx, api, id, doc)
+		err = o.triggerUpdateAfter(ctx, api, id, NewVar(doc))
 		if err != nil {
 			return err
 		}

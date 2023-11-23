@@ -47,7 +47,7 @@ func TestInsertBefore(t *testing.T) {
 		return
 	}
 	// 添加事件监听
-	objectql.ListenInsertBefore("staff", func(ctx context.Context, doc map[string]interface{}) error {
+	objectql.ListenInsertBefore("staff", func(ctx context.Context, doc *Var) error {
 		return errors.New("禁止创建Before")
 	})
 	// 插入对象
@@ -110,7 +110,7 @@ func TestInsertAfter(t *testing.T) {
 		return
 	}
 	// 添加事件监听
-	objectql.ListenInsertAfter("staff", func(ctx context.Context, id string, doc map[string]interface{}) error {
+	objectql.ListenInsertAfter("staff", func(ctx context.Context, id string, doc *Var) error {
 		return errors.New("禁止创建After")
 	})
 	// 插入对象
@@ -173,7 +173,7 @@ func TestUpdateBefore(t *testing.T) {
 		return
 	}
 	// 添加事件监听
-	objectql.ListenUpdateBefore("staff", func(ctx context.Context, id string, doc map[string]interface{}) error {
+	objectql.ListenUpdateBefore("staff", func(ctx context.Context, id string, doc *Var) error {
 		return errors.New("禁止更新Before")
 	})
 	// 插入对象
@@ -256,7 +256,7 @@ func TestUpdateAfter(t *testing.T) {
 		return
 	}
 	// 添加事件监听
-	objectql.ListenUpdateAfter("staff", func(ctx context.Context, id string, doc map[string]interface{}) error {
+	objectql.ListenUpdateAfter("staff", func(ctx context.Context, id string, doc *Var) error {
 		return errors.New("禁止更新After")
 	})
 	// 插入对象

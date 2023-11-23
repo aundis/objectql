@@ -538,7 +538,7 @@ func TestDelete(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	if !one.IsNil() {
+	if one != nil {
 		t.Error("记录删除失败")
 		return
 	}

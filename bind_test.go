@@ -12,22 +12,22 @@ var listenCount = 0
 
 type bindListenObjecct struct{}
 
-func (b *bindListenObjecct) InsertBefore(ctx context.Context, doc map[string]interface{}) error {
+func (b *bindListenObjecct) InsertBefore(ctx context.Context, doc *Var) error {
 	listenCount += 1
 	return nil
 }
 
-func (b *bindListenObjecct) InsertAfter(ctx context.Context, id string, doc map[string]interface{}) error {
+func (b *bindListenObjecct) InsertAfter(ctx context.Context, id string, doc *Var) error {
 	listenCount += 10
 	return nil
 }
 
-func (b *bindListenObjecct) UpdateBefore(ctx context.Context, id string, doc map[string]interface{}) error {
+func (b *bindListenObjecct) UpdateBefore(ctx context.Context, id string, doc *Var) error {
 	listenCount += 100
 	return nil
 }
 
-func (b *bindListenObjecct) UpdateAfter(ctx context.Context, id string, doc map[string]interface{}) error {
+func (b *bindListenObjecct) UpdateAfter(ctx context.Context, id string, doc *Var) error {
 	listenCount += 1000
 	return nil
 }

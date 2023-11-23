@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/gogf/gf/v2/util/gconv"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func NewVar(v any) *Var {
@@ -70,12 +71,24 @@ func (e *Var) ToAny() any {
 	return e.v
 }
 
+func (e *Var) HasValue(n string) bool {
+	return gconv.Bool(e.mapValue(n))
+}
+
 func (e *Var) Int(n string) int {
 	return gconv.Int(e.mapValue(n))
 }
 
 func (e *Var) String(n string) string {
-	return gconv.String(e.mapValue(n))
+	v := e.mapValue(n)
+	switch r := v.(type) {
+	case primitive.ObjectID:
+		return r.Hex()
+	case *primitive.ObjectID:
+		return r.Hex()
+	default:
+		return gconv.String(e.mapValue(n))
+	}
 }
 
 func (e *Var) Bool(n string) bool {
