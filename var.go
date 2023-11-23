@@ -97,6 +97,12 @@ func (e *Var) HasKeys(ns ...string) bool {
 	return true
 }
 
+func (e *Var) SetVal(k string, v any) {
+	if e.cache != nil {
+		e.cache[k] = v
+	}
+}
+
 func (e *Var) NotNull(n string) bool {
 	return !isNull(e.mapValue(n))
 }
