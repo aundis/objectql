@@ -71,8 +71,30 @@ func (e *Var) ToAny() any {
 	return e.v
 }
 
-func (e *Var) HasValue(n string) bool {
-	return gconv.Bool(e.mapValue(n))
+func (e *Var) HasKey(n string) bool {
+	if e.cache == nil {
+		return false
+	}
+	_, ok := e.cache[n]
+	return ok
+}
+
+func (e *Var) HasSomeKey(ns ...string) bool {
+	for _, n := range ns {
+		if e.HasKey(n) {
+			return true
+		}
+	}
+	return false
+}
+
+func (e *Var) HasKeys(ns ...string) bool {
+	for _, n := range ns {
+		if !e.HasKey(n) {
+			return false
+		}
+	}
+	return true
 }
 
 func (e *Var) Int(n string) int {
