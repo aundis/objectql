@@ -97,6 +97,10 @@ func (e *Var) HasKeys(ns ...string) bool {
 	return true
 }
 
+func (e *Var) NotNull(n string) bool {
+	return !isNull(e.mapValue(n))
+}
+
 func (e *Var) Int(n string) int {
 	return gconv.Int(e.mapValue(n))
 }
