@@ -79,6 +79,14 @@ func (o *Objectql) AddObject(object *Object) {
 		Api:     "_id",
 		Comment: "对象唯一标识",
 	}}, object.Fields...)
+	// 拥有者
+	if len(o.operatorObject) > 0 {
+		object.Fields = append(object.Fields, &Field{
+			Type: NewRelate(o.operatorObject),
+			Name: "拥有者",
+			Api:  "owner",
+		})
+	}
 	// 添加一些关联对象 __expand __expands
 	var expands []*Field
 	for _, field := range object.Fields {
@@ -107,14 +115,6 @@ func (o *Objectql) AddObject(object *Object) {
 		}
 	}
 	object.Fields = append(object.Fields, expands...)
-	// 拥有者
-	if len(o.operatorObject) > 0 {
-		object.Fields = append(object.Fields, &Field{
-			Type: NewRelate(o.operatorObject),
-			Name: "拥有者",
-			Api:  "owner",
-		})
-	}
 	// 创建时间
 	object.Fields = append(object.Fields, &Field{
 		Type: DateTime,
