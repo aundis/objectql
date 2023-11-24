@@ -71,12 +71,16 @@ func (e *Var) ToAny() any {
 	return e.v
 }
 
-func (e *Var) HasKey(n string) bool {
+func (e *Var) HasKey(ns ...string) bool {
 	if e.cache == nil {
 		return false
 	}
-	_, ok := e.cache[n]
-	return ok
+	for _, n := range ns {
+		if _, ok := e.cache[n]; !ok {
+			return false
+		}
+	}
+	return true
 }
 
 func (e *Var) HasSomeKey(ns ...string) bool {
@@ -88,23 +92,28 @@ func (e *Var) HasSomeKey(ns ...string) bool {
 	return false
 }
 
-func (e *Var) HasKeys(ns ...string) bool {
+func (e *Var) Set(k string, v any) {
+	if e.cache != nil {
+		e.cache[k] = v
+	}
+}
+
+func (e *Var) NotNull(ns ...string) bool {
 	for _, n := range ns {
-		if !e.HasKey(n) {
+		if isNull(e.mapValue(n)) {
 			return false
 		}
 	}
 	return true
 }
 
-func (e *Var) SetVal(k string, v any) {
-	if e.cache != nil {
-		e.cache[k] = v
+func (e *Var) IsNull(ns ...string) bool {
+	for _, n := range ns {
+		if !isNull(e.mapValue(n)) {
+			return false
+		}
 	}
-}
-
-func (e *Var) NotNull(n string) bool {
-	return !isNull(e.mapValue(n))
+	return true
 }
 
 func (e *Var) Int(n string) int {
