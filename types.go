@@ -309,3 +309,5 @@ var graphqlAny = graphql.NewScalar(graphql.ScalarConfig{
 		return nil
 	},
 })
+
+var Null = &struct{}{}
