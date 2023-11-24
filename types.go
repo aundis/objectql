@@ -34,6 +34,7 @@ type Field struct {
 	Name      string
 	Api       string
 	Comment   string
+	Default   any
 	valueApi  string
 	relations []*relationFiledInfo
 }

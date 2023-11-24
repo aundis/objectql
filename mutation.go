@@ -25,11 +25,8 @@ func (o *Objectql) insertHandleRaw(ctx context.Context, api string, doc map[stri
 	if err != nil {
 		return "", err
 	}
-	// 数据校验层
-	err = o.validateDocument(object, doc)
-	if err != nil {
-		return "", err
-	}
+	// 设定默认值
+	o.initDefaultValues(object.Fields, doc)
 	// insertBefore 事件触发 (可以修改表单内容)
 	if ctx.Value(blockEventsKey) != true {
 		err = o.triggerInsertBefore(ctx, api, NewVar(doc))
@@ -37,7 +34,7 @@ func (o *Objectql) insertHandleRaw(ctx context.Context, api string, doc map[stri
 			return "", err
 		}
 	}
-	// 数据校验层(数据可能被修改了,所以在校验一次)
+	// 数据校验层
 	err = o.validateDocument(object, doc)
 	if err != nil {
 		return "", err
@@ -83,6 +80,19 @@ func (o *Objectql) insertHandleRaw(ctx context.Context, api string, doc map[stri
 		}
 	}
 	return objectIdStr, nil
+}
+
+func (o *Objectql) initDefaultValues(fields []*Field, doc map[string]interface{}) {
+	for _, field := range fields {
+		if field.Default == nil {
+			continue
+		}
+		if field.Default == Null {
+			doc[field.Api] = nil
+		} else {
+			doc[field.Api] = field.Default
+		}
+	}
 }
 
 // permissionBlock 用于内部公式计算的时候屏蔽权限的校验
