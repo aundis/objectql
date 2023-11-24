@@ -84,7 +84,7 @@ func (o *Objectql) insertHandleRaw(ctx context.Context, api string, doc map[stri
 
 func (o *Objectql) initDefaultValues(fields []*Field, doc map[string]interface{}) {
 	for _, field := range fields {
-		if field.Default == nil {
+		if field.Default == nil || !isNull(doc[field.Api]) {
 			continue
 		}
 		if field.Default == Null {
