@@ -126,7 +126,11 @@ func (o *Objectql) DoCommands(ctx context.Context, commands []Command, filter ..
 			if len(mapKey) > 0 {
 				switch n := result.(type) {
 				case *Var:
-					this[mapKey] = n.ToAny()
+					if n == nil {
+						this[mapKey] = nil
+					} else {
+						this[mapKey] = n.ToAny()
+					}
 				case []*Var:
 					this[mapKey] = VarsToAnys(n)
 				default:
