@@ -243,7 +243,7 @@ func (o *Objectql) deleteHandleRaw(ctx context.Context, api string, id string) e
 	// before 数据查询
 	var before *Var
 	if ctx.Value(blockEventsKey) != true {
-		before, err = o.queryEventObjectEntity(ctx, api, id, DeleteBefore, DeleteAfter)
+		before, err = o.queryEventObjectEntity(ctx, api, id, DeleteBeforeEx, DeleteAfterEx)
 		if err != nil {
 			return err
 		}
