@@ -16,6 +16,13 @@ const (
 	UpdateAfter
 	DeleteBefore
 	DeleteAfter
+
+	// EX
+	InsertAfterEx
+	UpdateBeforeEx
+	UpdateAfterEx
+	DeleteBeforeEx
+	DeleteAfterEx
 )
 
 type InsertBeforeHandler = func(ctx context.Context, doc *Var) error
@@ -26,30 +33,30 @@ type DeleteBeforeHandler = func(ctx context.Context, id string) error
 type DeleteAfterHandler = func(ctx context.Context, id string) error
 
 func (o *Objectql) ListenInsertBefore(table string, fn InsertBeforeHandler) {
-	o.Listen(table, InsertBefore, fn)
+	o.listen(table, InsertBefore, fn)
 }
 
 func (o *Objectql) ListenInsertAfter(table string, fn InsertAfterHandler) {
-	o.Listen(table, InsertAfter, fn)
+	o.listen(table, InsertAfter, fn)
 }
 
 func (o *Objectql) ListenUpdateBefore(table string, fn UpdateBeoferHandler) {
-	o.Listen(table, UpdateBefore, fn)
+	o.listen(table, UpdateBefore, fn)
 }
 
 func (o *Objectql) ListenUpdateAfter(table string, fn UpdateAfterHandler) {
-	o.Listen(table, UpdateAfter, fn)
+	o.listen(table, UpdateAfter, fn)
 }
 
 func (o *Objectql) ListenDeleteBefore(table string, fn DeleteBeforeHandler) {
-	o.Listen(table, DeleteBefore, fn)
+	o.listen(table, DeleteBefore, fn)
 }
 
 func (o *Objectql) ListenDeleteAfter(table string, fn DeleteAfterHandler) {
-	o.Listen(table, DeleteAfter, fn)
+	o.listen(table, DeleteAfter, fn)
 }
 
-func (o *Objectql) Listen(table string, kind EventKind, fn interface{}) {
+func (o *Objectql) listen(table string, kind EventKind, value any) {
 	if !o.eventMap.Contains(table) {
 		o.eventMap.Set(table, gmap.NewIntAnyMap(true))
 	}
@@ -58,10 +65,34 @@ func (o *Objectql) Listen(table string, kind EventKind, fn interface{}) {
 		handleMap.Set(int(kind), garray.NewArray(true))
 	}
 	array := handleMap.Get(int(kind)).(*garray.Array)
-	array.Append(fn)
+	array.Append(value)
 }
 
-func (o *Objectql) UnListen(table string, kind EventKind, fn interface{}) {
+func (o *Objectql) UnListenInsertBefore(table string, fn InsertBeforeHandler) {
+	o.unListen(table, InsertBefore, fn)
+}
+
+func (o *Objectql) UnListenInsertAfter(table string, fn InsertAfterHandler) {
+	o.unListen(table, InsertAfter, fn)
+}
+
+func (o *Objectql) UnListenUpdateBefore(table string, fn UpdateBeoferHandler) {
+	o.unListen(table, UpdateBefore, fn)
+}
+
+func (o *Objectql) UnListenUpdateAfter(table string, fn UpdateAfterHandler) {
+	o.unListen(table, UpdateAfter, fn)
+}
+
+func (o *Objectql) UnListenDeleteBefore(table string, fn DeleteBeforeHandler) {
+	o.unListen(table, DeleteBefore, fn)
+}
+
+func (o *Objectql) UnListenDeleteAfter(table string, fn DeleteAfterHandler) {
+	o.unListen(table, DeleteAfter, fn)
+}
+
+func (o *Objectql) unListen(table string, kind EventKind, value any) {
 	if !o.eventMap.Contains(table) {
 		return
 	}
@@ -70,7 +101,7 @@ func (o *Objectql) UnListen(table string, kind EventKind, fn interface{}) {
 		return
 	}
 	array := handleMap.Get(int(kind)).(*garray.Array)
-	array.RemoveValue(fn)
+	array.RemoveValue(value)
 }
 
 func (o *Objectql) triggerInsertBefore(ctx context.Context, table string, doc *Var) error {

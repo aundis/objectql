@@ -2,6 +2,8 @@ package objectql
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/aundis/graphql"
@@ -72,9 +74,24 @@ func (o *Objectql) insertHandleRaw(ctx context.Context, api string, doc map[stri
 			}
 		}
 	}
+	// after 数据查询
+	var after *Var
+	if ctx.Value(blockEventsKey) != true {
+		after, err = o.queryEventObjectEntity(ctx, api, objectIdStr, InsertAfterEx)
+		if err != nil {
+			return "", err
+		}
+	}
 	// insertAfter 事件触发
 	if ctx.Value(blockEventsKey) != true {
 		err = o.triggerInsertAfter(ctx, api, objectIdStr, NewVar(doc))
+		if err != nil {
+			return "", err
+		}
+	}
+	// insertAfterEx 事件触发
+	if ctx.Value(blockEventsKey) != true {
+		err = o.triggerInsertAfterEx(ctx, api, objectIdStr, NewVar(doc), after)
 		if err != nil {
 			return "", err
 		}
@@ -105,6 +122,7 @@ func (o *Objectql) updateHandle(ctx context.Context, api string, id string, doc 
 
 func (o *Objectql) updateHandleRaw(ctx context.Context, api string, id string, doc map[string]interface{}, permissionBlock bool) error {
 	var err error
+	// var err error
 	object := FindObjectFromList(o.list, api)
 	if object == nil {
 		return ErrNotFoundObject
@@ -121,9 +139,24 @@ func (o *Objectql) updateHandleRaw(ctx context.Context, api string, id string, d
 	if err != nil {
 		return err
 	}
+	// before 值查询
+	var before *Var
+	if ctx.Value(blockEventsKey) != true {
+		before, err = o.queryEventObjectEntity(ctx, api, id, UpdateBeforeEx)
+		if err != nil {
+			return err
+		}
+	}
 	// updateBefore 事件触发 (可以修改表单内容)
 	if ctx.Value(blockEventsKey) != true {
 		err = o.triggerUpdateBefore(ctx, api, id, NewVar(doc))
+		if err != nil {
+			return err
+		}
+	}
+	// updateBeforeEx 事件触发 (可以修改表单内容)
+	if ctx.Value(blockEventsKey) != true {
+		err = o.triggerUpdateBeforeEx(ctx, api, id, NewVar(doc), before)
 		if err != nil {
 			return err
 		}
@@ -165,9 +198,24 @@ func (o *Objectql) updateHandleRaw(ctx context.Context, api string, id string, d
 			}
 		}
 	}
+	// after 值查询
+	var after *Var
+	if ctx.Value(blockEventsKey) != true {
+		after, err = o.queryEventObjectEntity(ctx, api, id, UpdateAfterEx)
+		if err != nil {
+			return err
+		}
+	}
 	// updateAfter 事件触发
 	if ctx.Value(blockEventsKey) != true {
 		err = o.triggerUpdateAfter(ctx, api, id, NewVar(doc))
+		if err != nil {
+			return err
+		}
+	}
+	// updateAfterEx 事件触发
+	if ctx.Value(blockEventsKey) != true {
+		err = o.triggerUpdateAfterEx(ctx, api, id, NewVar(doc), after)
 		if err != nil {
 			return err
 		}
@@ -192,9 +240,24 @@ func (o *Objectql) deleteHandleRaw(ctx context.Context, api string, id string) e
 	if err != nil {
 		return err
 	}
+	// before 数据查询
+	var before *Var
+	if ctx.Value(blockEventsKey) != true {
+		before, err = o.queryEventObjectEntity(ctx, api, id, DeleteBefore, DeleteAfter)
+		if err != nil {
+			return err
+		}
+	}
 	// deleteBefore 事件触发
 	if ctx.Value(blockEventsKey) != true {
 		err = o.triggerDeleteBefore(ctx, api, id)
+		if err != nil {
+			return err
+		}
+	}
+	// deleteBeforeEx 事件触发
+	if ctx.Value(blockEventsKey) != true {
+		err = o.triggerDeleteBeforeEx(ctx, api, id, before)
 		if err != nil {
 			return err
 		}
@@ -223,7 +286,26 @@ func (o *Objectql) deleteHandleRaw(ctx context.Context, api string, id string) e
 			return err
 		}
 	}
+	// deleteAfterEx 事件触发(这里用的是before数据)
+	if ctx.Value(blockEventsKey) != true {
+		err = o.triggerDeleteAfterEx(ctx, api, id, before)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
+}
+
+func (o *Objectql) queryEventObjectEntity(ctx context.Context, api string, id string, kinds ...EventKind) (*Var, error) {
+	qFields := o.getListenQueryFields(ctx, api, kinds...)
+	if len(qFields) == 0 {
+		return nil, nil
+	}
+	qFields = append(qFields, "_id")
+	return o.FindOneById(ctx, api, FindOneByIdOptions{
+		ID:     id,
+		Fields: []string{strings2GraphqlFieldQuery(qFields)},
+	})
 }
 
 func (o *Objectql) graphqlMutationQueryOne(ctx context.Context, p graphql.ResolveParams, object *Object, id string) (interface{}, error) {
@@ -238,4 +320,39 @@ func (o *Objectql) graphqlMutationQueryOne(ctx context.Context, p graphql.Resolv
 		return nil, err
 	}
 	return one, nil
+}
+
+func buildFieldQueryString(obj map[string]interface{}, prefix string) string {
+	var query string
+	for key, value := range obj {
+		fullPath := key
+		if prefix != "" {
+			fullPath = fmt.Sprintf("%s.%s", prefix, key)
+		}
+		query += key
+		if len(value.(map[string]interface{})) > 0 {
+			query += fmt.Sprintf(" { %s }", buildFieldQueryString(value.(map[string]interface{}), fullPath))
+		} else {
+			query += " "
+		}
+	}
+	return query
+}
+
+func strings2GraphqlFieldQuery(arr []string) string {
+	result := make(map[string]interface{})
+
+	for _, item := range arr {
+		parts := strings.Split(item, ".")
+		current := result
+
+		for _, part := range parts {
+			if current[part] == nil {
+				current[part] = make(map[string]interface{})
+			}
+			current = current[part].(map[string]interface{})
+		}
+	}
+
+	return buildFieldQueryString(result, "")
 }
