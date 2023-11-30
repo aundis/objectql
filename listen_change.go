@@ -13,7 +13,7 @@ type ListenChangeHandler struct {
 	Listen     []string
 	Query      []string
 	UpdateOnly bool
-	Handle     func(ctx context.Context, change map[string]bool, entity *Var, before *Var) error
+	Handle     func(ctx context.Context, change map[string]bool, cur *Var, before *Var) error
 }
 
 func (o *Objectql) ListenChange(table string, handle *ListenChangeHandler) {

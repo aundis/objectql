@@ -7,27 +7,27 @@ import (
 // EX
 type InsertAfterExHandler struct {
 	Fields []string
-	Handle func(ctx context.Context, id string, doc *Var, entity *Var) error
+	Handle func(ctx context.Context, id string, doc *Var, cur *Var) error
 }
 
 type UpdateBeforeExHandler struct {
 	Fields []string
-	Handle func(ctx context.Context, id string, doc *Var, entity *Var) error
+	Handle func(ctx context.Context, id string, doc *Var, cur *Var) error
 }
 
 type UpdateAfterExHandler struct {
 	Fields []string
-	Handle func(ctx context.Context, id string, doc *Var, entity *Var) error
+	Handle func(ctx context.Context, id string, doc *Var, cur *Var) error
 }
 
 type DeleteBeforeExHandler struct {
 	Fields []string
-	Handle func(ctx context.Context, id string, entity *Var) error
+	Handle func(ctx context.Context, id string, cur *Var) error
 }
 
 type DeleteAfterExHandler struct {
 	Fields []string
-	Handle func(ctx context.Context, id string, entity *Var) error
+	Handle func(ctx context.Context, id string, cur *Var) error
 }
 
 // EX
