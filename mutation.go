@@ -99,7 +99,7 @@ func (o *Objectql) insertHandleRaw(ctx context.Context, api string, doc map[stri
 	}
 	// fieldChange 事件触发
 	if ctx.Value(blockEventsKey) != true {
-		err = o.triggerChange(ctx, object, NewVar(nil), after)
+		err = o.triggerChange(ctx, object, NewVar(nil), after, false)
 		if err != nil {
 			return "", err
 		}
@@ -230,7 +230,7 @@ func (o *Objectql) updateHandleRaw(ctx context.Context, api string, id string, d
 	}
 	// fieldChange 事件触发
 	if ctx.Value(blockEventsKey) != true {
-		err = o.triggerChange(ctx, object, before, after)
+		err = o.triggerChange(ctx, object, before, after, true)
 		if err != nil {
 			return err
 		}
@@ -310,7 +310,7 @@ func (o *Objectql) deleteHandleRaw(ctx context.Context, api string, id string) e
 	}
 	// fieldChange 事件触发
 	if ctx.Value(blockEventsKey) != true {
-		err = o.triggerChange(ctx, object, before, NewVar(nil))
+		err = o.triggerChange(ctx, object, before, NewVar(nil), false)
 		if err != nil {
 			return err
 		}

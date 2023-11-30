@@ -130,10 +130,25 @@ func (o *Objectql) getListenQueryFields(ctx context.Context, table string, kinds
 			case *DeleteAfterExHandler:
 				result = append(result, n.Fields...)
 			case *ListenChangeHandler:
-				result = append(result, n.Query...)
-				result = append(result, n.Listen...)
+				if !n.UpdateOnly || o.isInUpdateMutation(kinds...) {
+					result = append(result, n.Query...)
+					result = append(result, n.Listen...)
+				}
 			}
 		}
 	}
 	return result
+}
+
+func (o *Objectql) isInUpdateMutation(kinds ...EventKind) bool {
+	for _, k := range kinds {
+		switch k {
+		case UpdateBefore,
+			UpdateAfter,
+			UpdateBeforeEx,
+			UpdateAfterEx:
+			return true
+		}
+	}
+	return false
 }

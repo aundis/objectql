@@ -10,9 +10,10 @@ import (
 )
 
 type ListenChangeHandler struct {
-	Listen []string
-	Query  []string
-	Handle func(ctx context.Context, change map[string]bool, entity *Var, before *Var) error
+	Listen     []string
+	Query      []string
+	UpdateOnly bool
+	Handle     func(ctx context.Context, change map[string]bool, entity *Var, before *Var) error
 }
 
 func (o *Objectql) ListenChange(table string, handle *ListenChangeHandler) {
@@ -39,9 +40,12 @@ func (o *Objectql) UnListenChange(table string, handle *ListenChangeHandler) {
 	array.RemoveValue(handle)
 }
 
-func (o *Objectql) triggerChange(ctx context.Context, object *Object, before *Var, after *Var) error {
+func (o *Objectql) triggerChange(ctx context.Context, object *Object, before *Var, after *Var, inUpdateMutation bool) error {
 	for _, handle := range o.getEventHanders(ctx, object.Api, FieldChange) {
 		ins := handle.(*ListenChangeHandler)
+		if ins.UpdateOnly && !inUpdateMutation {
+			continue
+		}
 		change := map[string]bool{}
 		hasChange := false
 		for _, fieldStr := range ins.Listen {
