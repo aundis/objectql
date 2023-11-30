@@ -132,20 +132,60 @@ func (e *Var) String(n string) string {
 	}
 }
 
+func (e *Var) PtrString(n string) *string {
+	if e.isNull(n) {
+		return nil
+	}
+	res := e.String(n)
+	return &res
+}
+
 func (e *Var) Bool(n string) bool {
 	return gconv.Bool(e.mapValue(n))
+}
+
+func (e *Var) PtrBool(n string) *bool {
+	if e.isNull(n) {
+		return nil
+	}
+	res := e.Bool(n)
+	return &res
 }
 
 func (e *Var) Float32(n string) float32 {
 	return gconv.Float32(e.mapValue(n))
 }
 
+func (e *Var) PtrFloat32(n string) *float32 {
+	if e.isNull(n) {
+		return nil
+	}
+	res := e.Float32(n)
+	return &res
+}
+
 func (e *Var) Float64(n string) float64 {
 	return gconv.Float64(e.mapValue(n))
 }
 
+func (e *Var) PtrFloat64(n string) *float64 {
+	if e.isNull(n) {
+		return nil
+	}
+	res := e.Float64(n)
+	return &res
+}
+
 func (e *Var) Time(n string) time.Time {
 	return gconv.Time(e.mapValue(n))
+}
+
+func (e *Var) PtrTime(n string) *time.Time {
+	if e.isNull(n) {
+		return nil
+	}
+	res := e.Time(n)
+	return &res
 }
 
 func (e *Var) Ints(n string) []int {
@@ -181,6 +221,10 @@ func (e *Var) mapValue(k string) any {
 		return e.cache[k]
 	}
 	return nil
+}
+
+func (e *Var) isNull(n string) bool {
+	return isNull(e.mapValue(n))
 }
 
 func VarsToAnys(arr []*Var) []any {
