@@ -23,6 +23,9 @@ const (
 	UpdateAfterEx
 	DeleteBeforeEx
 	DeleteAfterEx
+
+	// CHANGE
+	FieldChange
 )
 
 type InsertBeforeHandler = func(ctx context.Context, doc *Var) error

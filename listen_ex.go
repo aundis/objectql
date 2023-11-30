@@ -129,6 +129,9 @@ func (o *Objectql) getListenQueryFields(ctx context.Context, table string, kinds
 				result = append(result, n.Fields...)
 			case *DeleteAfterExHandler:
 				result = append(result, n.Fields...)
+			case *ListenChangeHandler:
+				result = append(result, n.Query...)
+				result = append(result, n.Listen...)
 			}
 		}
 	}

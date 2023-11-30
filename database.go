@@ -33,13 +33,23 @@ func (o *Objectql) WithTransaction(ctx context.Context, fn func(ctx context.Cont
 	} else {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
+		// SUPPORT NEXT
+		ctx = o.withNextContext(ctx)
 		session, err := o.mongoClient.StartSession()
 		if err != nil {
 			return nil, err
 		}
 		defer session.EndSession(ctx)
 		return session.WithTransaction(ctx, func(ctx mongo.SessionContext) (interface{}, error) {
-			return fn(ctx)
+			result, err := fn(ctx)
+			if err != nil {
+				return nil, err
+			}
+			err = o.runNextHandles(ctx)
+			if err != nil {
+				return nil, err
+			}
+			return result, nil
 		})
 	}
 }

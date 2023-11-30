@@ -164,6 +164,10 @@ func (e *Var) Float64s(n string) []float64 {
 	return gconv.Float64s(e.mapValue(n))
 }
 
+func (e *Var) Any(n string) any {
+	return e.mapValue(n)
+}
+
 func (e *Var) Var(n string) *Var {
 	return NewVar(e.mapValue(n))
 }

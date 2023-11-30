@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/aundis/graphql"
+	"github.com/gogf/gf/v2/util/gconv"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -14,7 +15,7 @@ func (o *Objectql) insertHandle(ctx context.Context, api string, doc map[string]
 	res, err := o.WithTransaction(ctx, func(ctx context.Context) (interface{}, error) {
 		return o.insertHandleRaw(ctx, api, doc)
 	})
-	return res.(string), err
+	return gconv.String(res), err
 }
 
 func (o *Objectql) insertHandleRaw(ctx context.Context, api string, doc map[string]interface{}) (string, error) {
@@ -77,7 +78,7 @@ func (o *Objectql) insertHandleRaw(ctx context.Context, api string, doc map[stri
 	// after 数据查询
 	var after *Var
 	if ctx.Value(blockEventsKey) != true {
-		after, err = o.queryEventObjectEntity(ctx, api, objectIdStr, InsertAfterEx)
+		after, err = o.queryEventObjectEntity(ctx, api, objectIdStr, InsertAfterEx, FieldChange)
 		if err != nil {
 			return "", err
 		}
@@ -92,6 +93,13 @@ func (o *Objectql) insertHandleRaw(ctx context.Context, api string, doc map[stri
 	// insertAfterEx 事件触发
 	if ctx.Value(blockEventsKey) != true {
 		err = o.triggerInsertAfterEx(ctx, api, objectIdStr, NewVar(doc), after)
+		if err != nil {
+			return "", err
+		}
+	}
+	// fieldChange 事件触发
+	if ctx.Value(blockEventsKey) != true {
+		err = o.triggerChange(ctx, object, NewVar(nil), after)
 		if err != nil {
 			return "", err
 		}
@@ -142,7 +150,7 @@ func (o *Objectql) updateHandleRaw(ctx context.Context, api string, id string, d
 	// before 值查询
 	var before *Var
 	if ctx.Value(blockEventsKey) != true {
-		before, err = o.queryEventObjectEntity(ctx, api, id, UpdateBeforeEx)
+		before, err = o.queryEventObjectEntity(ctx, api, id, UpdateBeforeEx, FieldChange)
 		if err != nil {
 			return err
 		}
@@ -201,7 +209,7 @@ func (o *Objectql) updateHandleRaw(ctx context.Context, api string, id string, d
 	// after 值查询
 	var after *Var
 	if ctx.Value(blockEventsKey) != true {
-		after, err = o.queryEventObjectEntity(ctx, api, id, UpdateAfterEx)
+		after, err = o.queryEventObjectEntity(ctx, api, id, UpdateAfterEx, FieldChange)
 		if err != nil {
 			return err
 		}
@@ -216,6 +224,13 @@ func (o *Objectql) updateHandleRaw(ctx context.Context, api string, id string, d
 	// updateAfterEx 事件触发
 	if ctx.Value(blockEventsKey) != true {
 		err = o.triggerUpdateAfterEx(ctx, api, id, NewVar(doc), after)
+		if err != nil {
+			return err
+		}
+	}
+	// fieldChange 事件触发
+	if ctx.Value(blockEventsKey) != true {
+		err = o.triggerChange(ctx, object, before, after)
 		if err != nil {
 			return err
 		}
@@ -243,7 +258,7 @@ func (o *Objectql) deleteHandleRaw(ctx context.Context, api string, id string) e
 	// before 数据查询
 	var before *Var
 	if ctx.Value(blockEventsKey) != true {
-		before, err = o.queryEventObjectEntity(ctx, api, id, DeleteBeforeEx, DeleteAfterEx)
+		before, err = o.queryEventObjectEntity(ctx, api, id, DeleteBeforeEx, DeleteAfterEx, FieldChange)
 		if err != nil {
 			return err
 		}
@@ -289,6 +304,13 @@ func (o *Objectql) deleteHandleRaw(ctx context.Context, api string, id string) e
 	// deleteAfterEx 事件触发(这里用的是before数据)
 	if ctx.Value(blockEventsKey) != true {
 		err = o.triggerDeleteAfterEx(ctx, api, id, before)
+		if err != nil {
+			return err
+		}
+	}
+	// fieldChange 事件触发
+	if ctx.Value(blockEventsKey) != true {
+		err = o.triggerChange(ctx, object, before, NewVar(nil))
 		if err != nil {
 			return err
 		}
