@@ -10,12 +10,16 @@ import (
 type EventPosition int
 
 const (
-	InsertBefore EventPosition = iota
+	InsertBefore EventPosition = 1 << iota
 	InsertAfter
 	UpdateBefore
 	UpdateAfter
 	DeleteBefore
 	DeleteAfter
+
+	InsertFull EventPosition = InsertBefore | InsertAfter
+	UpdateFull EventPosition = UpdateBefore | UpdateAfter
+	DeleteFull EventPosition = DeleteBefore | DeleteAfter
 )
 
 type eventKind int

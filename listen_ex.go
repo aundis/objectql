@@ -144,7 +144,7 @@ func (o *Objectql) getListenQueryFields(ctx context.Context, table string, posit
 			case *DeleteAfterExHandler:
 				result = append(result, n.Fields...)
 			case *ListenChangeHandler:
-				if o.isPositionMatch(n.Positions, position) {
+				if n.Position&position != 0 {
 					result = append(result, n.Query...)
 					result = append(result, n.Listen...)
 				}
@@ -152,16 +152,4 @@ func (o *Objectql) getListenQueryFields(ctx context.Context, table string, posit
 		}
 	}
 	return result
-}
-
-func (o *Objectql) isPositionMatch(list []EventPosition, cur EventPosition) bool {
-	if len(list) == 0 {
-		return true
-	}
-	for _, k := range list {
-		if k == cur {
-			return true
-		}
-	}
-	return false
 }

@@ -10,13 +10,16 @@ import (
 )
 
 type ListenChangeHandler struct {
-	Listen    []string
-	Query     []string
-	Positions []EventPosition
-	Handle    func(ctx context.Context, change map[string]bool, cur *Var, before *Var) error
+	Listen   []string
+	Query    []string
+	Position EventPosition
+	Handle   func(ctx context.Context, change map[string]bool, cur *Var, before *Var) error
 }
 
 func (o *Objectql) ListenChange(table string, handle *ListenChangeHandler) {
+	if handle.Position == 0 {
+		handle.Position = InsertFull | UpdateFull | DeleteFull
+	}
 	if !o.eventMap.Contains(table) {
 		o.eventMap.Set(table, gmap.NewIntAnyMap(true))
 	}
@@ -43,7 +46,7 @@ func (o *Objectql) UnListenChange(table string, handle *ListenChangeHandler) {
 func (o *Objectql) triggerChange(ctx context.Context, object *Object, before *Var, after *Var, position EventPosition) error {
 	for _, handle := range o.getEventHanders(ctx, object.Api, kFieldChange) {
 		ins := handle.(*ListenChangeHandler)
-		if !o.isPositionMatch(ins.Positions, position) {
+		if ins.Position&position != 0 {
 			continue
 		}
 		change := map[string]bool{}
