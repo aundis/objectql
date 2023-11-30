@@ -33,49 +33,49 @@ type DeleteAfterExHandler struct {
 // EX
 
 func (o *Objectql) ListenInsertAfterEx(table string, handle *InsertAfterExHandler) {
-	o.listen(table, InsertAfterEx, handle)
+	o.listen(table, kInsertAfterEx, handle)
 }
 
 func (o *Objectql) ListenUpdateBeforeEx(table string, handle *UpdateBeforeExHandler) {
-	o.listen(table, UpdateBeforeEx, handle)
+	o.listen(table, kUpdateBeforeEx, handle)
 }
 
 func (o *Objectql) ListenUpdateAfterEx(table string, handle *UpdateAfterExHandler) {
-	o.listen(table, UpdateAfterEx, handle)
+	o.listen(table, kUpdateAfterEx, handle)
 }
 
 func (o *Objectql) ListenDeleteBeforeEx(table string, handle *DeleteBeforeExHandler) {
-	o.listen(table, DeleteBeforeEx, handle)
+	o.listen(table, kDeleteBeforeEx, handle)
 }
 
 func (o *Objectql) ListenDeleteAfterEx(table string, handle *DeleteAfterExHandler) {
-	o.listen(table, DeleteAfterEx, handle)
+	o.listen(table, kDeleteAfterEx, handle)
 }
 
 func (o *Objectql) UnListenInsertAfterEx(table string, handle *InsertAfterExHandler) {
-	o.unListen(table, InsertAfterEx, handle)
+	o.unListen(table, kInsertAfterEx, handle)
 }
 
 func (o *Objectql) UnListenUpdateBeforeEx(table string, handle *UpdateBeforeExHandler) {
-	o.unListen(table, UpdateBeforeEx, handle)
+	o.unListen(table, kUpdateBeforeEx, handle)
 }
 
 func (o *Objectql) UnListenUpdateAfterEx(table string, handle *UpdateAfterExHandler) {
-	o.unListen(table, UpdateAfterEx, handle)
+	o.unListen(table, kUpdateAfterEx, handle)
 }
 
 func (o *Objectql) UnListenDeleteBeforeEx(table string, handle *DeleteBeforeExHandler) {
-	o.unListen(table, DeleteBeforeEx, handle)
+	o.unListen(table, kDeleteBeforeEx, handle)
 }
 
 func (o *Objectql) UnListenDeleteAfterEx(table string, handle *DeleteAfterExHandler) {
-	o.unListen(table, DeleteAfterEx, handle)
+	o.unListen(table, kDeleteAfterEx, handle)
 }
 
 // TRIGGER
 
 func (o *Objectql) triggerInsertAfterEx(ctx context.Context, table string, id string, doc *Var, entity *Var) error {
-	for _, handle := range o.getEventHanders(ctx, table, InsertAfterEx) {
+	for _, handle := range o.getEventHanders(ctx, table, kInsertAfterEx) {
 		ins := handle.(*InsertAfterExHandler)
 		return ins.Handle(ctx, id, doc, entity)
 	}
@@ -83,7 +83,7 @@ func (o *Objectql) triggerInsertAfterEx(ctx context.Context, table string, id st
 }
 
 func (o *Objectql) triggerUpdateBeforeEx(ctx context.Context, table string, id string, doc *Var, entity *Var) error {
-	for _, handle := range o.getEventHanders(ctx, table, UpdateBeforeEx) {
+	for _, handle := range o.getEventHanders(ctx, table, kUpdateBeforeEx) {
 		ins := handle.(*UpdateBeforeExHandler)
 		return ins.Handle(ctx, id, doc, entity)
 	}
@@ -91,7 +91,7 @@ func (o *Objectql) triggerUpdateBeforeEx(ctx context.Context, table string, id s
 }
 
 func (o *Objectql) triggerUpdateAfterEx(ctx context.Context, table string, id string, doc *Var, entity *Var) error {
-	for _, handle := range o.getEventHanders(ctx, table, UpdateAfterEx) {
+	for _, handle := range o.getEventHanders(ctx, table, kUpdateAfterEx) {
 		ins := handle.(*UpdateAfterExHandler)
 		return ins.Handle(ctx, id, doc, entity)
 	}
@@ -99,7 +99,7 @@ func (o *Objectql) triggerUpdateAfterEx(ctx context.Context, table string, id st
 }
 
 func (o *Objectql) triggerDeleteBeforeEx(ctx context.Context, table string, id string, entity *Var) error {
-	for _, handle := range o.getEventHanders(ctx, table, DeleteBeforeEx) {
+	for _, handle := range o.getEventHanders(ctx, table, kDeleteBeforeEx) {
 		ins := handle.(*DeleteBeforeExHandler)
 		return ins.Handle(ctx, id, entity)
 	}
@@ -107,15 +107,29 @@ func (o *Objectql) triggerDeleteBeforeEx(ctx context.Context, table string, id s
 }
 
 func (o *Objectql) triggerDeleteAfterEx(ctx context.Context, table string, id string, entity *Var) error {
-	for _, handle := range o.getEventHanders(ctx, table, DeleteAfterEx) {
+	for _, handle := range o.getEventHanders(ctx, table, kDeleteAfterEx) {
 		ins := handle.(*DeleteAfterExHandler)
 		return ins.Handle(ctx, id, entity)
 	}
 	return nil
 }
 
-func (o *Objectql) getListenQueryFields(ctx context.Context, table string, kinds ...EventKind) []string {
+func (o *Objectql) getListenQueryFields(ctx context.Context, table string, position EventPosition) []string {
 	var result []string
+	var kinds []eventKind
+	switch position {
+	// case InsertBefore:
+	case InsertAfter:
+		kinds = []eventKind{kInsertAfterEx, kFieldChange}
+	case UpdateBefore:
+		kinds = []eventKind{kUpdateBeforeEx, kFieldChange}
+	case UpdateAfter:
+		kinds = []eventKind{kUpdateAfterEx, kFieldChange}
+	case DeleteBefore:
+		kinds = []eventKind{kDeleteBeforeEx, kDeleteAfterEx, kFieldChange}
+		// case DeleteAfter:
+	}
+
 	for _, kind := range kinds {
 		for _, handle := range o.getEventHanders(ctx, table, kind) {
 			switch n := handle.(type) {
@@ -130,7 +144,7 @@ func (o *Objectql) getListenQueryFields(ctx context.Context, table string, kinds
 			case *DeleteAfterExHandler:
 				result = append(result, n.Fields...)
 			case *ListenChangeHandler:
-				if !n.UpdateOnly || o.isInUpdateMutation(kinds...) {
+				if o.isPositionMatch(n.Positions, position) {
 					result = append(result, n.Query...)
 					result = append(result, n.Listen...)
 				}
@@ -140,13 +154,12 @@ func (o *Objectql) getListenQueryFields(ctx context.Context, table string, kinds
 	return result
 }
 
-func (o *Objectql) isInUpdateMutation(kinds ...EventKind) bool {
-	for _, k := range kinds {
-		switch k {
-		case UpdateBefore,
-			UpdateAfter,
-			UpdateBeforeEx,
-			UpdateAfterEx:
+func (o *Objectql) isPositionMatch(list []EventPosition, cur EventPosition) bool {
+	if len(list) == 0 {
+		return true
+	}
+	for _, k := range list {
+		if k == cur {
 			return true
 		}
 	}

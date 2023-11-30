@@ -7,25 +7,36 @@ import (
 	"github.com/gogf/gf/v2/container/gmap"
 )
 
-type EventKind int
+type EventPosition int
 
 const (
-	InsertBefore EventKind = iota
+	InsertBefore EventPosition = iota
 	InsertAfter
 	UpdateBefore
 	UpdateAfter
 	DeleteBefore
 	DeleteAfter
+)
+
+type eventKind int
+
+const (
+	kInsertBefore eventKind = iota
+	kInsertAfter
+	kUpdateBefore
+	kUpdateAfter
+	kDeleteBefore
+	kDeleteAfter
 
 	// EX
-	InsertAfterEx
-	UpdateBeforeEx
-	UpdateAfterEx
-	DeleteBeforeEx
-	DeleteAfterEx
+	kInsertAfterEx
+	kUpdateBeforeEx
+	kUpdateAfterEx
+	kDeleteBeforeEx
+	kDeleteAfterEx
 
 	// CHANGE
-	FieldChange
+	kFieldChange
 )
 
 type InsertBeforeHandler = func(ctx context.Context, doc *Var) error
@@ -36,30 +47,30 @@ type DeleteBeforeHandler = func(ctx context.Context, id string) error
 type DeleteAfterHandler = func(ctx context.Context, id string) error
 
 func (o *Objectql) ListenInsertBefore(table string, fn InsertBeforeHandler) {
-	o.listen(table, InsertBefore, fn)
+	o.listen(table, kInsertBefore, fn)
 }
 
 func (o *Objectql) ListenInsertAfter(table string, fn InsertAfterHandler) {
-	o.listen(table, InsertAfter, fn)
+	o.listen(table, kInsertAfter, fn)
 }
 
 func (o *Objectql) ListenUpdateBefore(table string, fn UpdateBeoferHandler) {
-	o.listen(table, UpdateBefore, fn)
+	o.listen(table, kUpdateBefore, fn)
 }
 
 func (o *Objectql) ListenUpdateAfter(table string, fn UpdateAfterHandler) {
-	o.listen(table, UpdateAfter, fn)
+	o.listen(table, kUpdateAfter, fn)
 }
 
 func (o *Objectql) ListenDeleteBefore(table string, fn DeleteBeforeHandler) {
-	o.listen(table, DeleteBefore, fn)
+	o.listen(table, kDeleteBefore, fn)
 }
 
 func (o *Objectql) ListenDeleteAfter(table string, fn DeleteAfterHandler) {
-	o.listen(table, DeleteAfter, fn)
+	o.listen(table, kDeleteAfter, fn)
 }
 
-func (o *Objectql) listen(table string, kind EventKind, value any) {
+func (o *Objectql) listen(table string, kind eventKind, value any) {
 	if !o.eventMap.Contains(table) {
 		o.eventMap.Set(table, gmap.NewIntAnyMap(true))
 	}
@@ -72,30 +83,30 @@ func (o *Objectql) listen(table string, kind EventKind, value any) {
 }
 
 func (o *Objectql) UnListenInsertBefore(table string, fn InsertBeforeHandler) {
-	o.unListen(table, InsertBefore, fn)
+	o.unListen(table, kInsertBefore, fn)
 }
 
 func (o *Objectql) UnListenInsertAfter(table string, fn InsertAfterHandler) {
-	o.unListen(table, InsertAfter, fn)
+	o.unListen(table, kInsertAfter, fn)
 }
 
 func (o *Objectql) UnListenUpdateBefore(table string, fn UpdateBeoferHandler) {
-	o.unListen(table, UpdateBefore, fn)
+	o.unListen(table, kUpdateBefore, fn)
 }
 
 func (o *Objectql) UnListenUpdateAfter(table string, fn UpdateAfterHandler) {
-	o.unListen(table, UpdateAfter, fn)
+	o.unListen(table, kUpdateAfter, fn)
 }
 
 func (o *Objectql) UnListenDeleteBefore(table string, fn DeleteBeforeHandler) {
-	o.unListen(table, DeleteBefore, fn)
+	o.unListen(table, kDeleteBefore, fn)
 }
 
 func (o *Objectql) UnListenDeleteAfter(table string, fn DeleteAfterHandler) {
-	o.unListen(table, DeleteAfter, fn)
+	o.unListen(table, kDeleteAfter, fn)
 }
 
-func (o *Objectql) unListen(table string, kind EventKind, value any) {
+func (o *Objectql) unListen(table string, kind eventKind, value any) {
 	if !o.eventMap.Contains(table) {
 		return
 	}
@@ -108,7 +119,7 @@ func (o *Objectql) unListen(table string, kind EventKind, value any) {
 }
 
 func (o *Objectql) triggerInsertBefore(ctx context.Context, table string, doc *Var) error {
-	for _, handle := range o.getEventHanders(ctx, table, InsertBefore) {
+	for _, handle := range o.getEventHanders(ctx, table, kInsertBefore) {
 		err := handle.(InsertBeforeHandler)(ctx, doc)
 		if err != nil {
 			return err
@@ -118,7 +129,7 @@ func (o *Objectql) triggerInsertBefore(ctx context.Context, table string, doc *V
 }
 
 func (o *Objectql) triggerInsertAfter(ctx context.Context, table string, id string, doc *Var) error {
-	for _, handle := range o.getEventHanders(ctx, table, InsertAfter) {
+	for _, handle := range o.getEventHanders(ctx, table, kInsertAfter) {
 		err := handle.(InsertAfterHandler)(ctx, id, doc)
 		if err != nil {
 			return err
@@ -128,7 +139,7 @@ func (o *Objectql) triggerInsertAfter(ctx context.Context, table string, id stri
 }
 
 func (o *Objectql) triggerUpdateBefore(ctx context.Context, table string, id string, doc *Var) error {
-	for _, handle := range o.getEventHanders(ctx, table, UpdateBefore) {
+	for _, handle := range o.getEventHanders(ctx, table, kUpdateBefore) {
 		err := handle.(UpdateBeoferHandler)(ctx, id, doc)
 		if err != nil {
 			return err
@@ -138,7 +149,7 @@ func (o *Objectql) triggerUpdateBefore(ctx context.Context, table string, id str
 }
 
 func (o *Objectql) triggerUpdateAfter(ctx context.Context, table string, id string, doc *Var) error {
-	for _, handle := range o.getEventHanders(ctx, table, UpdateAfter) {
+	for _, handle := range o.getEventHanders(ctx, table, kUpdateAfter) {
 		err := handle.(UpdateAfterHandler)(ctx, id, doc)
 		if err != nil {
 			return err
@@ -148,7 +159,7 @@ func (o *Objectql) triggerUpdateAfter(ctx context.Context, table string, id stri
 }
 
 func (o *Objectql) triggerDeleteBefore(ctx context.Context, table string, id string) error {
-	for _, handle := range o.getEventHanders(ctx, table, DeleteBefore) {
+	for _, handle := range o.getEventHanders(ctx, table, kDeleteBefore) {
 		err := handle.(DeleteBeforeHandler)(ctx, id)
 		if err != nil {
 			return err
@@ -158,7 +169,7 @@ func (o *Objectql) triggerDeleteBefore(ctx context.Context, table string, id str
 }
 
 func (o *Objectql) triggerDeleteAfter(ctx context.Context, table string, id string) error {
-	for _, handle := range o.getEventHanders(ctx, table, DeleteAfter) {
+	for _, handle := range o.getEventHanders(ctx, table, kDeleteAfter) {
 		err := handle.(DeleteAfterHandler)(ctx, id)
 		if err != nil {
 			return err
@@ -167,7 +178,7 @@ func (o *Objectql) triggerDeleteAfter(ctx context.Context, table string, id stri
 	return nil
 }
 
-func (o *Objectql) getEventHanders(ctx context.Context, table string, kind EventKind) []interface{} {
+func (o *Objectql) getEventHanders(ctx context.Context, table string, kind eventKind) []interface{} {
 	if !o.eventMap.Contains(table) {
 		return nil
 	}

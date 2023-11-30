@@ -10,10 +10,10 @@ import (
 )
 
 type ListenChangeHandler struct {
-	Listen     []string
-	Query      []string
-	UpdateOnly bool
-	Handle     func(ctx context.Context, change map[string]bool, cur *Var, before *Var) error
+	Listen    []string
+	Query     []string
+	Positions []EventPosition
+	Handle    func(ctx context.Context, change map[string]bool, cur *Var, before *Var) error
 }
 
 func (o *Objectql) ListenChange(table string, handle *ListenChangeHandler) {
@@ -21,10 +21,10 @@ func (o *Objectql) ListenChange(table string, handle *ListenChangeHandler) {
 		o.eventMap.Set(table, gmap.NewIntAnyMap(true))
 	}
 	handleMap := o.eventMap.Get(table).(*gmap.IntAnyMap)
-	if !handleMap.Contains(int(FieldChange)) {
-		handleMap.Set(int(FieldChange), garray.NewArray(true))
+	if !handleMap.Contains(int(kFieldChange)) {
+		handleMap.Set(int(kFieldChange), garray.NewArray(true))
 	}
-	array := handleMap.Get(int(FieldChange)).(*garray.Array)
+	array := handleMap.Get(int(kFieldChange)).(*garray.Array)
 	array.Append(handle)
 }
 
@@ -33,17 +33,17 @@ func (o *Objectql) UnListenChange(table string, handle *ListenChangeHandler) {
 		return
 	}
 	handleMap := o.eventMap.Get(table).(*gmap.IntAnyMap)
-	if !handleMap.Contains(int(FieldChange)) {
+	if !handleMap.Contains(int(kFieldChange)) {
 		return
 	}
-	array := handleMap.Get(int(FieldChange)).(*garray.Array)
+	array := handleMap.Get(int(kFieldChange)).(*garray.Array)
 	array.RemoveValue(handle)
 }
 
-func (o *Objectql) triggerChange(ctx context.Context, object *Object, before *Var, after *Var, inUpdateMutation bool) error {
-	for _, handle := range o.getEventHanders(ctx, object.Api, FieldChange) {
+func (o *Objectql) triggerChange(ctx context.Context, object *Object, before *Var, after *Var, position EventPosition) error {
+	for _, handle := range o.getEventHanders(ctx, object.Api, kFieldChange) {
 		ins := handle.(*ListenChangeHandler)
-		if ins.UpdateOnly && !inUpdateMutation {
+		if !o.isPositionMatch(ins.Positions, position) {
 			continue
 		}
 		change := map[string]bool{}
