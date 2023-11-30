@@ -47,11 +47,13 @@ func TestListenChange(t *testing.T) {
 		return
 	}
 	// 添加事件监听
+	count := 0
 	objectql.ListenChange("staff", &ListenChangeHandler{
 		Listen: []string{"name"},
 		Query:  []string{"age"},
 		Handle: func(ctx context.Context, change map[string]bool, entity *Var, before *Var) error {
 			// fmt.Println("changeMap", change)
+			count++
 			if !change["name"] {
 				return errors.New("except change['name'] = true")
 			}
@@ -77,6 +79,10 @@ func TestListenChange(t *testing.T) {
 	})
 	if err != nil {
 		t.Error(err)
+		return
+	}
+	if count == 0 {
+		t.Error("except count =  1 but got 0")
 		return
 	}
 }
