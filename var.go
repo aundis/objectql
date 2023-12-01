@@ -4,6 +4,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gogf/gf/v2/os/gtime"
 	"github.com/gogf/gf/v2/util/gconv"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -181,12 +182,12 @@ func (e *Var) Time(n string) time.Time {
 	return gconv.Time(e.mapValue(n))
 }
 
-func (e *Var) PtrTime(n string) *time.Time {
+func (e *Var) GTime(n string) *gtime.Time {
 	if e.isNull(n) {
 		return nil
 	}
-	res := e.Time(n)
-	return &res
+	timeStr := e.String(n)
+	return gtime.NewFromStr(timeStr)
 }
 
 func (e *Var) Ints(n string) []int {
