@@ -110,11 +110,11 @@ func (e *Var) NotNull(ns ...string) bool {
 
 func (e *Var) IsNull(ns ...string) bool {
 	for _, n := range ns {
-		if !isNull(e.mapValue(n)) {
-			return false
+		if isNull(e.mapValue(n)) {
+			return true
 		}
 	}
-	return true
+	return false
 }
 
 func (e *Var) Int(n string) int {
