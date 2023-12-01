@@ -34,7 +34,7 @@ func (o *Objectql) AsyncNext(ctx context.Context, fn func(context.Context) error
 func (o *Objectql) appendNextQueue(ctx context.Context, fn func(context.Context) error, async bool, keys ...string) {
 	if len(keys) > 0 {
 		// 同key只执行最后设定的fn
-		m, ok := ctx.Value(nextArrayContextKey).(*gmap.StrAnyMap)
+		m, ok := ctx.Value(nextMapContextKey).(*gmap.StrAnyMap)
 		if !ok {
 			return
 		}
