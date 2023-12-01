@@ -1,6 +1,7 @@
 package objectql
 
 import (
+	"strings"
 	"time"
 
 	"github.com/gogf/gf/v2/util/gconv"
@@ -217,8 +218,27 @@ func (e *Var) IsNil() bool {
 }
 
 func (e *Var) mapValue(k string) any {
-	if e.cache != nil {
+	if e.cache == nil {
+		return nil
+	}
+	if !strings.Contains(k, ".") {
 		return e.cache[k]
+	} else {
+		keys := strings.Split(k, ".")
+		current := e.cache
+		for _, key := range keys {
+			value, ok := current[key]
+			if !ok {
+				return nil
+			}
+
+			switch v := value.(type) {
+			case map[string]interface{}:
+				current = v
+			default:
+				return v
+			}
+		}
 	}
 	return nil
 }
