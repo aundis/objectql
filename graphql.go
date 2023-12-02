@@ -622,7 +622,8 @@ func (o *Objectql) getGrpahqlObjectMutationForm(object *Object) graphql.Input {
 			continue
 		}
 		switch cur.Type.(type) {
-		case *ExpandType, *ExpandsType, *FormulaType, *AggregationType:
+		// case *ExpandType, *ExpandsType, *FormulaType, *AggregationType:
+		case *ExpandType, *ExpandsType:
 			continue
 		}
 		fields[cur.Api] = &graphql.InputObjectFieldConfig{
