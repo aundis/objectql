@@ -848,6 +848,10 @@ func (o *Objectql) fieldTypeToInputGraphqlType(tpe Type) graphql.Output {
 		return graphql.String
 	case *ArrayType:
 		return graphql.NewList(o.fieldTypeToInputGraphqlType(n.Type))
+	case *FormulaType:
+		return o.fieldTypeToInputGraphqlType(n.Type)
+	case *AggregationType:
+		return o.fieldTypeToInputGraphqlType(n.Type)
 	}
 	return nil
 }
