@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -1136,7 +1137,8 @@ func getObjectFieldsQueryString(object *Object) string {
 }
 
 func escapeString(s string) string {
-	return strings.ReplaceAll(s, `"`, `\"`)
+	res := strconv.Quote(s)
+	return strings.Trim(res, `"`)
 }
 
 func stringsToGraphqlQuery(arr []string) string {
