@@ -75,13 +75,13 @@ func (o *Objectql) triggerChange(ctx context.Context, object *Object, before *Va
 }
 
 func isFieldValueEqual(tpe Type, v1 *Var, v2 *Var) (bool, error) {
-	if v1 == v2 || isNull(v1) && isNull(v2) {
+	if v1 == v2 || isNull(v1.ToAny()) && isNull(v2.ToAny()) {
 		return true, nil
 	}
-	if isNull(v1) {
+	if isNull(v1.ToAny()) {
 		return false, nil
 	}
-	if isNull(v2) {
+	if isNull(v2.ToAny()) {
 		return false, nil
 	}
 	switch n := tpe.(type) {
