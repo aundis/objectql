@@ -258,6 +258,7 @@ type FindOneByIdOptions struct {
 type FindOneOptions struct {
 	Filter map[string]any `json:"filter"`
 	Fields []string       `json:"fields"`
+	Sort   []string       `json:"sort"`
 	Direct bool           `json:"direct"`
 }
 

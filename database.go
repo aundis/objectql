@@ -216,6 +216,7 @@ func (o *Objectql) mongoFindOneEx(ctx context.Context, table string, options fin
 	list, err := o.mongoFindAllEx(ctx, table, findAllExOptions{
 		Fields: options.Fields,
 		Filter: options.Filter,
+		Sort:   options.Sort,
 		Top:    1,
 		Skip:   0,
 	})
@@ -615,6 +616,7 @@ type countExOptions struct {
 
 type findOneExOptions struct {
 	Fields []string
+	Sort   []string
 	Filter M
 }
 

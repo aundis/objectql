@@ -276,6 +276,10 @@ func (o *Objectql) parseMongoFindOneOptinos(ctx context.Context, p graphql.Resol
 	if filter != nil {
 		findOptions.Filter = filter
 	}
+	sort := p.Args["sort"]
+	if sort != nil {
+		findOptions.Sort = gconv.Strings(sort)
+	}
 	return findOptions, nil
 }
 

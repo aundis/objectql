@@ -932,6 +932,10 @@ func (o *Objectql) FindOne(ctx context.Context, objectApi string, options FindOn
 	buffer.WriteString(`"`)
 	buffer.WriteString(escapeString(filterStr))
 	buffer.WriteString(`"`)
+	if len(options.Sort) > 0 {
+		buffer.WriteString(" sort:")
+		buffer.WriteString(stringsToGraphqlQuery(options.Sort))
+	}
 	buffer.WriteString(")")
 	buffer.WriteString("{")
 	writeObjectQueyrFields(&buffer, object, options.Fields)
