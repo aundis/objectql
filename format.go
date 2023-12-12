@@ -6,7 +6,6 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/aundis/formula"
 	"github.com/gogf/gf/v2/os/gtime"
 	"github.com/gogf/gf/v2/util/gconv"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -99,18 +98,30 @@ func formatValueToDatabase(tpe Type, value interface{}) (interface{}, error) {
 }
 
 func formatIntValueToDatebase(v interface{}) (interface{}, error) {
+	if isNull(v) {
+		return nil, nil
+	}
 	return gconv.Int(v), nil
 }
 
 func formatFloatValueToDatebase(v interface{}) (interface{}, error) {
+	if isNull(v) {
+		return nil, nil
+	}
 	return gconv.Float32(v), nil
 }
 
 func formatStringValueToDatebase(v interface{}) (interface{}, error) {
+	if isNull(v) {
+		return nil, nil
+	}
 	return gconv.String(v), nil
 }
 
 func formatBooleanValueToDatebase(v interface{}) (interface{}, error) {
+	if isNull(v) {
+		return nil, nil
+	}
 	return gconv.Bool(v), nil
 }
 
@@ -151,13 +162,13 @@ func formatArrayValueToDatebase(at *ArrayType, v interface{}) (interface{}, erro
 func formatComputedValue(tpe Type, value interface{}) (interface{}, error) {
 	switch n := tpe.(type) {
 	case *IntType:
-		return formula.ToInt(value)
+		return gconv.Int(value), nil
 	case *FloatType:
-		return formula.ToFloat32(value)
+		return gconv.Float32(value), nil
 	case *BoolType:
-		return formula.ToString(value)
+		return gconv.Bool(value), nil
 	case *StringType:
-		return formula.ToString(value)
+		return gconv.String(value), nil
 	case *RelateType:
 		return formatComputedValue(String, value)
 	case *FormulaType:

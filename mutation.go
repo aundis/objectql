@@ -8,7 +8,6 @@ import (
 
 	"github.com/aundis/graphql"
 	"github.com/gogf/gf/v2/util/gconv"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 func (o *Objectql) insertHandle(ctx context.Context, api string, doc map[string]interface{}) (string, error) {
@@ -62,6 +61,11 @@ func (o *Objectql) insertHandleRaw(ctx context.Context, api string, doc map[stri
 	if err != nil {
 		return "", err
 	}
+	// check bool require
+	err = o.checkFieldBoolRequires(object, doc)
+	if err != nil {
+		return "", err
+	}
 	objectIdStr, err := o.mongoInsert(ctx, api, doc)
 	if err != nil {
 		return "", err
@@ -78,10 +82,20 @@ func (o *Objectql) insertHandleRaw(ctx context.Context, api string, doc map[stri
 	// after 数据查询
 	var after *Var
 	if ctx.Value(blockEventsKey) != true {
-		after, err = o.queryEventObjectEntity(ctx, api, objectIdStr, InsertAfter)
+		after, err = o.queryEventObjectEntity(ctx, object, objectIdStr, InsertAfter)
 		if err != nil {
 			return "", err
 		}
+	}
+	// require 校验
+	err = o.checkFieldFormulaOrHandledRequires(ctx, object, after)
+	if err != nil {
+		return "", err
+	}
+	// validate 校验
+	err = o.checkFieldFormulaOrHandledValidates(ctx, object, after)
+	if err != nil {
+		return "", err
 	}
 	// insertAfter 事件触发
 	if ctx.Value(blockEventsKey) != true {
@@ -150,7 +164,7 @@ func (o *Objectql) updateHandleRaw(ctx context.Context, api string, id string, d
 	// before 值查询
 	var before *Var
 	if ctx.Value(blockEventsKey) != true {
-		before, err = o.queryEventObjectEntity(ctx, api, id, UpdateBefore)
+		before, err = o.queryEventObjectEntity(ctx, object, id, UpdateBefore)
 		if err != nil {
 			return err
 		}
@@ -186,13 +200,24 @@ func (o *Objectql) updateHandleRaw(ctx context.Context, api string, id string, d
 	if err != nil {
 		return err
 	}
-	// 数据库修改
 	// 添加修改时间
 	doc["updateTime"] = time.Now()
+	// require 校验
+	err = o.checkFieldBoolRequires(object, doc)
+	if err != nil {
+		return err
+	}
+	// 数据库修改
 	err = formatDocumentToDatabase(object.Fields, doc)
 	if err != nil {
 		return err
 	}
+	// check bool require
+	err = o.checkFieldBoolRequires(object, doc)
+	if err != nil {
+		return err
+	}
+	// 写入到数据库
 	err = o.mongoUpdateById(ctx, api, id, doc)
 	if err != nil {
 		return err
@@ -209,10 +234,20 @@ func (o *Objectql) updateHandleRaw(ctx context.Context, api string, id string, d
 	// after 值查询
 	var after *Var
 	if ctx.Value(blockEventsKey) != true {
-		after, err = o.queryEventObjectEntity(ctx, api, id, UpdateAfter)
+		after, err = o.queryEventObjectEntity(ctx, object, id, UpdateAfter)
 		if err != nil {
 			return err
 		}
+	}
+	// require 校验
+	err = o.checkFieldFormulaOrHandledRequires(ctx, object, after)
+	if err != nil {
+		return err
+	}
+	// validate 校验
+	err = o.checkFieldFormulaOrHandledValidates(ctx, object, after)
+	if err != nil {
+		return err
 	}
 	// updateAfter 事件触发
 	if ctx.Value(blockEventsKey) != true {
@@ -258,7 +293,7 @@ func (o *Objectql) deleteHandleRaw(ctx context.Context, api string, id string) e
 	// before 数据查询
 	var before *Var
 	if ctx.Value(blockEventsKey) != true {
-		before, err = o.queryEventObjectEntity(ctx, api, id, DeleteBefore)
+		before, err = o.queryEventObjectEntity(ctx, object, id, DeleteBefore)
 		if err != nil {
 			return err
 		}
@@ -318,26 +353,40 @@ func (o *Objectql) deleteHandleRaw(ctx context.Context, api string, id string) e
 	return nil
 }
 
-func (o *Objectql) queryEventObjectEntity(ctx context.Context, api string, id string, position EventPosition) (*Var, error) {
-	qFields := o.getListenQueryFields(ctx, api, position)
+func (o *Objectql) queryEventObjectEntity(ctx context.Context, object *Object, id string, position EventPosition) (*Var, error) {
+	// event 中需要查询的字段
+	qFields := o.getListenQueryFields(ctx, object.Api, position)
+	// require, validate 中需要查询的字段
+	if position == InsertAfter || position == UpdateAfter {
+		qFields = append(qFields, o.getObjectRequireQueryFields(object)...)
+		qFields = append(qFields, o.getObjectValidateQueryFields(object)...)
+	}
 	if len(qFields) == 0 {
 		return nil, nil
 	}
 	qFields = append(qFields, "_id")
-	return o.FindOneById(ctx, api, FindOneByIdOptions{
-		ID:     id,
-		Fields: []string{strings2GraphqlFieldQuery(qFields)},
+	one, err := o.mongoFindOneEx(ctx, object.Api, findOneExOptions{
+		Fields: qFields,
+		Filter: M{
+			"_id": ObjectIdFromHex(id),
+		},
 	})
-}
-
-func (o *Objectql) graphqlMutationQueryOne(ctx context.Context, p graphql.ResolveParams, object *Object, id string) (interface{}, error) {
-	options, err := o.parseMongoFindOneOptinos(ctx, p)
 	if err != nil {
 		return nil, err
 	}
+	if one == nil {
+		return nil, nil
+	}
+	return NewVar(one), nil
+}
 
-	var one bson.M
-	err = o.getCollection(object.Api).FindOne(ctx, bson.M{"_id": ObjectIdFromHex(id)}, options).Decode(&one)
+func (o *Objectql) graphqlMutationQueryOne(ctx context.Context, p graphql.ResolveParams, object *Object, id string) (interface{}, error) {
+	one, err := o.mongoFindOneEx(ctx, object.Api, findOneExOptions{
+		Fields: o.parseMongoQueryFields(p),
+		Filter: map[string]any{
+			"_id": ObjectIdFromHex(id),
+		},
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -361,7 +410,7 @@ func buildFieldQueryString(obj map[string]interface{}, prefix string) string {
 	return query
 }
 
-func strings2GraphqlFieldQuery(arr []string) string {
+func strings2GraphqlFieldQuery(arr ...string) string {
 	result := make(map[string]interface{})
 
 	for _, item := range arr {

@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/aundis/formula"
 	"github.com/gogf/gf/v2/util/gconv"
+	"github.com/samber/lo"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -64,106 +64,43 @@ func (o *Objectql) formulaHandler(ctx context.Context, object *Object, id string
 			objectIds = append(objectIds, item["_id"].(primitive.ObjectID).Hex())
 		}
 	}
-
-	runner := formula.NewRunner()
-	runner.IdentifierResolver = o.resolverIdentifier
-	runner.SelectorExpressionResolver = o.resolveSelectorExpression
-	formulaData := info.TargetField.Type.(*FormulaType)
-	target := info.TargetField.Parent
-	for _, objectId := range objectIds {
-		runner.Set("object", target)
-		runner.Set("objectId", objectId)
-		value, err := runner.Resolve(ctx, formulaData.sourceCode.Expression)
+	if len(objectIds) > 0 {
+		// 查询相关数据
+		formulaData := info.TargetField.Type.(*FormulaType)
+		list, err := o.mongoFindAllEx(ctx, object.Api, findAllExOptions{
+			Fields: append(formulaData.referenceFields, "_id"),
+			Filter: M{
+				"_id": M{
+					"$in": lo.Map(objectIds, func(item string, index int) primitive.ObjectID {
+						return ObjectIdFromHex(item)
+					}),
+				},
+			},
+		})
 		if err != nil {
 			return err
 		}
-		input, err := formatComputedValue(info.TargetField.Type, value)
-		if err != nil {
-			return err
-		}
-		err = o.updateHandle(ctx, target.Api, objectId, bson.M{
-			info.TargetField.Api: input,
-		}, true)
-		if err != nil {
-			return err
+		target := info.TargetField.Parent
+		for _, item := range list {
+			runner := formula.NewRunner()
+			runner.SetThis(item)
+			value, err := runner.Resolve(ctx, formulaData.sourceCode.Expression)
+			if err != nil {
+				return err
+			}
+			input, err := formatComputedValue(info.TargetField.Type, value)
+			if err != nil {
+				return err
+			}
+			err = o.updateHandle(ctx, target.Api, gconv.String(item["_id"]), bson.M{
+				info.TargetField.Api: input,
+			}, true)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
-}
-
-func (o *Objectql) resolverIdentifier(ctx context.Context, name string) (interface{}, error) {
-	runner := formula.RunnerFromCtx(ctx)
-	object := runner.Get("object").(*Object)
-	objectIdStr := runner.Get("objectId").(string)
-	// 先找到这个字段
-	field := FindFieldFromObject(object, name)
-	if field == nil {
-		return nil, fmt.Errorf("can't found field '%s' from object '%s'", name, object.Api)
-	}
-	// 将这个记录查找出来
-	one, err := o.mongoFindOne(ctx, object.Api, bson.M{"_id": ObjectIdFromHex(objectIdStr)}, name)
-	if err != nil {
-		return nil, err
-	}
-	v, err := formatDatabaseValueToCompute(field, one[name])
-	if err != nil {
-		return nil, err
-	}
-	return v, nil
-}
-
-func (o *Objectql) resolveSelectorExpression(ctx context.Context, name string) (interface{}, error) {
-	arr := strings.Split(name, ".")
-	if len(arr) > 2 {
-		return nil, fmt.Errorf("select expression len > 2")
-	}
-	relationFieldApi := arr[0]
-	valueFieldApi := arr[1]
-	runner := formula.RunnerFromCtx(ctx)
-	object := runner.Get("object").(*Object)
-	objectId := runner.Get("objectId").(string)
-	// 先找到这个字段
-	field := FindFieldFromObject(object, relationFieldApi)
-	if field == nil {
-		return nil, fmt.Errorf("can't found field '%s' from object '%s'", name, object.Api)
-	}
-	// 获取相关表对象声明
-	relateObjectApi := field.Type.(*RelateType).ObjectApi
-	valueField, err := FindFieldFromName(o.list, relateObjectApi, valueFieldApi)
-	if err != nil {
-		return nil, err
-	}
-	// 将相关表的值查找出来
-	one, err := o.mongoFindOne(ctx, object.Api, bson.M{"_id": ObjectIdFromHex(objectId)}, relationFieldApi)
-	if err != nil {
-		return nil, err
-	}
-	// 找不到就忽略掉返回一个默认值
-	if one == nil || one[relationFieldApi] == nil {
-		v, err := getFieldComputeDefaultValue(valueField)
-		if err != nil {
-			return nil, err
-		}
-		return v, nil
-	}
-	// 查询相关表对应的值
-	relate, err := o.mongoFindOne(ctx, relateObjectApi, bson.M{"_id": one[relationFieldApi]}, valueFieldApi)
-	if err != nil {
-		return nil, err
-	}
-	// 找不到就忽略掉返回一个默认值
-	if relate == nil {
-		v, err := getFieldComputeDefaultValue(valueField)
-		if err != nil {
-			return nil, err
-		}
-		return v, nil
-	}
-	v, err := formatDatabaseValueToCompute(valueField, relate[valueFieldApi])
-	if err != nil {
-		return nil, err
-	}
-	return v, nil
 }
 
 func (o *Objectql) aggregationHandler(ctx context.Context, object *Object, id string, info *relationFiledInfo, beforeValues bson.M) error {

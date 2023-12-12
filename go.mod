@@ -10,6 +10,7 @@ require (
 require (
 	github.com/BurntSushi/toml v1.1.0 // indirect
 	github.com/clbanning/mxj/v2 v2.5.5 // indirect
+	github.com/ericlagergren/decimal v0.0.0-20221120152707-495c53812d05 // indirect
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
@@ -42,7 +43,7 @@ require (
 )
 
 require (
-	github.com/aundis/formula v1.0.13
+	github.com/aundis/formula v1.0.16
 	github.com/gogf/gf/v2 v2.4.4
 	github.com/shopspring/decimal v1.3.1 // indirect
 )

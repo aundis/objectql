@@ -1,7 +1,9 @@
 package objectql
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"reflect"
 	"strings"
 
@@ -9,6 +11,7 @@ import (
 )
 
 type M = map[string]any
+type A = []interface{}
 
 func FindObjectFromList(list []*Object, api string) *Object {
 	for _, item := range list {
@@ -130,4 +133,15 @@ func IdStrings2ConvMaps(ids []string) []M {
 			"$toId": id,
 		}
 	})
+}
+
+// DEBUG
+// Write JSON to file with indentation
+func writeJSONToFile(filename string, data interface{}) error {
+	jsonData, err := json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	return ioutil.WriteFile(filename, jsonData, 0644)
 }

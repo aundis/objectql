@@ -21,6 +21,8 @@ func (o *Objectql) DoCommand(ctx context.Context, command Command) (*Var, error)
 }
 
 func (o *Objectql) DoCommands(ctx context.Context, commands []Command, filter ...map[string]any) (*Var, error) {
+	// 将args结构转为map
+	convCommandArgStructToMap(commands)
 	result, err := o.WithTransaction(ctx, func(ctx context.Context) (interface{}, error) {
 		var this = map[string]any{}
 		for _, command := range commands {
@@ -53,7 +55,6 @@ func (o *Objectql) DoCommands(ctx context.Context, commands []Command, filter ..
 				mapKey = command.Result
 				result, err = o.FindOne(ctx, objectApi, FindOneOptions{
 					Filter: n.Filter,
-					Sort:   n.Sort,
 					Fields: command.Fields,
 					Direct: n.Direct,
 				})
@@ -153,6 +154,53 @@ func (o *Objectql) DoCommands(ctx context.Context, commands []Command, filter ..
 	return NewVar(res), nil
 }
 
+func convCommandArgStructToMap(commands []Command) {
+	for _, cmd := range commands {
+		var args M
+		switch n := cmd.Args.(type) {
+		case FindOneByIdArgs:
+			args = structToMap(n)
+		case FindOneArgs:
+			args = structToMap(n)
+		case FindListArgs:
+			args = structToMap(n)
+		case AggregateArgs:
+			args = structToMap(n)
+		case CountArgs:
+			args = structToMap(n)
+		case InsertArgs:
+			args = structToMap(n)
+		case UpdateByIdArgs:
+			args = structToMap(n)
+		case UpdateArgs:
+			args = structToMap(n)
+		case DeleteByIdArgs:
+			args = structToMap(n)
+		case DeleteArgs:
+			args = structToMap(n)
+		}
+		if args != nil {
+			cmd.Args = args
+		}
+	}
+}
+
+func structToMap(inputStruct interface{}) map[string]interface{} {
+	result := make(map[string]interface{})
+	structValue := reflect.ValueOf(inputStruct)
+	structType := structValue.Type()
+	for i := 0; i < structValue.NumField(); i++ {
+		field := structValue.Field(i)
+		tag := structType.Field(i).Tag
+		fieldName := tag.Get("json")
+		if len(fieldName) == 0 {
+			fieldName = structType.Field(i).Name
+		}
+		result[fieldName] = field.Interface()
+	}
+	return result
+}
+
 func (o *Objectql) computeCommandArgs(ctx context.Context, this map[string]any, command *Command) error {
 	// 给定一个默认值，不然后面会出现nil错误
 	if isNull(command.Args) {
@@ -162,9 +210,9 @@ func (o *Objectql) computeCommandArgs(ctx context.Context, this map[string]any, 
 	if err != nil {
 		return err
 	}
-	if _, ok := r.(map[string]any); !ok {
-		return fmt.Errorf("command args computed after result value not map[string]any")
-	}
+	// if _, ok := r.(map[string]any); !ok {
+	// 	return fmt.Errorf("command args computed after result value not map[string]any")
+	// }
 	command.Args = r
 	return nil
 }
@@ -310,31 +358,8 @@ func computeString(ctx context.Context, this map[string]any, value any) (any, er
 			return nil, err
 		}
 		runner := formula.NewRunner()
-		runner.IdentifierResolver = resolverDocumentIdentifier
-		runner.SelectorExpressionResolver = resolveDocumentSelectorExpression
-		runner.Set("this", this)
+		runner.SetThis(this)
 		return runner.Resolve(ctx, sourceCode.Expression)
 	}
 	return nil, fmt.Errorf("formula type must is string, but got %T", value)
-}
-
-func resolverDocumentIdentifier(ctx context.Context, name string) (interface{}, error) {
-	runner := formula.RunnerFromCtx(ctx)
-	this := runner.Get("this").(map[string]any)
-	return this[name], nil
-}
-
-func resolveDocumentSelectorExpression(ctx context.Context, cha string) (interface{}, error) {
-	runner := formula.RunnerFromCtx(ctx)
-	this := runner.Get("this").(map[string]any)
-	names := strings.Split(cha, ".")
-	var cur = interface{}(this)
-	for _, name := range names {
-		if m, ok := cur.(map[string]any); ok {
-			cur = m[name]
-		} else {
-			return nil, fmt.Errorf("resolveDocumentSelectorExpression error: can't conv %s to  map[string]any", name)
-		}
-	}
-	return cur, nil
 }

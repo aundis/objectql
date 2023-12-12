@@ -136,7 +136,7 @@ func TestRelateCompute(t *testing.T) {
 			{
 				Name: "老板姓名",
 				Api:  "boss_name",
-				Type: NewFormula(String, "boss.name"),
+				Type: NewFormula(String, "boss__expand.name"),
 			},
 		},
 		Comment: "",

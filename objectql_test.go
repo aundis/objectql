@@ -375,7 +375,7 @@ func TestInsert(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	if one.IsNil() {
+	if one == nil {
 		t.Error("找不到记录")
 		return
 	}
@@ -539,7 +539,7 @@ func TestDelete(t *testing.T) {
 		return
 	}
 	if one != nil {
-		t.Error("记录删除失败")
+		t.Error("记录删除失败", err)
 		return
 	}
 }
@@ -663,7 +663,7 @@ func TestFindList(t *testing.T) {
 			},
 		})
 		if err != nil {
-			t.Error("插入数据失败")
+			t.Error("插入数据失败", err)
 			return
 		}
 		ids = append(ids, res.String("_id"))

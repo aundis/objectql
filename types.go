@@ -1,6 +1,7 @@
 package objectql
 
 import (
+	"context"
 	"reflect"
 
 	"github.com/aundis/formula"
@@ -29,14 +30,32 @@ type Handle struct {
 }
 
 type Field struct {
-	Parent    *Object
-	Type      Type
-	Name      string
-	Api       string
-	Comment   string
-	Default   any
-	valueApi  string
-	relations []*relationFiledInfo
+	Parent                   *Object
+	Require                  any
+	RequireMsg               string
+	Validate                 any
+	ValidateMsg              string
+	Type                     Type
+	Name                     string
+	Api                      string
+	Comment                  string
+	Default                  any
+	valueApi                 string
+	relations                []*relationFiledInfo
+	requireSourceCode        *formula.SourceCode // 公式计算是否必填
+	requireSourceCodeFields  []string            // 公式计算中需要的字段
+	validateSourceCode       *formula.SourceCode // 数据验证公式
+	validateSourceCodeFields []string            // 数据验证需要的字段
+}
+
+type FieldReqireCheckHandle struct {
+	Fields []string
+	Handle func(ctx context.Context, cur *Var) error
+}
+
+type FieldValidateHandle struct {
+	Fields []string
+	Handle func(ctx context.Context, cur *Var) error
 }
 
 type relationFiledInfo struct {
@@ -97,9 +116,10 @@ func NewRelate(api string) *RelateType {
 func (t *RelateType) aType() {}
 
 type FormulaType struct {
-	Formula    string
-	Type       Type
-	sourceCode *formula.SourceCode
+	Formula         string
+	Type            Type
+	sourceCode      *formula.SourceCode
+	referenceFields []string // 公式引用到的字段
 }
 
 func (t *FormulaType) aType() {}
@@ -161,7 +181,6 @@ type FindOneByIdArgs struct {
 
 type FindOneArgs struct {
 	Filter map[string]any `json:"filter"`
-	Sort   []string       `json:"sort"`
 	Direct bool           `json:"direct"`
 }
 
@@ -238,7 +257,6 @@ type FindOneByIdOptions struct {
 
 type FindOneOptions struct {
 	Filter map[string]any `json:"filter"`
-	Sort   []string       `json:"sort"`
 	Fields []string       `json:"fields"`
 	Direct bool           `json:"direct"`
 }
