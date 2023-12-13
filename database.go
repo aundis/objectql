@@ -263,6 +263,11 @@ func (o *Objectql) mongoFindAllEx(ctx context.Context, table string, options fin
 			"$match": options.Filter,
 		})
 	}
+	if len(options.Sort) > 0 {
+		pipeline = append(pipeline, map[string]interface{}{
+			"$sort": convStrings2MongoSort(options.Sort),
+		})
+	}
 	if options.Skip > 0 {
 		pipeline = append(pipeline, map[string]interface{}{
 			"$skip": options.Skip,
@@ -389,6 +394,26 @@ func (o *Objectql) formatArrayValueWithFieldType(tpe *ArrayType, value interface
 		sliceValue = reflect.Append(sliceValue, reflect.ValueOf(evalue))
 	}
 	return sliceValue.Interface(), nil
+}
+
+func convStrings2MongoSort(arr []string) M {
+	result := M{}
+	for _, item := range arr {
+		if len(item) == 0 {
+			continue
+		}
+		first := item[0]
+		if first == '+' {
+			real := strings.TrimLeft(item, "+")
+			result[real] = 1
+		} else if first == '-' {
+			real := strings.TrimLeft(item, "-")
+			result[real] = 1
+		} else {
+			result[item] = 1
+		}
+	}
+	return result
 }
 
 // 提取Filter里面引用到的字段
