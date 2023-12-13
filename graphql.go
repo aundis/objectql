@@ -71,6 +71,10 @@ func (o *Objectql) initObjectGraphqlQuery(ctx context.Context, querys graphql.Fi
 				Type:        graphql.String,
 				Description: "过滤条件",
 			},
+			"sort": &graphql.ArgumentConfig{
+				Type:        graphql.NewList(graphql.String),
+				Description: "排序",
+			},
 		},
 		Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 			return o.graphqlQueryOneResolver(p.Context, p, object)
