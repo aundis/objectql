@@ -813,7 +813,7 @@ func (o *Objectql) Delete(ctx context.Context, objectApi string, options DeleteO
 	}
 	var buffer bytes.Buffer
 	buffer.WriteString("mutation {")
-	buffer.WriteString(objectApi + "__deleteById")
+	buffer.WriteString(objectApi + "__delete")
 	buffer.WriteString("(filter:")
 	buffer.WriteString(`"`)
 	buffer.WriteString(escapeString(filterStr))
