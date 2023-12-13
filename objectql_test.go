@@ -955,3 +955,43 @@ func TestWriteGraphqlArgumentValue(t *testing.T) {
 	t.Log(buffer.String())
 	t.Log(str)
 }
+
+// func TestSort(t *testing.T) {
+// 	ctx := context.Background()
+// 	oql := New()
+// 	err := oql.InitMongodb(ctx, testMongodbUrl)
+// 	if err != nil {
+// 		t.Error("初始化数据库失败", err)
+// 		return
+// 	}
+// 	oql.AddObject(&Object{
+// 		Name: "任务日志",
+// 		Api:  "sysTaskLog",
+// 		Fields: []*Field{
+// 			{
+// 				Name: "执行时间",
+// 				Api:  "consumeTime",
+// 				Type: Int,
+// 			},
+// 		},
+// 		Comment: "",
+// 	})
+// 	err = oql.InitObjects(ctx)
+// 	if err != nil {
+// 		t.Error("初始化对象失败", err)
+// 		return
+// 	}
+// 	list, err := oql.FindList(ctx, "sysTaskLog", FindListOptions{
+// 		Fields: []string{
+// 			"consumeTime",
+// 		},
+// 		Sort: []string{
+// 			"-consumeTime",
+// 		},
+// 	})
+// 	if err != nil {
+// 		t.Error(err)
+// 		return
+// 	}
+// 	t.Log(list)
+// }

@@ -408,7 +408,7 @@ func convStrings2MongoSort(arr []string) M {
 			result[real] = 1
 		} else if first == '-' {
 			real := strings.TrimLeft(item, "-")
-			result[real] = 1
+			result[real] = -1
 		} else {
 			result[item] = 1
 		}
