@@ -236,12 +236,18 @@ func (o *Objectql) mongoFindAllEx(ctx context.Context, table string, options fin
 		return nil, fmt.Errorf("not found object %s", table)
 	}
 
-	var fields []string
 	// 提取过滤条件里面的字段
-	getMatchReferenceFields(&fields, options.Filter)
+	var filterFields []string
+	getMatchReferenceFields(&filterFields, options.Filter)
+
+	// 提取排序里面的字段
+	sortFields := getSortReferenceFields(options.Fields)
 
 	// Merge fields
+	var fields []string
+	fields = append(fields, filterFields...)
 	fields = append(fields, options.Fields...)
+	fields = append(fields, sortFields...)
 
 	// merge fields into a nested map
 	fieldsMap := mergeFields(fields)
@@ -447,6 +453,16 @@ func getMatchReferenceFields(arr *[]string, value interface{}) {
 	}
 }
 
+func getSortReferenceFields(arr []string) []string {
+	var result []string
+	for _, item := range arr {
+		item = strings.TrimLeft(item, "+")
+		item = strings.TrimLeft(item, "-")
+		result = append(result, item)
+	}
+	return result
+}
+
 // MergeFields merges an array of fields into a nested map
 func mergeFields(fields []string) map[string]interface{} {
 	result := make(map[string]interface{})
@@ -623,15 +639,6 @@ func removeFieldSuffix(api string) string {
 
 func isSuffixField(api string) bool {
 	return strings.Index(api, "__") >= 0
-}
-
-type deleteExOptions struct {
-	Filter primitive.M
-}
-
-type updateExOptions struct {
-	Filter primitive.M
-	Doc    M
 }
 
 type countExOptions struct {
