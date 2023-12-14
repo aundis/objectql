@@ -402,21 +402,25 @@ func (o *Objectql) formatArrayValueWithFieldType(tpe *ArrayType, value interface
 	return sliceValue.Interface(), nil
 }
 
-func convStrings2MongoSort(arr []string) M {
-	result := M{}
+func convStrings2MongoSort(arr []string) bson.D {
+	result := bson.D{}
 	for _, item := range arr {
 		if len(item) == 0 {
 			continue
 		}
 		first := item[0]
-		if first == '+' {
-			real := strings.TrimLeft(item, "+")
-			result[real] = 1
-		} else if first == '-' {
+		if first == '-' {
 			real := strings.TrimLeft(item, "-")
-			result[real] = -1
+			result = append(result, bson.E{
+				Key:   real,
+				Value: 1,
+			})
 		} else {
-			result[item] = 1
+			real := strings.TrimLeft(item, "+")
+			result = append(result, bson.E{
+				Key:   real,
+				Value: -1,
+			})
 		}
 	}
 	return result
