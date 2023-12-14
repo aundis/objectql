@@ -413,13 +413,13 @@ func convStrings2MongoSort(arr []string) bson.D {
 			real := strings.TrimLeft(item, "-")
 			result = append(result, bson.E{
 				Key:   real,
-				Value: 1,
+				Value: -1,
 			})
 		} else {
 			real := strings.TrimLeft(item, "+")
 			result = append(result, bson.E{
 				Key:   real,
-				Value: -1,
+				Value: 1,
 			})
 		}
 	}
