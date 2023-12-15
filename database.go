@@ -428,6 +428,10 @@ func convStrings2MongoSort(arr []string) bson.D {
 
 // 提取Filter里面引用到的字段
 func getMatchReferenceFields(arr *[]string, value interface{}) {
+	if isNull(value) {
+		return
+	}
+
 	rt := reflect.TypeOf(value)
 	switch rt.Kind() {
 	case reflect.String:
@@ -452,7 +456,9 @@ func getMatchReferenceFields(arr *[]string, value interface{}) {
 				*arr = append(*arr, key.String())
 			}
 			value := rv.MapIndex(key)
-			getMatchReferenceFields(arr, value.Interface())
+			if value.CanInterface() {
+				getMatchReferenceFields(arr, value.Interface())
+			}
 		}
 	}
 }

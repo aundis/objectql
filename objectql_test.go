@@ -995,3 +995,43 @@ func TestWriteGraphqlArgumentValue(t *testing.T) {
 // 	}
 // 	t.Log(list)
 // }
+
+// func TestFindNull(t *testing.T) {
+// 	ctx := context.Background()
+// 	objectql := New()
+// 	err := objectql.InitMongodb(ctx, testMongodbUrl)
+// 	if err != nil {
+// 		t.Error("初始化数据库失败", err)
+// 		return
+// 	}
+// 	objectql.AddObject(&Object{
+// 		Name: "系统日志",
+// 		Api:  "sysTaskLog",
+// 		Fields: []*Field{
+// 			{
+// 				Name: "消耗时间",
+// 				Api:  "consumeTime",
+// 				Type: Int,
+// 			},
+// 		},
+// 		Comment: "",
+// 	})
+// 	err = objectql.InitObjects(ctx)
+// 	if err != nil {
+// 		t.Error("初始化对象失败", err)
+// 		return
+// 	}
+// 	// 查找列表
+// 	list, err := objectql.FindList(ctx, "sysTaskLog", FindListOptions{
+// 		Filter: M{
+// 			"consumeTime": M{
+// 				"$ne": nil,
+// 			},
+// 		},
+// 	})
+// 	if err != nil {
+// 		t.Error(err)
+// 		return
+// 	}
+// 	t.Log(list)
+// }
