@@ -333,7 +333,13 @@ func computeMap(ctx context.Context, this map[string]any, value any) (any, error
 			// 如果是公式，上面值已经计算过一次了，支持嵌套公式
 			return computeString(ctx, this, evalue)
 		}
-		result.SetMapIndex(k, reflect.ValueOf(evalue))
+		var elem reflect.Value
+		if evalue == nil {
+			elem = reflect.New(reflect.TypeOf((*interface{})(nil)).Elem()).Elem()
+		} else {
+			elem = reflect.ValueOf(evalue)
+		}
+		result.SetMapIndex(k, elem)
 	}
 	return result.Interface(), nil
 }
