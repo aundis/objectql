@@ -129,6 +129,22 @@ func (o *Objectql) aggregationHandler(ctx context.Context, object *Object, id st
 }
 
 func (o *Objectql) aggregateField(ctx context.Context, object *Object, id string, field *Field) error {
+	// 校验ID值是否正确
+	objectId, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return nil
+	}
+	// 如果ID对应的记录不存在，那就不需要计算
+	count, err := o.mongoCount(ctx, object.Api, bson.M{
+		"_id": objectId,
+	})
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		return nil
+	}
+
 	adata := field.Type.(*AggregationType)
 
 	// 聚合方法
