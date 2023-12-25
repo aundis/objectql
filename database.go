@@ -103,24 +103,31 @@ func (o *Objectql) mongoInsert(ctx context.Context, table string, doc bson.M) (s
 	return insertResult.InsertedID.(primitive.ObjectID).Hex(), nil
 }
 
-func (o *Objectql) mongoUpdateById(ctx context.Context, table string, id string, doc bson.M) error {
+func (o *Objectql) mongoUpdateById(ctx context.Context, table string, id string, doc bson.M) (int64, error) {
 	objectId, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		return err
+		return 0, err
 	}
-	_, err = o.getCollection(table).UpdateByID(ctx, objectId, bson.M{
+	result, err := o.getCollection(table).UpdateByID(ctx, objectId, bson.M{
 		"$set": doc,
 	})
-	return err
+	if err != nil {
+		return 0, err
+	}
+	return result.ModifiedCount, nil
 }
 
-func (o *Objectql) mongoDeleteById(ctx context.Context, table string, id string) error {
+func (o *Objectql) mongoDeleteById(ctx context.Context, table string, id string) (int64, error) {
 	objectId, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		return err
+		return 0, err
 	}
-	_, err = o.getCollection(table).DeleteOne(ctx, bson.M{"_id": objectId})
-	return err
+	result, err := o.getCollection(table).DeleteOne(ctx, bson.M{"_id": objectId})
+	if err != nil {
+		return 0, err
+	}
+
+	return result.DeletedCount, nil
 }
 
 func ObjectIdFromHex(id string) primitive.ObjectID {

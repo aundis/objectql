@@ -82,7 +82,7 @@ func (o *Objectql) insertHandleRaw(ctx context.Context, api string, doc map[stri
 	// after 数据查询
 	var after *Var
 	if ctx.Value(blockEventsKey) != true {
-		after, err = o.queryEventObjectEntity(ctx, object, objectIdStr, InsertAfter)
+		after, _, err = o.queryEventObjectEntity(ctx, object, objectIdStr, InsertAfter)
 		if err != nil {
 			return "", err
 		}
@@ -164,9 +164,14 @@ func (o *Objectql) updateHandleRaw(ctx context.Context, api string, id string, d
 	// before 值查询
 	var before *Var
 	if ctx.Value(blockEventsKey) != true {
-		before, err = o.queryEventObjectEntity(ctx, object, id, UpdateBefore)
+		var exists bool
+		before, exists, err = o.queryEventObjectEntity(ctx, object, id, UpdateBefore)
 		if err != nil {
 			return err
+		}
+		// TODO: 表示指定的ID记录不存在
+		if !exists {
+			return nil
 		}
 	}
 	// updateBefore 事件触发 (可以修改表单内容)
@@ -218,9 +223,13 @@ func (o *Objectql) updateHandleRaw(ctx context.Context, api string, id string, d
 		return err
 	}
 	// 写入到数据库
-	err = o.mongoUpdateById(ctx, api, id, doc)
+	count, err := o.mongoUpdateById(ctx, api, id, doc)
 	if err != nil {
 		return err
+	}
+	// TODO: 表示指定的ID记录不存在
+	if count == 0 {
+		return nil
 	}
 	// 数据联动
 	for _, field := range object.Fields {
@@ -234,7 +243,7 @@ func (o *Objectql) updateHandleRaw(ctx context.Context, api string, id string, d
 	// after 值查询
 	var after *Var
 	if ctx.Value(blockEventsKey) != true {
-		after, err = o.queryEventObjectEntity(ctx, object, id, UpdateAfter)
+		after, _, err = o.queryEventObjectEntity(ctx, object, id, UpdateAfter)
 		if err != nil {
 			return err
 		}
@@ -293,9 +302,14 @@ func (o *Objectql) deleteHandleRaw(ctx context.Context, api string, id string) e
 	// before 数据查询
 	var before *Var
 	if ctx.Value(blockEventsKey) != true {
-		before, err = o.queryEventObjectEntity(ctx, object, id, DeleteBefore)
+		var exists bool
+		before, exists, err = o.queryEventObjectEntity(ctx, object, id, DeleteBefore)
 		if err != nil {
 			return err
+		}
+		// TODO: 表示指定的ID记录不存在
+		if !exists {
+			return nil
 		}
 	}
 	// deleteBefore 事件触发
@@ -318,9 +332,13 @@ func (o *Objectql) deleteHandleRaw(ctx context.Context, api string, id string) e
 		return err
 	}
 	// 数据库修改
-	err = o.mongoDeleteById(ctx, api, id)
+	count, err := o.mongoDeleteById(ctx, api, id)
 	if err != nil {
 		return err
+	}
+	if count == 0 {
+		// TODO: 表示指定的ID记录不存在
+		return nil
 	}
 	// 数据联动
 	for _, field := range object.Fields {
@@ -353,7 +371,7 @@ func (o *Objectql) deleteHandleRaw(ctx context.Context, api string, id string) e
 	return nil
 }
 
-func (o *Objectql) queryEventObjectEntity(ctx context.Context, object *Object, id string, position EventPosition) (*Var, error) {
+func (o *Objectql) queryEventObjectEntity(ctx context.Context, object *Object, id string, position EventPosition) (*Var, bool, error) {
 	// event 中需要查询的字段
 	qFields := o.getListenQueryFields(ctx, object.Api, position)
 	// require, validate 中需要查询的字段
@@ -362,7 +380,7 @@ func (o *Objectql) queryEventObjectEntity(ctx context.Context, object *Object, i
 		qFields = append(qFields, o.getObjectValidateQueryFields(object)...)
 	}
 	if len(qFields) == 0 {
-		return nil, nil
+		return nil, true, nil
 	}
 	qFields = append(qFields, "_id")
 	one, err := o.mongoFindOneEx(ctx, object.Api, findOneExOptions{
@@ -372,12 +390,12 @@ func (o *Objectql) queryEventObjectEntity(ctx context.Context, object *Object, i
 		},
 	})
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	if one == nil {
-		return nil, nil
+		return nil, false, nil
 	}
-	return NewVar(one), nil
+	return NewVar(one), true, nil
 }
 
 func (o *Objectql) graphqlMutationQueryOne(ctx context.Context, p graphql.ResolveParams, object *Object, id string) (interface{}, error) {
