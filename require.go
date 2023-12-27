@@ -62,9 +62,13 @@ func (o *Objectql) checkFieldHandleeRequires(ctx context.Context, handle *FieldR
 func (o *Objectql) getObjectRequireQueryFields(object *Object) []string {
 	var result []string
 	for _, field := range object.Fields {
-		result = append(result, field.requireSourceCodeFields...)
-		if v, ok := field.Require.(*FieldReqireCheckHandle); ok {
-			result = append(result, v.Fields...)
+		switch n := field.Require.(type) {
+		case bool:
+			result = append(result, field.Api)
+		case string:
+			result = append(result, field.requireSourceCodeFields...)
+		case *FieldReqireCheckHandle:
+			result = append(result, n.Fields...)
 		}
 	}
 	return result
