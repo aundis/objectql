@@ -250,6 +250,8 @@ func (o *Objectql) parseFields() (err error) {
 func (o *Objectql) parseFieldRequire(object *Object, field *Field) error {
 	if field.Require != nil {
 		switch n := field.Require.(type) {
+		case bool:
+			// ...
 		case string:
 			souceCode, err := formula.ParseSourceCode([]byte(n + " ? true : false"))
 			if err != nil {
