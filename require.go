@@ -50,7 +50,8 @@ func (o *Objectql) checkFieldFormulaRequires(ctx context.Context, field *Field, 
 		return fmt.Errorf("checkFieldFormulaRequires error: %s", field.RequireMsg)
 	}
 	if gconv.Bool(result) {
-		return fmt.Errorf("field require error: %s", field.RequireMsg)
+		return fmt.Errorf("字段<%s>是必填项", field.Name)
+		// return fmt.Errorf("field require error: %s", field.RequireMsg)
 	}
 	return nil
 }
