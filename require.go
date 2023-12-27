@@ -11,7 +11,7 @@ import (
 func (o *Objectql) checkFieldBoolRequires(object *Object, doc M) error {
 	for _, f := range object.Fields {
 		if f.Require == true {
-			if isNull(doc[f.Api]) {
+			if v, ok := doc[f.Api]; ok && isNull(v) {
 				return fmt.Errorf("object %s field %s is require", object.Api, f.Api)
 			}
 		}
