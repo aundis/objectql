@@ -8,7 +8,18 @@ import (
 	"github.com/gogf/gf/v2/util/gconv"
 )
 
-func (o *Objectql) checkFieldBoolRequires(object *Object, doc M) error {
+func (o *Objectql) checkInsertFieldBoolRequires(object *Object, doc M) error {
+	for _, f := range object.Fields {
+		if f.Require == true {
+			if v, ok := doc[f.Api]; !ok || isNull(v) {
+				return fmt.Errorf("object %s field %s is require", object.Api, f.Api)
+			}
+		}
+	}
+	return nil
+}
+
+func (o *Objectql) checkUpdateFieldBoolRequires(object *Object, doc M) error {
 	for _, f := range object.Fields {
 		if f.Require == true {
 			if v, ok := doc[f.Api]; ok && isNull(v) {

@@ -62,7 +62,7 @@ func (o *Objectql) insertHandleRaw(ctx context.Context, api string, doc map[stri
 		return "", err
 	}
 	// check bool require
-	err = o.checkFieldBoolRequires(object, doc)
+	err = o.checkInsertFieldBoolRequires(object, doc)
 	if err != nil {
 		return "", err
 	}
@@ -207,18 +207,13 @@ func (o *Objectql) updateHandleRaw(ctx context.Context, api string, id string, d
 	}
 	// 添加修改时间
 	doc["updateTime"] = time.Now()
-	// require 校验
-	err = o.checkFieldBoolRequires(object, doc)
-	if err != nil {
-		return err
-	}
 	// 数据库修改
 	err = formatDocumentToDatabase(object.Fields, doc)
 	if err != nil {
 		return err
 	}
 	// check bool require
-	err = o.checkFieldBoolRequires(object, doc)
+	err = o.checkUpdateFieldBoolRequires(object, doc)
 	if err != nil {
 		return err
 	}

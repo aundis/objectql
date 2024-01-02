@@ -61,8 +61,8 @@ func TestRequire(t *testing.T) {
 			"_id",
 		},
 	})
-	if err == nil || !strings.Contains(err.Error(), "刚子的年龄是必填的") {
-		t.Error("except 刚子的年龄是必填的 but got", err)
+	if err == nil || !strings.Contains(err.Error(), "字段<年龄>是必填项") {
+		t.Error("except 字段<年龄>是必填项 but got", err)
 		return
 	}
 }
