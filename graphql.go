@@ -959,7 +959,8 @@ func (o *Objectql) goTypeToGraphqlInputOrOutputType(ctx context.Context, tpe ref
 	case reflect.Struct:
 		return o.goStructTypeToGraphqlInputOrOutputType(ctx, tpe)
 	default:
-		return nil, fmt.Errorf("paramTypeToGraphqlInputType not support kind %v", tpe.Kind())
+		return graphqlAny, nil
+		// return nil, fmt.Errorf("paramTypeToGraphqlInputType not support kind %v", tpe.Kind())
 	}
 }
 
