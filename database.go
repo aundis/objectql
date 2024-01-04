@@ -378,7 +378,7 @@ func (o *Objectql) formatValueWithFieldType(tpe Type, v interface{}) (interface{
 		return gconv.Float32(v), nil
 	case *StringType:
 		return gconv.String(v), nil
-	case *DateTimeType:
+	case *DateTimeType, *DateType, *TimeType:
 		return gconv.Time(v), nil
 	case *RelateType:
 		return v.(primitive.ObjectID).Hex(), nil

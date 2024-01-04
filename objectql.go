@@ -477,7 +477,7 @@ func (o *Objectql) fieldResolver(ctx context.Context, fieldType Type, value inte
 		return floatOrNil(value), nil
 	case *StringType:
 		return stringOrNil(value), nil
-	case *DateTimeType:
+	case *DateTimeType, *DateType, *TimeType:
 		return dateTimeOrNil(value), nil
 	case *RelateType:
 		return value.(primitive.ObjectID).Hex(), nil

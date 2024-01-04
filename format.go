@@ -22,7 +22,7 @@ func formatDatabaseValueToCompute(field *Field, value interface{}) (interface{},
 			return gconv.Bool(value), nil
 		case *StringType:
 			return gconv.String(value), nil
-		case *DateTimeType:
+		case *DateTimeType, *DateType, *TimeType:
 			return formatDatabaseDateTimeValueToCompute(value)
 		default:
 			return nil, fmt.Errorf("formatOutputValue simpleHandle unknown field type %v", tpe)
@@ -30,7 +30,7 @@ func formatDatabaseValueToCompute(field *Field, value interface{}) (interface{},
 	}
 
 	switch n := field.Type.(type) {
-	case *IntType, *FloatType, *BoolType, *StringType, *DateTimeType:
+	case *IntType, *FloatType, *BoolType, *StringType, *DateTimeType, *DateType, *TimeType:
 		return simpleHandle(field.Type, value)
 	case *RelateType:
 		return simpleHandle(String, value)
@@ -84,7 +84,7 @@ func formatValueToDatabase(tpe Type, value interface{}) (interface{}, error) {
 		return formatBooleanValueToDatebase(value)
 	case *RelateType:
 		return formatRelateValueToDatebase(value)
-	case *DateTimeType:
+	case *DateTimeType, *DateType, *TimeType:
 		return formatDateTimeValueToDatebase(value)
 	case *ArrayType:
 		return formatArrayValueToDatebase(n, value)

@@ -95,7 +95,7 @@ func isFieldValueEqual(tpe Type, v1 *Var, v2 *Var) (bool, error) {
 		return v1.ToBool() == v2.ToBool(), nil
 	case *RelateType:
 		return v1.ToString() == v2.ToString(), nil
-	case *DateTimeType:
+	case *DateTimeType, *DateType, *TimeType:
 		return v1.ToTime().Equal(v2.ToTime()), nil
 	case *ArrayType:
 		return isArrayFieldValueEqual(n.Type, v1, v2)

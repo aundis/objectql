@@ -1049,7 +1049,7 @@ func (o *Objectql) fieldTypeToInputGraphqlType(tpe Type) graphql.Output {
 		return graphql.Float
 	case *StringType:
 		return graphql.String
-	case *DateTimeType:
+	case *DateTimeType, *DateType, *TimeType:
 		return graphql.DateTime
 	case *RelateType:
 		return graphql.String
@@ -1074,7 +1074,7 @@ func (o *Objectql) getGraphqlFieldType(tpe Type) graphql.Output {
 		return graphql.Float
 	case *StringType:
 		return graphql.String
-	case *DateTimeType:
+	case *DateTimeType, *DateType, *TimeType:
 		return graphql.DateTime
 	case *RelateType:
 		return graphql.String

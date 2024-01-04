@@ -38,7 +38,7 @@ func (o *Objectql) validateAssignable(field *Field, value interface{}) bool {
 			return isStringLick(value)
 		case *BoolType:
 			return isBoolLike(value)
-		case *DateTimeType:
+		case *DateTimeType, *DateType, *TimeType:
 			return isDateTimeLike(value)
 		default:
 			return false

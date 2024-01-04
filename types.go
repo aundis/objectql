@@ -40,12 +40,21 @@ type Field struct {
 	Api                      string
 	Comment                  string
 	Default                  any
+	Select                   map[string]interface{}
+	SelectFrom               SelectValueFrom
+	SelectLabel              string
 	valueApi                 string
 	relations                []*relationFiledInfo
 	requireSourceCode        *formula.SourceCode // 公式计算是否必填
 	requireSourceCodeFields  []string            // 公式计算中需要的字段
 	validateSourceCode       *formula.SourceCode // 数据验证公式
 	validateSourceCodeFields []string            // 数据验证需要的字段
+}
+
+type SelectValueFrom struct {
+	Object string
+	Label  string
+	Value  string
 }
 
 type FieldReqireCheckHandle struct {
@@ -73,6 +82,8 @@ type StringType struct{}
 type BoolType struct{}
 type FloatType struct{}
 type DateTimeType struct{}
+type DateType struct{}
+type TimeType struct{}
 type AnyType struct{}
 
 func (t *ObjectIDType) aType() {}
@@ -81,6 +92,8 @@ func (t *StringType) aType()   {}
 func (t *BoolType) aType()     {}
 func (t *FloatType) aType()    {}
 func (t *DateTimeType) aType() {}
+func (t *DateType) aType()     {}
+func (t *TimeType) aType()     {}
 func (t *AnyType) aType()      {}
 
 var ObjectID = &ObjectIDType{}
