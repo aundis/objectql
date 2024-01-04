@@ -673,6 +673,10 @@ func (o *Objectql) handleGraphqlResovler(ctx context.Context, p graphql.ResolveP
 }
 
 func formatHandleReturnValue(v interface{}) interface{} {
+	if isNull(v) {
+		return v
+	}
+
 	t := reflect.TypeOf(v)
 	switch t.Kind() {
 	case reflect.Array, reflect.Slice:
