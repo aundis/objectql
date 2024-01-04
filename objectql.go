@@ -1247,7 +1247,93 @@ func (o *Objectql) GetObjectInfo(objectApi string) *ObjectInfo {
 func (o *Objectql) GetObjectInfos() []*ObjectInfo {
 	var result []*ObjectInfo
 	for _, object := range o.list {
-		result = append(result, o.GetObjectInfo(object.Api))
+		info := o.GetObjectInfo(object.Api)
+		if info == nil {
+			continue
+		}
+		result = append(result, info)
+	}
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].Api < result[j].Api
+	})
+	return result
+}
+
+func (o *Objectql) GetObjectMetaInfo(objectApi string) *ObjectMetaInfo {
+	object := FindObjectFromList(o.list, objectApi)
+	if object == nil {
+		return nil
+	}
+	info := &ObjectMetaInfo{
+		Name: object.Name,
+		Api:  object.Api,
+	}
+	for _, field := range object.Fields {
+		fapi := field.Api
+		if fapi == "_id" {
+			continue
+		}
+		if gstr.HasSuffix(fapi, "__expand") {
+			continue
+		}
+		if gstr.HasSuffix(fapi, "__expands") {
+			continue
+		}
+		info.Fields = append(info.Fields, FieldMetaInfo{
+			Name:        field.Name,
+			Api:         field.Api,
+			Type:        getFieldTypeMeta(field.Type),
+			Readonly:    getFieldReadonlyMeta(field.Type),
+			Select:      field.Select,
+			SelectFrom:  field.SelectFrom,
+			SelectLabel: field.SelectLabel,
+		})
+	}
+	return info
+}
+
+func getFieldTypeMeta(tpe Type) string {
+	switch n := tpe.(type) {
+	case *BoolType:
+		return "bool"
+	case *IntType:
+		return "int"
+	case *FloatType:
+		return "float"
+	case *StringType:
+		return "string"
+	case *DateTimeType:
+		return "datetime"
+	case *DateType:
+		return "date"
+	case *TimeType:
+		return "time"
+	case *RelateType:
+		return "object:" + n.ObjectApi
+	case *ArrayType:
+		return "array," + getFieldTypeMeta(n.Type)
+	case *FormulaType:
+		return getFieldTypeMeta(n.Type)
+	case *AggregationType:
+		return getFieldTypeMeta(n.Type)
+	}
+	return ""
+}
+
+func getFieldReadonlyMeta(tpe Type) bool {
+	switch tpe.(type) {
+	case *FormulaType, *AggregationType:
+		return true
+	}
+	return false
+}
+
+func (o *Objectql) GetObjectMetaInfos() []*ObjectMetaInfo {
+	var result []*ObjectMetaInfo
+	for _, object := range o.list {
+		if info := o.GetObjectMetaInfo(object.Api); info != nil {
+			result = append(result, info)
+		}
 	}
 	sort.Slice(result, func(i, j int) bool {
 		return result[i].Api < result[j].Api

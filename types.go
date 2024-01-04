@@ -41,7 +41,7 @@ type Field struct {
 	Comment                  string
 	Default                  any
 	Select                   map[string]interface{}
-	SelectFrom               SelectValueFrom
+	SelectFrom               *SelectValueFrom
 	SelectLabel              string
 	valueApi                 string
 	relations                []*relationFiledInfo
@@ -253,6 +253,22 @@ type ObjectInfo struct {
 type FieldInfo struct {
 	Name string `json:"name"`
 	Api  string `json:"api"`
+}
+
+type ObjectMetaInfo struct {
+	Name   string          `json:"name"`
+	Api    string          `json:"api"`
+	Fields []FieldMetaInfo `json:"fields"`
+}
+
+type FieldMetaInfo struct {
+	Name        string                 `json:"name"`
+	Api         string                 `json:"api"`
+	Type        string                 `json:"type"`
+	Readonly    bool                   `json:"readonly"`
+	Select      map[string]interface{} `json:"select"`
+	SelectFrom  *SelectValueFrom       `json:"selectFrom"`
+	SelectLabel string                 `json:"selectLabel"`
 }
 
 type HandleInfo struct {
