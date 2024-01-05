@@ -40,7 +40,7 @@ type Field struct {
 	Api                      string
 	Comment                  string
 	Default                  any
-	Select                   map[string]interface{}
+	Select                   []SelectOption
 	SelectFrom               *SelectValueFrom
 	SelectLabel              string
 	valueApi                 string
@@ -49,6 +49,11 @@ type Field struct {
 	requireSourceCodeFields  []string            // 公式计算中需要的字段
 	validateSourceCode       *formula.SourceCode // 数据验证公式
 	validateSourceCodeFields []string            // 数据验证需要的字段
+}
+
+type SelectOption struct {
+	Label string
+	Value interface{}
 }
 
 type SelectValueFrom struct {
@@ -262,13 +267,13 @@ type ObjectMetaInfo struct {
 }
 
 type FieldMetaInfo struct {
-	Name        string                 `json:"name"`
-	Api         string                 `json:"api"`
-	Type        string                 `json:"type"`
-	Readonly    bool                   `json:"readonly"`
-	Select      map[string]interface{} `json:"select"`
-	SelectFrom  *SelectValueFrom       `json:"selectFrom"`
-	SelectLabel string                 `json:"selectLabel"`
+	Name        string           `json:"name"`
+	Api         string           `json:"api"`
+	Type        string           `json:"type"`
+	Readonly    bool             `json:"readonly"`
+	Select      []SelectOption   `json:"select"`
+	SelectFrom  *SelectValueFrom `json:"selectFrom"`
+	SelectLabel string           `json:"selectLabel"`
 }
 
 type HandleInfo struct {
