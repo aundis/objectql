@@ -52,14 +52,14 @@ type Field struct {
 }
 
 type SelectOption struct {
-	Label string
-	Value interface{}
+	Label string      `json:"label"`
+	Value interface{} `json:"value"`
 }
 
 type SelectValueFrom struct {
-	Object string
-	Label  string
-	Value  string
+	Object string `json:"object"`
+	Label  string `json:"label"`
+	Value  string `json:"value"`
 }
 
 type FieldReqireCheckHandle struct {
