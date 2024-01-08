@@ -635,7 +635,7 @@ func (o *Objectql) handleGraphqlResovler(ctx context.Context, p graphql.ResolveP
 	}
 
 	v := reflect.New(unPointerType(handle.req))
-	err := gconv.Struct(p.Args, v.Interface())
+	err := gconv.Struct(formatNullValue(p.Args), v.Interface())
 	if err != nil {
 		return nil, err
 	}
