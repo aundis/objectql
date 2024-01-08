@@ -84,9 +84,10 @@ func (o *Objectql) AddObject(object *Object) {
 	// 拥有者
 	if len(o.operatorObject) > 0 {
 		object.Fields = append(object.Fields, &Field{
-			Type: NewRelate(o.operatorObject),
-			Name: "拥有者",
-			Api:  "owner",
+			Type:        NewRelate(o.operatorObject),
+			Name:        "拥有者",
+			Api:         "owner",
+			SelectLabel: "name",
 		})
 	}
 	// 添加一些关联对象 __expand __expands
