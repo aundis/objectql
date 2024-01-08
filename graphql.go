@@ -1101,7 +1101,10 @@ func (o *Objectql) getGraphqlFieldType(tpe Type) graphql.Output {
 
 func formatNullValue(m map[string]interface{}) map[string]interface{} {
 	for k, v := range m {
-		if _, ok := v.(graphql.NullValue); ok {
+		switch v.(type) {
+		case map[string]interface{}:
+			formatNullValue(m)
+		case graphql.NullValue:
 			m[k] = nil
 		}
 	}
