@@ -107,6 +107,8 @@ var String = &StringType{}
 var Bool = &BoolType{}
 var Float = &FloatType{}
 var DateTime = &DateTimeType{}
+var Date = &DateType{}
+var Time = &TimeType{}
 var Any = &AnyType{}
 
 type ExpandType struct {
