@@ -172,6 +172,11 @@ func (o *Objectql) InitObjects(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
+		// 初始化DeleteSync
+		err = o.initObjectDeleteSync(v)
+		if err != nil {
+			return err
+		}
 		// 初始化Graphql对象的字段
 		err = o.fullGraphqlObject(o.getGraphqlObject(v.Api), v)
 		if err != nil {
@@ -324,6 +329,22 @@ func (o *Objectql) parseAggregationField(object *Object, field *Field) error {
 		ThroughField: relateField,
 		TargetField:  field,
 	})
+	// 条件相关的字段
+	var filterFields []string
+	getMatchReferenceFields(&filterFields, adata.Filter)
+	for _, ffapi := range filterFields {
+		if strings.Contains(ffapi, ".") {
+			return fmt.Errorf("%s.%s aggregation filter can't contains expand(s) field", object.Api, field.Api)
+		}
+		ff, err := FindFieldFromName(o.list, adata.Object, ffapi)
+		if err != nil {
+			return fmt.Errorf("%s.%s aggregation filter not found relate field  %s.%s", object.Api, field.Api, adata.Object, ffapi)
+		}
+		ff.relations = append(ff.relations, &relationFiledInfo{
+			ThroughField: relateField,
+			TargetField:  field,
+		})
+	}
 	return nil
 }
 

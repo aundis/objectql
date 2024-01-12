@@ -165,7 +165,12 @@ func (o *Objectql) aggregateField(ctx context.Context, object *Object, id string
 	cursor, err := o.getCollection(adata.Object).Aggregate(ctx, []bson.M{
 		{
 			"$match": bson.M{
-				adata.Relate: ObjectIdFromHex(id),
+				"$and": bson.A{
+					bson.M{
+						adata.Relate: ObjectIdFromHex(id),
+					},
+					adata.Filter,
+				},
 			},
 		},
 		{

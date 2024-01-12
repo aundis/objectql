@@ -44,6 +44,7 @@ func (o *Objectql) UnListenChange(table string, handle *ListenChangeHandler) {
 }
 
 func (o *Objectql) triggerChange(ctx context.Context, object *Object, before *Var, after *Var, position EventPosition) error {
+	ctx = o.WithRootPermission(ctx)
 	for _, handle := range o.getEventHanders(ctx, object.Api, kFieldChange) {
 		ins := handle.(*ListenChangeHandler)
 		if ins.Position&position == 0 {

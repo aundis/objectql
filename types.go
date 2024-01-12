@@ -11,13 +11,14 @@ import (
 )
 
 type Object struct {
-	Name      string
-	Api       string
-	Fields    []*Field
-	Comment   string
-	Bind      any
-	Querys    []*Handle
-	Mutations []*Handle
+	Name       string
+	Api        string
+	Fields     []*Field
+	Comment    string
+	Bind       any
+	Querys     []*Handle
+	Mutations  []*Handle
+	hasPrimary interface{}
 }
 
 type Handle struct {
@@ -31,10 +32,12 @@ type Handle struct {
 
 type Field struct {
 	Parent                   *Object
+	Primary                  bool
 	Require                  any
 	RequireMsg               string
 	Validate                 any
 	ValidateMsg              string
+	DeleteSync               bool
 	Type                     Type
 	Name                     string
 	Api                      string
@@ -165,13 +168,13 @@ func NewArrayType(tpe Type) *ArrayType {
 }
 
 type AggregationType struct {
-	Object    string
-	Relate    string
-	Field     string
-	Type      Type
-	Kind      AggregationKind
-	Condition string
-	resolved  *Field
+	Object   string
+	Relate   string
+	Field    string
+	Type     Type
+	Kind     AggregationKind
+	Filter   M
+	resolved *Field
 }
 
 func (t *AggregationType) aType() {}

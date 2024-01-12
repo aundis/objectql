@@ -649,9 +649,9 @@ func (o *Objectql) handleGraphqlResovler(ctx context.Context, p graphql.ResolveP
 	fn := reflect.ValueOf(handle.Resolve)
 	var args []reflect.Value
 	if handle.req.Kind() == reflect.Pointer {
-		args = []reflect.Value{reflect.ValueOf(ctx), reflect.ValueOf(v.Interface())}
+		args = []reflect.Value{reflect.ValueOf(o.WithRootPermission(ctx)), reflect.ValueOf(v.Interface())}
 	} else {
-		args = []reflect.Value{reflect.ValueOf(ctx), v.Elem()}
+		args = []reflect.Value{reflect.ValueOf(o.WithRootPermission(ctx)), v.Elem()}
 	}
 	result := fn.Call(args)
 	if rt.NumOut() == 1 {

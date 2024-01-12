@@ -123,6 +123,7 @@ func (o *Objectql) unListen(table string, kind eventKind, value any) {
 }
 
 func (o *Objectql) triggerInsertBefore(ctx context.Context, table string, doc *Var) error {
+	ctx = o.WithRootPermission(ctx)
 	for _, handle := range o.getEventHanders(ctx, table, kInsertBefore) {
 		err := handle.(InsertBeforeHandler)(ctx, doc)
 		if err != nil {
@@ -133,6 +134,7 @@ func (o *Objectql) triggerInsertBefore(ctx context.Context, table string, doc *V
 }
 
 func (o *Objectql) triggerInsertAfter(ctx context.Context, table string, id string, doc *Var) error {
+	ctx = o.WithRootPermission(ctx)
 	for _, handle := range o.getEventHanders(ctx, table, kInsertAfter) {
 		err := handle.(InsertAfterHandler)(ctx, id, doc)
 		if err != nil {
@@ -143,6 +145,7 @@ func (o *Objectql) triggerInsertAfter(ctx context.Context, table string, id stri
 }
 
 func (o *Objectql) triggerUpdateBefore(ctx context.Context, table string, id string, doc *Var) error {
+	ctx = o.WithRootPermission(ctx)
 	for _, handle := range o.getEventHanders(ctx, table, kUpdateBefore) {
 		err := handle.(UpdateBeoferHandler)(ctx, id, doc)
 		if err != nil {
@@ -153,6 +156,7 @@ func (o *Objectql) triggerUpdateBefore(ctx context.Context, table string, id str
 }
 
 func (o *Objectql) triggerUpdateAfter(ctx context.Context, table string, id string, doc *Var) error {
+	ctx = o.WithRootPermission(ctx)
 	for _, handle := range o.getEventHanders(ctx, table, kUpdateAfter) {
 		err := handle.(UpdateAfterHandler)(ctx, id, doc)
 		if err != nil {
@@ -163,6 +167,7 @@ func (o *Objectql) triggerUpdateAfter(ctx context.Context, table string, id stri
 }
 
 func (o *Objectql) triggerDeleteBefore(ctx context.Context, table string, id string) error {
+	ctx = o.WithRootPermission(ctx)
 	for _, handle := range o.getEventHanders(ctx, table, kDeleteBefore) {
 		err := handle.(DeleteBeforeHandler)(ctx, id)
 		if err != nil {
@@ -173,6 +178,7 @@ func (o *Objectql) triggerDeleteBefore(ctx context.Context, table string, id str
 }
 
 func (o *Objectql) triggerDeleteAfter(ctx context.Context, table string, id string) error {
+	ctx = o.WithRootPermission(ctx)
 	for _, handle := range o.getEventHanders(ctx, table, kDeleteAfter) {
 		err := handle.(DeleteAfterHandler)(ctx, id)
 		if err != nil {

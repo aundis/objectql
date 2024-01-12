@@ -75,6 +75,7 @@ func (o *Objectql) UnListenDeleteAfterEx(table string, handle *DeleteAfterExHand
 // TRIGGER
 
 func (o *Objectql) triggerInsertAfterEx(ctx context.Context, table string, id string, doc *Var, entity *Var) error {
+	ctx = o.WithRootPermission(ctx)
 	for _, handle := range o.getEventHanders(ctx, table, kInsertAfterEx) {
 		ins := handle.(*InsertAfterExHandler)
 		return ins.Handle(ctx, id, doc, entity)
@@ -83,6 +84,7 @@ func (o *Objectql) triggerInsertAfterEx(ctx context.Context, table string, id st
 }
 
 func (o *Objectql) triggerUpdateBeforeEx(ctx context.Context, table string, id string, doc *Var, entity *Var) error {
+	ctx = o.WithRootPermission(ctx)
 	for _, handle := range o.getEventHanders(ctx, table, kUpdateBeforeEx) {
 		ins := handle.(*UpdateBeforeExHandler)
 		return ins.Handle(ctx, id, doc, entity)
@@ -91,6 +93,7 @@ func (o *Objectql) triggerUpdateBeforeEx(ctx context.Context, table string, id s
 }
 
 func (o *Objectql) triggerUpdateAfterEx(ctx context.Context, table string, id string, doc *Var, entity *Var) error {
+	ctx = o.WithRootPermission(ctx)
 	for _, handle := range o.getEventHanders(ctx, table, kUpdateAfterEx) {
 		ins := handle.(*UpdateAfterExHandler)
 		return ins.Handle(ctx, id, doc, entity)
@@ -99,6 +102,7 @@ func (o *Objectql) triggerUpdateAfterEx(ctx context.Context, table string, id st
 }
 
 func (o *Objectql) triggerDeleteBeforeEx(ctx context.Context, table string, id string, entity *Var) error {
+	ctx = o.WithRootPermission(ctx)
 	for _, handle := range o.getEventHanders(ctx, table, kDeleteBeforeEx) {
 		ins := handle.(*DeleteBeforeExHandler)
 		return ins.Handle(ctx, id, entity)
@@ -107,6 +111,7 @@ func (o *Objectql) triggerDeleteBeforeEx(ctx context.Context, table string, id s
 }
 
 func (o *Objectql) triggerDeleteAfterEx(ctx context.Context, table string, id string, entity *Var) error {
+	ctx = o.WithRootPermission(ctx)
 	for _, handle := range o.getEventHanders(ctx, table, kDeleteAfterEx) {
 		ins := handle.(*DeleteAfterExHandler)
 		return ins.Handle(ctx, id, entity)

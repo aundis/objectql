@@ -66,6 +66,12 @@ func (o *Objectql) insertHandleRaw(ctx context.Context, api string, doc map[stri
 	if err != nil {
 		return "", err
 	}
+	// check priamry require
+	err = o.checkInsertPrimaryFieldRequires(object, doc)
+	if err != nil {
+		return "", err
+	}
+	// 写入到数据库
 	objectIdStr, err := o.mongoInsert(ctx, api, doc)
 	if err != nil {
 		return "", err
@@ -86,6 +92,11 @@ func (o *Objectql) insertHandleRaw(ctx context.Context, api string, doc map[stri
 		if err != nil {
 			return "", err
 		}
+	}
+	// priamry 校验
+	err = o.checkPrimaryDuplicate(ctx, object, after)
+	if err != nil {
+		return "", err
 	}
 	// require 校验
 	err = o.checkFieldFormulaOrHandledRequires(ctx, object, after)
@@ -217,6 +228,11 @@ func (o *Objectql) updateHandleRaw(ctx context.Context, api string, id string, d
 	if err != nil {
 		return err
 	}
+	// check priamry require
+	err = o.checkUpdatePrimaryFieldBoolRequires(object, doc)
+	if err != nil {
+		return err
+	}
 	// 写入到数据库
 	count, err := o.mongoUpdateById(ctx, api, id, doc)
 	if err != nil {
@@ -242,6 +258,11 @@ func (o *Objectql) updateHandleRaw(ctx context.Context, api string, id string, d
 		if err != nil {
 			return err
 		}
+	}
+	// priamry 校验
+	err = o.checkPrimaryDuplicate(ctx, object, after)
+	if err != nil {
+		return err
 	}
 	// require 校验
 	err = o.checkFieldFormulaOrHandledRequires(ctx, object, after)
@@ -373,6 +394,7 @@ func (o *Objectql) queryEventObjectEntity(ctx context.Context, object *Object, i
 	if position == InsertAfter || position == UpdateAfter {
 		qFields = append(qFields, o.getObjectRequireQueryFields(object)...)
 		qFields = append(qFields, o.getObjectValidateQueryFields(object)...)
+		qFields = append(qFields, o.getObjectPrimaryFieldQuerys(object)...)
 	}
 	if len(qFields) == 0 {
 		return nil, true, nil

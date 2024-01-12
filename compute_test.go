@@ -2,6 +2,8 @@ package objectql
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"testing"
 )
 
@@ -272,6 +274,184 @@ func TestRelateCompute(t *testing.T) {
 	})
 	if err != nil {
 		t.Error("删除失败", err)
+		return
+	}
+}
+
+var ErrOk = errors.New("success")
+
+func TestAggCompute(t *testing.T) {
+	ctx := context.Background()
+	oql := New()
+	err := oql.InitMongodb(ctx, testMongodbUrl)
+	if err != nil {
+		t.Error("初始化数据库失败", err)
+		return
+	}
+	_, err = oql.WithTransaction(ctx, func(ctx context.Context) (interface{}, error) {
+		oql.AddObject(&Object{
+			Name: "员工",
+			Api:  "staff",
+			Fields: []*Field{
+				{
+					Name: "姓名",
+					Api:  "name",
+					Type: String,
+				},
+				{
+					Name: "年龄",
+					Api:  "age",
+					Type: Int,
+				},
+				{
+					Name: "总收入",
+					Api:  "sumWages",
+					Type: &AggregationType{
+						Object: "dayWages",
+						Relate: "staff",
+						Field:  "wages",
+						Type:   Float,
+						Kind:   Sum,
+						Filter: map[string]any{
+							"audit": true,
+						},
+					},
+				},
+			},
+			Comment: "",
+		})
+
+		oql.AddObject(&Object{
+			Name: "日工资",
+			Api:  "dayWages",
+			Fields: []*Field{
+				{
+					Name: "员工",
+					Api:  "staff",
+					Type: NewRelate("staff"),
+				},
+				{
+					Name: "工资",
+					Api:  "wages",
+					Type: Int,
+				},
+				{
+					Name: "审核",
+					Api:  "audit",
+					Type: Bool,
+				},
+			},
+		})
+		err = oql.InitObjects(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("初始化对象失败 %s", err.Error())
+		}
+
+		res, err := oql.DoCommands(ctx, []Command{
+			{
+				Call: "staff.insert",
+				Args: M{
+					"doc": M{
+						"name": "老陈",
+						"age":  55,
+					},
+				},
+				Fields: []string{
+					"_id",
+				},
+				Result: "staff",
+			}, {
+				Call: "dayWages.insert",
+				Args: M{
+					"doc": M{
+						"staff": M{
+							"$formula": "staff._id",
+						},
+						"wages": 100,
+						"audit": false,
+					},
+				},
+				Fields: []string{"_id"},
+				Result: "dw1",
+			},
+			{
+				Call: "dayWages.insert",
+				Args: M{
+					"doc": M{
+						"staff": M{
+							"$formula": "staff._id",
+						},
+						"wages": 10,
+						"audit": true,
+					},
+				},
+				Fields: []string{"_id"},
+				Result: "dw2",
+			},
+			{
+				Call: "dayWages.insert",
+				Args: M{
+					"doc": M{
+						"staff": M{
+							"$formula": "staff._id",
+						},
+						"wages": 20,
+						"audit": true,
+					},
+				},
+				Fields: []string{"_id"},
+				Result: "dw3",
+			},
+			{
+				Call: "staff.findOneById",
+				Args: M{
+					"id": M{
+						"$formula": "staff._id",
+					},
+				},
+				Fields: []string{"_id", "name", "age", "sumWages"},
+				Result: "staff1",
+			},
+			{
+				Call: "dayWages.updateById",
+				Args: M{
+					"id": M{
+						"$formula": "dw1._id",
+					},
+					"doc": M{
+						"audit": true,
+					},
+				},
+				Fields: []string{"_id"},
+			},
+			{
+				Call: "staff.findOneById",
+				Args: M{
+					"id": M{
+						"$formula": "staff._id",
+					},
+				},
+				Fields: []string{"_id", "name", "age", "sumWages"},
+				Result: "staff2",
+			},
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		wages1 := res.Int("staff1.sumWages")
+		if wages1 != 30 {
+			return nil, fmt.Errorf("except staff1.sumWages = 30 but got %d", wages1)
+		}
+		wages2 := res.Int("staff2.sumWages")
+		if wages2 != 130 {
+			return nil, fmt.Errorf("except staff2.sumWages = 130 but got %d", wages2)
+		}
+
+		return nil, ErrOk
+	})
+	if err != ErrOk {
+		t.Log(err)
 		return
 	}
 }
