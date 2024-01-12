@@ -9,7 +9,7 @@ import (
 func TestFindAllEx(t *testing.T) {
 	ctx := gctx.New()
 	oql := New()
-	err := oql.InitMongodb(ctx, testMongodbUrl)
+	err := oql.InitMongodb(ctx, testMongodbUrl, "test")
 	if err != nil {
 		t.Error("初始化数据库失败", err)
 		return

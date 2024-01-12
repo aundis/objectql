@@ -46,7 +46,7 @@ func TestBindListen(t *testing.T) {
 	listenCount = 0
 	ctx := context.Background()
 	oql := New()
-	err := oql.InitMongodb(ctx, testMongodbUrl)
+	err := oql.InitMongodb(ctx, testMongodbUrl, "test")
 	if err != nil {
 		t.Error("初始化数据库失败", err)
 		return
@@ -142,7 +142,7 @@ func TestBindMethod(t *testing.T) {
 	listenCount = 0
 	ctx := context.Background()
 	oql := New()
-	err := oql.InitMongodb(ctx, testMongodbUrl)
+	err := oql.InitMongodb(ctx, testMongodbUrl, "test")
 	if err != nil {
 		t.Error("初始化数据库失败", err)
 		return
@@ -208,7 +208,7 @@ func (t *testBindStructArrayStruct) GetObjectInfos(ctx context.Context, req *get
 func TestBindStructArray(t *testing.T) {
 	ctx := context.Background()
 	oql := New()
-	err := oql.InitMongodb(ctx, testMongodbUrl)
+	err := oql.InitMongodb(ctx, testMongodbUrl, "test")
 	if err != nil {
 		t.Error("初始化数据库失败", err)
 		return
@@ -272,7 +272,7 @@ func (to *TestOneResultHandleObject) SetName5(ctx context.Context, req *testOneR
 func TestOneResultHandle(t *testing.T) {
 	ctx := context.Background()
 	oql := New()
-	err := oql.InitMongodb(ctx, testMongodbUrl)
+	err := oql.InitMongodb(ctx, testMongodbUrl, "test")
 	if err != nil {
 		t.Error("初始化数据库失败", err)
 		return

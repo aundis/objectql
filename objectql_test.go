@@ -26,7 +26,7 @@ type getNameReq struct {
 func TestQuery(t *testing.T) {
 	ctx := context.Background()
 	oql := New()
-	err := oql.InitMongodb(ctx, testMongodbUrl)
+	err := oql.InitMongodb(ctx, testMongodbUrl, "test")
 	if err != nil {
 		t.Error("初始化数据库失败", err)
 		return
@@ -81,7 +81,7 @@ func TestQuery(t *testing.T) {
 // func TestMutation(t *testing.T) {
 // 	ctx := context.Background()
 // 	objectql := New()
-// 	err := objectql.InitMongodb(ctx, testMongodbUrl)
+// 	err := objectql.InitMongodb(ctx, testMongodbUrl, "test")
 // 	if err != nil {
 // 		t.Error("初始化数据库失败", err)
 // 		return
@@ -180,7 +180,7 @@ func TestIssues1(t *testing.T) {
 func TestSession(t *testing.T) {
 	ctx := context.Background()
 	oql := New()
-	err := oql.InitMongodb(context.Background(), "mongodb://192.168.0.197:27017/?connect=direct")
+	err := oql.InitMongodb(ctx, testMongodbUrl, "test")
 	if err != nil {
 		panic(err)
 	}
@@ -316,7 +316,7 @@ func TestSession(t *testing.T) {
 func TestInsert(t *testing.T) {
 	ctx := context.Background()
 	objectql := New()
-	err := objectql.InitMongodb(ctx, testMongodbUrl)
+	err := objectql.InitMongodb(ctx, testMongodbUrl, "test")
 	if err != nil {
 		t.Error("初始化数据库失败", err)
 		return
@@ -392,7 +392,7 @@ func TestInsert(t *testing.T) {
 func TestUpdate(t *testing.T) {
 	ctx := context.Background()
 	objectql := New()
-	err := objectql.InitMongodb(ctx, testMongodbUrl)
+	err := objectql.InitMongodb(ctx, testMongodbUrl, "test")
 	if err != nil {
 		t.Error("初始化数据库失败", err)
 		return
@@ -473,7 +473,7 @@ func TestUpdate(t *testing.T) {
 func TestDelete(t *testing.T) {
 	ctx := context.Background()
 	objectql := New()
-	err := objectql.InitMongodb(ctx, testMongodbUrl)
+	err := objectql.InitMongodb(ctx, testMongodbUrl, "test")
 	if err != nil {
 		t.Error("初始化数据库失败", err)
 		return
@@ -547,7 +547,7 @@ func TestDelete(t *testing.T) {
 func TestFindOne(t *testing.T) {
 	ctx := context.Background()
 	objectql := New()
-	err := objectql.InitMongodb(ctx, testMongodbUrl)
+	err := objectql.InitMongodb(ctx, testMongodbUrl, "test")
 	if err != nil {
 		t.Error("初始化数据库失败", err)
 		return
@@ -622,7 +622,7 @@ func TestFindOne(t *testing.T) {
 func TestFindList(t *testing.T) {
 	ctx := context.Background()
 	objectql := New()
-	err := objectql.InitMongodb(ctx, testMongodbUrl)
+	err := objectql.InitMongodb(ctx, testMongodbUrl, "test")
 	if err != nil {
 		t.Error("初始化数据库失败", err)
 		return
@@ -699,7 +699,7 @@ func TestFindList(t *testing.T) {
 func TestCount(t *testing.T) {
 	ctx := context.Background()
 	objectql := New()
-	err := objectql.InitMongodb(ctx, testMongodbUrl)
+	err := objectql.InitMongodb(ctx, testMongodbUrl, "test")
 	if err != nil {
 		t.Error("初始化数据库失败", err)
 		return
@@ -775,7 +775,7 @@ func TestCount(t *testing.T) {
 func TestArray(t *testing.T) {
 	ctx := context.Background()
 	oql := New()
-	err := oql.InitMongodb(ctx, testMongodbUrl)
+	err := oql.InitMongodb(ctx, testMongodbUrl, "test")
 	if err != nil {
 		t.Error("初始化数据库失败", err)
 		return
@@ -816,7 +816,7 @@ func TestArray(t *testing.T) {
 func TestExtends(t *testing.T) {
 	ctx := context.Background()
 	oql := New()
-	err := oql.InitMongodb(ctx, testMongodbUrl)
+	err := oql.InitMongodb(ctx, testMongodbUrl, "test")
 	if err != nil {
 		t.Error("初始化数据库失败", err)
 		return
@@ -895,7 +895,7 @@ func TestExtends(t *testing.T) {
 func TestAggregate(t *testing.T) {
 	ctx := context.Background()
 	oql := New()
-	err := oql.InitMongodb(ctx, testMongodbUrl)
+	err := oql.InitMongodb(ctx, testMongodbUrl, "test")
 	if err != nil {
 		t.Error("初始化数据库失败", err)
 		return
@@ -959,7 +959,7 @@ func TestWriteGraphqlArgumentValue(t *testing.T) {
 // func TestSort(t *testing.T) {
 // 	ctx := context.Background()
 // 	oql := New()
-// 	err := oql.InitMongodb(ctx, testMongodbUrl)
+// 	err := oql.InitMongodb(ctx, testMongodbUrl, "test")
 // 	if err != nil {
 // 		t.Error("初始化数据库失败", err)
 // 		return
@@ -999,7 +999,7 @@ func TestWriteGraphqlArgumentValue(t *testing.T) {
 // func TestFindNull(t *testing.T) {
 // 	ctx := context.Background()
 // 	objectql := New()
-// 	err := objectql.InitMongodb(ctx, testMongodbUrl)
+// 	err := objectql.InitMongodb(ctx, testMongodbUrl, "test")
 // 	if err != nil {
 // 		t.Error("初始化数据库失败", err)
 // 		return

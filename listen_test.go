@@ -9,7 +9,7 @@ import (
 func TestInsertBefore(t *testing.T) {
 	ctx := context.Background()
 	objectql := New()
-	err := objectql.InitMongodb(ctx, testMongodbUrl)
+	err := objectql.InitMongodb(ctx, testMongodbUrl, "test")
 	if err != nil {
 		t.Error("初始化数据库失败", err)
 		return
@@ -72,7 +72,7 @@ func TestInsertBefore(t *testing.T) {
 func TestInsertAfter(t *testing.T) {
 	ctx := context.Background()
 	objectql := New()
-	err := objectql.InitMongodb(ctx, testMongodbUrl)
+	err := objectql.InitMongodb(ctx, testMongodbUrl, "test")
 	if err != nil {
 		t.Error("初始化数据库失败", err)
 		return
@@ -135,7 +135,7 @@ func TestInsertAfter(t *testing.T) {
 func TestUpdateBefore(t *testing.T) {
 	ctx := context.Background()
 	objectql := New()
-	err := objectql.InitMongodb(ctx, testMongodbUrl)
+	err := objectql.InitMongodb(ctx, testMongodbUrl, "test")
 	if err != nil {
 		t.Error("初始化数据库失败", err)
 		return
@@ -218,7 +218,7 @@ func TestUpdateBefore(t *testing.T) {
 func TestUpdateAfter(t *testing.T) {
 	ctx := context.Background()
 	objectql := New()
-	err := objectql.InitMongodb(ctx, testMongodbUrl)
+	err := objectql.InitMongodb(ctx, testMongodbUrl, "test")
 	if err != nil {
 		t.Error("初始化数据库失败", err)
 		return
@@ -301,7 +301,7 @@ func TestUpdateAfter(t *testing.T) {
 func TestDeleteBefore(t *testing.T) {
 	ctx := context.Background()
 	objectql := New()
-	err := objectql.InitMongodb(ctx, testMongodbUrl)
+	err := objectql.InitMongodb(ctx, testMongodbUrl, "test")
 	if err != nil {
 		t.Error("初始化数据库失败", err)
 		return
@@ -372,7 +372,7 @@ func TestDeleteBefore(t *testing.T) {
 func TestDeleteAfter(t *testing.T) {
 	ctx := context.Background()
 	objectql := New()
-	err := objectql.InitMongodb(ctx, testMongodbUrl)
+	err := objectql.InitMongodb(ctx, testMongodbUrl, "test")
 	if err != nil {
 		t.Error("初始化数据库失败", err)
 		return

@@ -9,7 +9,7 @@ import (
 func TestObjectPermissionCheck(t *testing.T) {
 	ctx := context.Background()
 	objectql := New()
-	err := objectql.InitMongodb(ctx, testMongodbUrl)
+	err := objectql.InitMongodb(ctx, testMongodbUrl, "test")
 	if err != nil {
 		t.Error("初始化数据库失败", err)
 		return
@@ -61,7 +61,7 @@ func TestObjectPermissionCheck(t *testing.T) {
 func TestObjectFieldPermissionCheck(t *testing.T) {
 	ctx := context.Background()
 	objectql := New()
-	err := objectql.InitMongodb(ctx, testMongodbUrl)
+	err := objectql.InitMongodb(ctx, testMongodbUrl, "test")
 	if err != nil {
 		t.Error("初始化数据库失败", err)
 		return
@@ -128,7 +128,7 @@ func TestObjectFieldPermissionCheck(t *testing.T) {
 // func TestTime(t *testing.T) {
 // 	ctx := context.Background()
 // 	oql := New()
-// 	err := oql.InitMongodb(ctx, testMongodbUrl)
+// 	err := oql.InitMongodb(ctx, testMongodbUrl, "test")
 // 	if err != nil {
 // 		t.Error("初始化数据库失败", err)
 // 		return

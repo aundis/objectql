@@ -29,7 +29,7 @@ func TestPreprceessMongoMap(t *testing.T) {
 func TestTimeFilter(t *testing.T) {
 	ctx := context.Background()
 	oql := New()
-	err := oql.InitMongodb(ctx, testMongodbUrl)
+	err := oql.InitMongodb(ctx, testMongodbUrl, "test")
 	if err != nil {
 		t.Error("初始化数据库失败", err)
 		return

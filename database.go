@@ -16,7 +16,8 @@ import (
 
 const MogSessionKey = "mgo_session"
 
-func (o *Objectql) InitMongodb(ctx context.Context, uri string) (err error) {
+func (o *Objectql) InitMongodb(ctx context.Context, uri, datebase string) (err error) {
+	o.mongoDatebase = datebase
 	o.mongoClientOpts = options.Client().ApplyURI(uri)
 	o.mongoClient, err = mongo.Connect(ctx, o.mongoClientOpts)
 	if err != nil {
@@ -27,7 +28,7 @@ func (o *Objectql) InitMongodb(ctx context.Context, uri string) (err error) {
 }
 
 func (o *Objectql) getCollection(api string) *mongo.Collection {
-	return o.mongoClient.Database("test").Collection(api)
+	return o.mongoClient.Database(o.mongoDatebase).Collection(api)
 }
 
 func (o *Objectql) WithTransaction(ctx context.Context, fn func(ctx context.Context) (interface{}, error)) (interface{}, error) {

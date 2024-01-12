@@ -56,6 +56,7 @@ type Objectql struct {
 	gquerys    graphql.Fields
 	gmutations graphql.Fields
 	// database
+	mongoDatebase          string
 	mongoClientOpts        *options.ClientOptions
 	mongoClient            *mongo.Client
 	mongoCollectionOptions *options.CollectionOptions

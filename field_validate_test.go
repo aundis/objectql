@@ -10,7 +10,7 @@ import (
 func TestValidate(t *testing.T) {
 	ctx := context.Background()
 	objectql := New()
-	err := objectql.InitMongodb(ctx, testMongodbUrl)
+	err := objectql.InitMongodb(ctx, testMongodbUrl, "test")
 	if err != nil {
 		t.Error("初始化数据库失败", err)
 		return
@@ -70,7 +70,7 @@ func TestValidate(t *testing.T) {
 func TestHandleValidate(t *testing.T) {
 	ctx := context.Background()
 	objectql := New()
-	err := objectql.InitMongodb(ctx, testMongodbUrl)
+	err := objectql.InitMongodb(ctx, testMongodbUrl, "test")
 	if err != nil {
 		t.Error("初始化数据库失败", err)
 		return
