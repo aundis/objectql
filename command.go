@@ -79,6 +79,7 @@ func (o *Objectql) DoCommands(ctx context.Context, commands []Command, filter ..
 				mapKey = command.Result
 				result, err = o.Insert(ctx, objectApi, InsertOptions{
 					Doc:    n.Doc,
+					Index:  n.Index,
 					Fields: command.Fields,
 					Direct: n.Direct,
 				})

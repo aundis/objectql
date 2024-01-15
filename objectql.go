@@ -764,6 +764,10 @@ func (o *Objectql) Insert(ctx context.Context, objectApi string, options InsertO
 		return nil, err
 	}
 	buffer.WriteString(text)
+	if options.Index > 0 {
+		buffer.WriteString(" index:")
+		buffer.WriteString(gconv.String(options.Index))
+	}
 	buffer.WriteString(")")
 	buffer.WriteString("{")
 	writeObjectQueyrFields(&buffer, object, options.Fields)

@@ -229,6 +229,7 @@ type CountArgs struct {
 
 type InsertArgs struct {
 	Doc    map[string]any `json:"doc"`
+	Index  int            `json:"index"`
 	Direct bool           `json:"direct"`
 }
 
@@ -338,6 +339,7 @@ type CountOptions struct {
 type InsertOptions struct {
 	Doc    map[string]any `json:"doc"`
 	Fields []string       `json:"fields"`
+	Index  int            `json:"index"`
 	Direct bool           `json:"direct"`
 }
 

@@ -795,7 +795,7 @@ func (o *Objectql) getGrpahqlObjectMutationForm(object *Object) graphql.Input {
 func (o *Objectql) graphqlMutationInsertResolver(ctx context.Context, p graphql.ResolveParams, object *Object) (interface{}, error) {
 	if m, ok := p.Args["doc"].(map[string]interface{}); ok {
 		m = formatNullValue(m)
-		index := -1
+		index := 0
 		if !isNull(p.Args["index"]) {
 			index = gconv.Int(p.Args["index"])
 		}
