@@ -125,14 +125,18 @@ func (o *Objectql) getListenQueryFields(ctx context.Context, table string, posit
 	switch position {
 	// case InsertBefore:
 	case InsertAfter:
-		kinds = []eventKind{kInsertAfterEx, kFieldChange}
+		kinds = []eventKind{kInsertAfterEx, kFieldChange, kIndexChange}
 	case UpdateBefore:
 		kinds = []eventKind{kUpdateBeforeEx, kFieldChange}
 	case UpdateAfter:
 		kinds = []eventKind{kUpdateAfterEx, kFieldChange}
 	case DeleteBefore:
-		kinds = []eventKind{kDeleteBeforeEx, kDeleteAfterEx, kFieldChange}
+		kinds = []eventKind{kDeleteBeforeEx, kDeleteAfterEx, kFieldChange, kIndexChange}
 		// case DeleteAfter:
+	case IndexMoveBefore:
+		kinds = []eventKind{kIndexMoveBefore, kFieldChange}
+	case IndexMoveAfter:
+		kinds = []eventKind{kIndexMoveAfter, kFieldChange}
 	}
 
 	for _, kind := range kinds {
@@ -148,10 +152,18 @@ func (o *Objectql) getListenQueryFields(ctx context.Context, table string, posit
 				result = append(result, n.Fields...)
 			case *DeleteAfterExHandler:
 				result = append(result, n.Fields...)
+			case *IndexMoveBeforeHandler:
+				result = append(result, n.Fields...)
+			case *IndexMoveAfterHandler:
+				result = append(result, n.Fields...)
 			case *ListenChangeHandler:
 				if n.Position&position != 0 {
 					result = append(result, n.Query...)
 					result = append(result, n.Listen...)
+				}
+			case *IndexChangeHandler:
+				if n.Position&position != 0 {
+					result = append(result, n.Fields...)
 				}
 			}
 		}

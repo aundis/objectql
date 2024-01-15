@@ -10,14 +10,14 @@ import (
 	"github.com/gogf/gf/v2/util/gconv"
 )
 
-func (o *Objectql) insertHandle(ctx context.Context, api string, doc map[string]interface{}) (string, error) {
+func (o *Objectql) insertHandle(ctx context.Context, api string, doc map[string]interface{}, index int) (string, error) {
 	res, err := o.WithTransaction(ctx, func(ctx context.Context) (interface{}, error) {
-		return o.insertHandleRaw(ctx, api, doc)
+		return o.insertHandleRaw(ctx, api, doc, index)
 	})
 	return gconv.String(res), err
 }
 
-func (o *Objectql) insertHandleRaw(ctx context.Context, api string, doc map[string]interface{}) (string, error) {
+func (o *Objectql) insertHandleRaw(ctx context.Context, api string, doc map[string]interface{}, toIndex int) (string, error) {
 	object := FindObjectFromList(o.list, api)
 	if object == nil {
 		return "", ErrNotFoundObject
@@ -70,6 +70,13 @@ func (o *Objectql) insertHandleRaw(ctx context.Context, api string, doc map[stri
 	err = o.checkInsertPrimaryFieldRequires(object, doc)
 	if err != nil {
 		return "", err
+	}
+	// 写索引位置
+	if object.Index {
+		err = o.initInsertRowIndex(ctx, object, doc, toIndex)
+		if err != nil {
+			return "", err
+		}
 	}
 	// 写入到数据库
 	objectIdStr, err := o.mongoInsert(ctx, api, doc)
@@ -129,7 +136,89 @@ func (o *Objectql) insertHandleRaw(ctx context.Context, api string, doc map[stri
 			return "", err
 		}
 	}
+	// indexChange 事件触发
+	if ctx.Value(blockEventsKey) != true {
+		err = o.triggerIndexChange(ctx, object.Api, objectIdStr, NewVar(nil), after, InsertAfter)
+		if err != nil {
+			return "", err
+		}
+	}
 	return objectIdStr, nil
+}
+
+func (o *Objectql) initInsertRowIndex(ctx context.Context, object *Object, doc map[string]interface{}, toIndex int) error {
+	if toIndex > 0 {
+		// 插入到指定位置
+		filter, err := o.getGroupFilterFromDoc(ctx, object, doc)
+		if err != nil {
+			return err
+		}
+		err = o.indexOffset(ctx, object.Api, filter, toIndex, 1)
+		if err != nil {
+			return err
+		}
+		doc["__index"] = toIndex
+	} else {
+		// 插入到末尾
+		max, err := o.getMaxIndex(ctx, object, doc)
+		if err != nil {
+			return err
+		}
+		toIndex := max + 1
+		doc["__index"] = toIndex
+	}
+	return nil
+}
+
+func (o *Objectql) getGroupFilterFromDoc(ctx context.Context, object *Object, doc map[string]interface{}) (M, error) {
+	result := M{}
+	for _, gapi := range object.IndexGroup {
+		f := FindFieldFromObject(object, gapi)
+		if f == nil {
+			return nil, fmt.Errorf(`%s not found index group field %s`, object.Api, gapi)
+		}
+		result[gapi] = o.toMongoFilterValue(f, doc[gapi])
+	}
+	return result, nil
+}
+
+func (o *Objectql) getMaxIndex(ctx context.Context, object *Object, doc M) (int, error) {
+	var pipeline []M
+	if len(object.IndexGroup) > 0 {
+		matchValues := M{}
+		for _, fapi := range object.IndexGroup {
+			f := FindFieldFromObject(object, fapi)
+			if f == nil {
+				return 0, fmt.Errorf(`%s not found index group field %s`, object.Api, fapi)
+			}
+			matchValues[fapi] = o.toMongoFilterValue(f, doc[fapi])
+		}
+		pipeline = append(pipeline, M{
+			"$match": matchValues,
+		})
+	}
+	pipeline = append(pipeline, M{
+		"$group": M{
+			"_id":    "$item",
+			"result": M{"$max": "$__index"},
+		},
+	})
+
+	cursor, err := o.getCollection(object.Api).Aggregate(ctx, pipeline)
+	if err != nil {
+		return 0, err
+	}
+	result, err := readOneFromCuresor(ctx, cursor)
+	if err != nil {
+		return 0, err
+	}
+	// 应用修改
+	// TODO: 需要根据聚合字段的类型来存储
+	var value int = 0
+	if result != nil {
+		value = gconv.Int(result["result"])
+	}
+	return value, nil
 }
 
 func (o *Objectql) initDefaultValues(fields []*Field, doc map[string]interface{}) {
@@ -384,6 +473,112 @@ func (o *Objectql) deleteHandleRaw(ctx context.Context, api string, id string) e
 			return err
 		}
 	}
+	// indexChange 事件触发
+	if ctx.Value(blockEventsKey) != true {
+		err = o.triggerIndexChange(ctx, object.Api, id, before, NewVar(nil), DeleteAfter)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (o *Objectql) moveHandle(ctx context.Context, api string, id string, index int) error {
+	_, err := o.WithTransaction(ctx, func(ctx context.Context) (interface{}, error) {
+		return nil, o.moveHandleRaw(ctx, api, id, index)
+	})
+	return err
+}
+
+func (o *Objectql) moveHandleRaw(ctx context.Context, api string, id string, index int) error {
+	object := FindObjectFromList(o.list, api)
+	if object == nil {
+		return ErrNotFoundObject
+	}
+	var err error
+	// 查询出当前index和分组字段值
+	one, err := o.mongoFindOneById(ctx, object.Api, id, strings.Join(append(object.IndexGroup, "__index"), ","))
+	if err != nil {
+		return err
+	}
+	// 分组筛选
+	groupMatchValues := M{}
+	if len(object.IndexGroup) > 0 {
+		for _, fapi := range object.IndexGroup {
+			f := FindFieldFromObject(object, fapi)
+			if f == nil {
+				return fmt.Errorf(`%s not found index group field %s`, object.Api, fapi)
+			}
+			groupMatchValues[fapi] = one[fapi]
+		}
+	}
+	// before 查询
+	var before *Var
+	if ctx.Value(blockEventsKey) != true {
+		before, _, err = o.queryEventObjectEntity(ctx, object, id, IndexMoveBefore)
+		if err != nil {
+			return err
+		}
+	}
+	// before事件触发
+	if ctx.Value(blockEventsKey) != true {
+		err = o.triggerIndexMoveBefore(ctx, api, id, index, before)
+		if err != nil {
+			return err
+		}
+	}
+	// 修改数据库 1. 调整后面部分的索引，空出目标位置
+	err = o.indexOffset(ctx, object.Api, groupMatchValues, index, 1)
+	if err != nil {
+		return err
+	}
+	// 修改数据库 2. 修改指定_id行位置修改为目标位置
+	_, err = o.mongoUpdateById(ctx, object.Api, id, M{"__index": index})
+	if err != nil {
+		return err
+	}
+	// after 查询
+	var after *Var
+	if ctx.Value(blockEventsKey) != true {
+		before, _, err = o.queryEventObjectEntity(ctx, object, id, IndexMoveAfter)
+		if err != nil {
+			return err
+		}
+	}
+	// after 事件触发
+	if ctx.Value(blockEventsKey) != true {
+		err = o.triggerIndexMoveAfter(ctx, api, id, index, after, before)
+		if err != nil {
+			return err
+		}
+	}
+	// change 事件触发
+	if ctx.Value(blockEventsKey) != true {
+		err = o.triggerIndexChange(ctx, api, id, after, before, IndexMoveAfter)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (o *Objectql) indexOffset(ctx context.Context, table string, group M, index int, add int) error {
+	filter := M{}
+	for k, v := range group {
+		filter[k] = v
+	}
+	filter["__index"] = M{
+		"$gte": index,
+	}
+	_, err := o.mongoUpdateMany(ctx, table, filter, M{
+		"$inc": M{
+			"__index": add,
+		},
+	})
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

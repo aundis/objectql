@@ -19,6 +19,8 @@ type Object struct {
 	Querys     []*Handle
 	Mutations  []*Handle
 	hasPrimary interface{}
+	Index      bool
+	IndexGroup []string
 }
 
 type Handle struct {
@@ -242,6 +244,12 @@ type UpdateArgs struct {
 	Direct bool           `json:"direct"`
 }
 
+type MoveArgs struct {
+	ID     string `json:"id"`
+	Index  int    `json:"index"`
+	Direct bool   `json:"direct"`
+}
+
 type DeleteByIdArgs struct {
 	ID     string `json:"id"`
 	Direct bool   `json:"direct"`
@@ -313,6 +321,12 @@ type FindListOptions struct {
 type AggregateOptions struct {
 	Pipeline []map[string]any `json:"pipeline"`
 	Direct   bool             `json:"direct"`
+}
+
+type MoveOptions struct {
+	ID     string `json:"id"`
+	Index  int    `json:"index"`
+	Direct bool   `json:"direct"`
 }
 
 type CountOptions struct {

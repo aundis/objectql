@@ -486,6 +486,10 @@ func (o *Objectql) initObjectGraphqlMutation(ctx context.Context, mutations grap
 				Type:        form,
 				Description: "对象文档",
 			},
+			"index": &graphql.ArgumentConfig{
+				Type:        graphql.Int,
+				Description: "排序位置",
+			},
 		},
 		Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 			return o.graphqlMutationInsertResolver(p.Context, p, object)
@@ -524,6 +528,25 @@ func (o *Objectql) initObjectGraphqlMutation(ctx context.Context, mutations grap
 		Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 			return o.graphqlMutationUpdateByIdResolver(p.Context, p, object)
 		},
+	}
+	// 移动
+	if object.Index {
+		mutations[object.Api+"__move"] = &graphql.Field{
+			Type: graphql.Boolean,
+			Args: graphql.FieldConfigArgument{
+				"_id": &graphql.ArgumentConfig{
+					Type:        graphql.String,
+					Description: "对象id",
+				},
+				"index": &graphql.ArgumentConfig{
+					Type:        graphql.Int,
+					Description: "排序位置",
+				},
+			},
+			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+				return o.graphqlMutationMoveResolver(p.Context, p, object)
+			},
+		}
 	}
 	// 批量删除
 	mutations[object.Api+"__delete"] = &graphql.Field{
@@ -772,7 +795,11 @@ func (o *Objectql) getGrpahqlObjectMutationForm(object *Object) graphql.Input {
 func (o *Objectql) graphqlMutationInsertResolver(ctx context.Context, p graphql.ResolveParams, object *Object) (interface{}, error) {
 	if m, ok := p.Args["doc"].(map[string]interface{}); ok {
 		m = formatNullValue(m)
-		objectId, err := o.insertHandle(ctx, object.Api, m)
+		index := -1
+		if !isNull(p.Args["index"]) {
+			index = gconv.Int(p.Args["index"])
+		}
+		objectId, err := o.insertHandle(ctx, object.Api, m, index)
 		if err != nil {
 			return nil, err
 		}
@@ -841,6 +868,22 @@ func (o *Objectql) graphqlMutationUpdateByIdResolver(ctx context.Context, p grap
 		}
 	}
 	return nil, nil
+}
+
+func (o *Objectql) graphqlMutationMoveResolver(ctx context.Context, p graphql.ResolveParams, object *Object) (interface{}, error) {
+	objectId := gconv.String(p.Args["_id"])
+	index := gconv.Int(p.Args["index"])
+	if isNull(p.Args["_id"]) || len(objectId) == 0 {
+		return false, errors.New("mutation __move _id can't be embty")
+	}
+	if isNull(p.Args["index"]) {
+		return false, errors.New("mutation __move index can't be embty")
+	}
+	err := o.moveHandle(ctx, object.Api, objectId, index)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func (o *Objectql) graphqlMutationDeleteResolver(ctx context.Context, p graphql.ResolveParams, object *Object) (interface{}, error) {

@@ -75,6 +75,16 @@ func (o *Objectql) mongoFindAll(ctx context.Context, table string, filter bson.M
 	return result, nil
 }
 
+func (o *Objectql) mongoFindOneById(ctx context.Context, table string, id, selects string) (bson.M, error) {
+	objectId, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return nil, err
+	}
+	return o.mongoFindOne(ctx, table, bson.M{
+		"_id": objectId,
+	}, selects)
+}
+
 func (o *Objectql) mongoFindOne(ctx context.Context, table string, filter bson.M, selects string) (bson.M, error) {
 	findOneOptions := options.FindOne()
 	if len(selects) > 0 {
@@ -112,6 +122,14 @@ func (o *Objectql) mongoUpdateById(ctx context.Context, table string, id string,
 	result, err := o.getCollection(table).UpdateByID(ctx, objectId, bson.M{
 		"$set": doc,
 	})
+	if err != nil {
+		return 0, err
+	}
+	return result.ModifiedCount, nil
+}
+
+func (o *Objectql) mongoUpdateMany(ctx context.Context, table string, filter M, update M) (int64, error) {
+	result, err := o.getCollection(table).UpdateMany(ctx, filter, update)
 	if err != nil {
 		return 0, err
 	}

@@ -16,10 +16,13 @@ const (
 	UpdateAfter
 	DeleteBefore
 	DeleteAfter
+	IndexMoveBefore
+	IndexMoveAfter
 
 	InsertFull EventPosition = InsertBefore | InsertAfter
 	UpdateFull EventPosition = UpdateBefore | UpdateAfter
 	DeleteFull EventPosition = DeleteBefore | DeleteAfter
+	MoveFull   EventPosition = IndexMoveBefore | IndexMoveAfter
 )
 
 type eventKind int
@@ -41,6 +44,11 @@ const (
 
 	// CHANGE
 	kFieldChange
+
+	// INDEX
+	kIndexMoveBefore
+	kIndexMoveAfter
+	kIndexChange
 )
 
 type InsertBeforeHandler = func(ctx context.Context, doc *Var) error

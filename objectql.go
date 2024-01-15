@@ -119,6 +119,14 @@ func (o *Objectql) AddObject(object *Object) {
 		}
 	}
 	object.Fields = append(object.Fields, expands...)
+	// 索引对象
+	if object.Index {
+		object.Fields = append(object.Fields, &Field{
+			Type: Int,
+			Name: "索引",
+			Api:  "__index",
+		})
+	}
 	// 创建时间
 	object.Fields = append(object.Fields, &Field{
 		Type: DateTime,
@@ -1027,6 +1035,27 @@ func (o *Objectql) Aggregate(ctx context.Context, objectApi string, options Aggr
 	buffer.WriteString(")")
 	buffer.WriteString("}")
 	return getVarsFromGraphqlResult(o.Do(ctx, buffer.String()))
+}
+
+func (o *Objectql) Move(ctx context.Context, objectApi string, options MoveOptions) error {
+	ctx = context.WithValue(ctx, blockEventsKey, options.Direct)
+	_, err := o.MustGetObject(objectApi)
+	if err != nil {
+		return err
+	}
+	// filters
+	var buffer bytes.Buffer
+	buffer.WriteString("mutation {")
+	buffer.WriteString("data: " + objectApi + "__move(")
+	buffer.WriteString(" _id:")
+	buffer.WriteString(`"`)
+	buffer.WriteString(escapeString(options.ID))
+	buffer.WriteString(`"`)
+	buffer.WriteString(" index:")
+	buffer.WriteString(gconv.String(options.Index))
+	buffer.WriteString(")")
+	buffer.WriteString("}")
+	return getErrorFromGraphqlResult(o.Do(ctx, buffer.String()))
 }
 
 func getVarsFromGraphqlResult(gr *graphql.Result) ([]*Var, error) {

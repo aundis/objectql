@@ -114,6 +114,12 @@ func (o *Objectql) DoCommands(ctx context.Context, commands []Command, filter ..
 					Pipeline: n.Pipeline,
 					Direct:   n.Direct,
 				})
+			case *MoveArgs:
+				err = o.Move(ctx, objectApi, MoveOptions{
+					ID:     n.ID,
+					Index:  n.Index,
+					Direct: n.Direct,
+				})
 			case map[string]any:
 				mapKey = command.Result
 				result, err = o.Call(ctx, objectApi, funcNamme, n, command.Fields)
@@ -177,6 +183,8 @@ func convCommandArgStructToMap(commands []Command) {
 		case DeleteByIdArgs:
 			args = structToMap(n)
 		case DeleteArgs:
+			args = structToMap(n)
+		case MoveArgs:
 			args = structToMap(n)
 		}
 		if args != nil {
@@ -292,6 +300,14 @@ func (o *Objectql) convCommandArgs(command *Command) (any, error) {
 	}
 	if gstr.HasSuffix(command.Call, ".aggregate") {
 		var args *AggregateArgs
+		err := gconv.Struct(command.Args, &args)
+		if err != nil {
+			return nil, err
+		}
+		return args, nil
+	}
+	if gstr.HasSuffix(command.Call, ".move") {
+		var args *MoveArgs
 		err := gconv.Struct(command.Args, &args)
 		if err != nil {
 			return nil, err

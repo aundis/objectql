@@ -1035,3 +1035,248 @@ func TestWriteGraphqlArgumentValue(t *testing.T) {
 // 	}
 // 	t.Log(list)
 // }
+
+func TestInsertMaxIndex(t *testing.T) {
+	ctx := context.Background()
+	oql := New()
+	err := oql.InitMongodb(ctx, testMongodbUrl, "test")
+	if err != nil {
+		t.Error("初始化数据库失败", err)
+		return
+	}
+	_, err = oql.WithTransaction(ctx, func(ctx context.Context) (interface{}, error) {
+		oql.AddObject(&Object{
+			Name:       "员工",
+			Api:        "staff",
+			Index:      true,
+			IndexGroup: []string{"class"},
+			Fields: []*Field{
+				{
+					Name: "姓名",
+					Api:  "name",
+					Type: String,
+				},
+				{
+					Name: "年龄",
+					Api:  "age",
+					Type: Int,
+				},
+				{
+					Name: "班组",
+					Api:  "class",
+					Type: Int,
+				},
+			},
+			Comment: "",
+		})
+
+		err = oql.InitObjects(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("初始化对象失败 %s", err.Error())
+		}
+
+		res, err := oql.DoCommands(ctx, []Command{
+			{
+				Call: "staff.insert",
+				Args: M{
+					"doc": M{
+						"name": "老陈",
+						"age":  55,
+					},
+				},
+				Fields: []string{
+					"_id",
+					"__index",
+				},
+				Result: "staff1",
+			},
+			{
+				Call: "staff.insert",
+				Args: M{
+					"doc": M{
+						"name": "老陈",
+						"age":  55,
+					},
+				},
+				Fields: []string{
+					"_id",
+					"__index",
+				},
+				Result: "staff2",
+			},
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		index1 := res.Int("staff1.__index")
+		index2 := res.Int("staff2.__index")
+		if index2-index1 != 1 {
+			return nil, fmt.Errorf("except index2 - index1 = 1 but got %d", index2-index1)
+		}
+
+		return nil, ErrOk
+	})
+	if err != ErrOk {
+		t.Log(err)
+		return
+	}
+}
+
+func TestMove(t *testing.T) {
+	ctx := context.Background()
+	oql := New()
+	err := oql.InitMongodb(ctx, testMongodbUrl, "test")
+	if err != nil {
+		t.Error("初始化数据库失败", err)
+		return
+	}
+	_, err = oql.WithTransaction(ctx, func(ctx context.Context) (interface{}, error) {
+		oql.AddObject(&Object{
+			Name:  "员工",
+			Api:   "staff",
+			Index: true,
+			Fields: []*Field{
+				{
+					Name: "姓名",
+					Api:  "name",
+					Type: String,
+				},
+				{
+					Name: "年龄",
+					Api:  "age",
+					Type: Int,
+				},
+			},
+			Comment: "",
+		})
+
+		err = oql.InitObjects(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("初始化对象失败 %s", err.Error())
+		}
+
+		res, err := oql.DoCommands(ctx, []Command{
+			{
+				Call: "staff.insert",
+				Args: M{
+					"doc": M{
+						"name": "老陈",
+						"age":  55,
+					},
+				},
+				Fields: []string{
+					"_id",
+					"__index",
+				},
+				Result: "staff1",
+			},
+			{
+				Call: "staff.insert",
+				Args: M{
+					"doc": M{
+						"name": "老陈",
+						"age":  55,
+					},
+				},
+				Fields: []string{
+					"_id",
+					"__index",
+				},
+				Result: "staff2",
+			},
+			{
+				Call: "staff.insert",
+				Args: M{
+					"doc": M{
+						"name": "老陈",
+						"age":  55,
+					},
+				},
+				Fields: []string{
+					"_id",
+					"__index",
+				},
+				Result: "staff3",
+			},
+			{
+				Call: "staff.move",
+				Args: M{
+					"id": M{
+						"$formula": "staff3._id",
+					},
+					"index": 1,
+				},
+			},
+			{
+				Call: "staff.findOneById",
+				Args: M{
+					"id": M{
+						"$formula": "staff1._id",
+					},
+				},
+				Fields: []string{
+					"_id",
+					"__index",
+				},
+				Result: "staff1_1",
+			},
+			{
+				Call: "staff.findOneById",
+				Args: M{
+					"id": M{
+						"$formula": "staff2._id",
+					},
+				},
+				Fields: []string{
+					"_id",
+					"__index",
+				},
+				Result: "staff2_1",
+			},
+			{
+				Call: "staff.findOneById",
+				Args: M{
+					"id": M{
+						"$formula": "staff3._id",
+					},
+				},
+				Fields: []string{
+					"_id",
+					"__index",
+				},
+				Result: "staff3_1",
+			},
+		}, M{
+			"a1": M{"$formula": "staff1.__index"},
+			"b1": M{"$formula": "staff2.__index"},
+			"c1": M{"$formula": "staff3.__index"},
+			"a2": M{"$formula": "staff1_1.__index"},
+			"b2": M{"$formula": "staff2_1.__index"},
+			"c2": M{"$formula": "staff3_1.__index"},
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		a1 := res.Int("a1")
+		b1 := res.Int("b1")
+		c1 := res.Int("c1")
+		if !(a1 < b1 && b1 < c1) {
+			return nil, fmt.Errorf("excecpt a1 < b1 < c1, but got a1=%d  b1=%d c1=%d", a1, b1, c1)
+		}
+
+		a2 := res.Int("a2")
+		b2 := res.Int("b2")
+		c2 := res.Int("c2")
+		if !(c2 < a2 && a2 < b2) {
+			return nil, fmt.Errorf("excecpt c2 < a2 < b2, but got a2=%d  b2=%d c2=%d", a2, b2, c2)
+		}
+
+		return nil, ErrOk
+	})
+	if err != ErrOk {
+		t.Log(err)
+		return
+	}
+}
