@@ -177,7 +177,11 @@ func (o *Objectql) getGroupFilterFromDoc(ctx context.Context, object *Object, do
 		if f == nil {
 			return nil, fmt.Errorf(`%s not found index group field %s`, object.Api, gapi)
 		}
-		result[gapi] = o.toMongoFilterValue(f, doc[gapi])
+		mongoV, err := formatValueToDatabase(f.Type, doc[gapi])
+		if err != nil {
+			return nil, err
+		}
+		result[gapi] = mongoV
 	}
 	return result, nil
 }
@@ -191,7 +195,11 @@ func (o *Objectql) getMaxIndex(ctx context.Context, object *Object, doc M) (int,
 			if f == nil {
 				return 0, fmt.Errorf(`%s not found index group field %s`, object.Api, fapi)
 			}
-			matchValues[fapi] = o.toMongoFilterValue(f, doc[fapi])
+			mongoV, err := formatValueToDatabase(f.Type, doc[fapi])
+			if err != nil {
+				return 0, err
+			}
+			matchValues[fapi] = mongoV
 		}
 		pipeline = append(pipeline, M{
 			"$match": matchValues,
@@ -212,8 +220,7 @@ func (o *Objectql) getMaxIndex(ctx context.Context, object *Object, doc M) (int,
 	if err != nil {
 		return 0, err
 	}
-	// 应用修改
-	// TODO: 需要根据聚合字段的类型来存储
+	// 解析最大索引值
 	var value int = 0
 	if result != nil {
 		value = gconv.Int(result["result"])

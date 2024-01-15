@@ -37,7 +37,11 @@ func (o *Objectql) checkPrimaryDuplicate(ctx context.Context, object *Object, af
 	filter := bson.M{}
 	for _, f := range object.Fields {
 		if f.Primary {
-			filter[f.Api] = o.toMongoFilterValue(f, after.Any(f.Api))
+			mongoV, err := formatValueToDatabase(f.Type, after.Any(f.Api))
+			if err != nil {
+				return err
+			}
+			filter[f.Api] = mongoV
 		}
 	}
 
@@ -51,21 +55,21 @@ func (o *Objectql) checkPrimaryDuplicate(ctx context.Context, object *Object, af
 	return nil
 }
 
-func (o *Objectql) toMongoFilterValue(field *Field, v interface{}) interface{} {
-	switch field.Type.(type) {
-	case *RelateType:
-		return M{
-			"$toId": v,
-		}
-	case *DateTimeType, *DateType, *TimeType:
-		return M{
-			"$toDate": v,
-		}
-	default:
-		return v
+// func (o *Objectql) toMongoFilterValue(field *Field, v interface{}) interface{} {
+// 	switch field.Type.(type) {
+// 	case *RelateType:
+// 		return M{
+// 			"$toId": v,
+// 		}
+// 	case *DateTimeType, *DateType, *TimeType:
+// 		return M{
+// 			"$toDate": v,
+// 		}
+// 	default:
+// 		return v
 
-	}
-}
+// 	}
+// }
 
 func (o *Objectql) getObjectPrimaryFieldQuerys(object *Object) []string {
 	var result []string
