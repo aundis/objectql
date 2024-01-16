@@ -10,14 +10,14 @@ import (
 	"github.com/gogf/gf/v2/util/gconv"
 )
 
-func (o *Objectql) insertHandle(ctx context.Context, api string, doc map[string]interface{}, index int) (string, error) {
+func (o *Objectql) insertHandle(ctx context.Context, api string, doc map[string]interface{}, pos *IndexPosition) (string, error) {
 	res, err := o.WithTransaction(ctx, func(ctx context.Context) (interface{}, error) {
-		return o.insertHandleRaw(ctx, api, doc, index)
+		return o.insertHandleRaw(ctx, api, doc, pos)
 	})
 	return gconv.String(res), err
 }
 
-func (o *Objectql) insertHandleRaw(ctx context.Context, api string, doc map[string]interface{}, toIndex int) (string, error) {
+func (o *Objectql) insertHandleRaw(ctx context.Context, api string, doc map[string]interface{}, pos *IndexPosition) (string, error) {
 	object := FindObjectFromList(o.list, api)
 	if object == nil {
 		return "", ErrNotFoundObject
@@ -73,7 +73,7 @@ func (o *Objectql) insertHandleRaw(ctx context.Context, api string, doc map[stri
 	}
 	// 写索引位置
 	if object.Index {
-		err = o.initInsertRowIndex(ctx, object, doc, toIndex)
+		err = o.initInsertRowIndex(ctx, object, doc, pos)
 		if err != nil {
 			return "", err
 		}
@@ -146,18 +146,18 @@ func (o *Objectql) insertHandleRaw(ctx context.Context, api string, doc map[stri
 	return objectIdStr, nil
 }
 
-func (o *Objectql) initInsertRowIndex(ctx context.Context, object *Object, doc map[string]interface{}, toIndex int) error {
-	if toIndex > 0 {
+func (o *Objectql) initInsertRowIndex(ctx context.Context, object *Object, doc map[string]interface{}, pos *IndexPosition) error {
+	if pos != nil {
 		// 插入到指定位置
 		filter, err := o.getGroupFilterFromDoc(ctx, object, doc)
 		if err != nil {
 			return err
 		}
-		err = o.indexOffset(ctx, object.Api, filter, toIndex, 1)
+		err = o.indexOffset(ctx, object.Api, filter, pos.Index, pos.Dir)
 		if err != nil {
 			return err
 		}
-		doc["__index"] = toIndex
+		doc["__index"] = pos.Index
 	} else {
 		// 插入到末尾
 		max, err := o.getMaxIndex(ctx, object, doc)
@@ -490,14 +490,14 @@ func (o *Objectql) deleteHandleRaw(ctx context.Context, api string, id string) e
 	return nil
 }
 
-func (o *Objectql) moveHandle(ctx context.Context, api string, id string, index int) error {
+func (o *Objectql) moveHandle(ctx context.Context, api string, id string, pos IndexPosition) error {
 	_, err := o.WithTransaction(ctx, func(ctx context.Context) (interface{}, error) {
-		return nil, o.moveHandleRaw(ctx, api, id, index)
+		return nil, o.moveHandleRaw(ctx, api, id, pos)
 	})
 	return err
 }
 
-func (o *Objectql) moveHandleRaw(ctx context.Context, api string, id string, index int) error {
+func (o *Objectql) moveHandleRaw(ctx context.Context, api string, id string, pos IndexPosition) error {
 	object := FindObjectFromList(o.list, api)
 	if object == nil {
 		return ErrNotFoundObject
@@ -529,18 +529,18 @@ func (o *Objectql) moveHandleRaw(ctx context.Context, api string, id string, ind
 	}
 	// before事件触发
 	if ctx.Value(blockEventsKey) != true {
-		err = o.triggerIndexMoveBefore(ctx, api, id, index, before)
+		err = o.triggerIndexMoveBefore(ctx, api, id, pos.Index, before)
 		if err != nil {
 			return err
 		}
 	}
 	// 修改数据库 1. 调整后面部分的索引，空出目标位置
-	err = o.indexOffset(ctx, object.Api, groupMatchValues, index, 1)
+	err = o.indexOffset(ctx, object.Api, groupMatchValues, pos.Index, pos.Dir)
 	if err != nil {
 		return err
 	}
 	// 修改数据库 2. 修改指定_id行位置修改为目标位置
-	_, err = o.mongoUpdateById(ctx, object.Api, id, M{"__index": index})
+	_, err = o.mongoUpdateById(ctx, object.Api, id, M{"__index": pos.Index})
 	if err != nil {
 		return err
 	}
@@ -554,7 +554,7 @@ func (o *Objectql) moveHandleRaw(ctx context.Context, api string, id string, ind
 	}
 	// after 事件触发
 	if ctx.Value(blockEventsKey) != true {
-		err = o.triggerIndexMoveAfter(ctx, api, id, index, after, before)
+		err = o.triggerIndexMoveAfter(ctx, api, id, pos.Index, after, before)
 		if err != nil {
 			return err
 		}
@@ -574,9 +574,16 @@ func (o *Objectql) indexOffset(ctx context.Context, table string, group M, index
 	for k, v := range group {
 		filter[k] = v
 	}
-	filter["__index"] = M{
-		"$gte": index,
+	if add < 0 {
+		filter["__index"] = M{
+			"$lte": index,
+		}
+	} else {
+		filter["__index"] = M{
+			"$gte": index,
+		}
 	}
+
 	_, err := o.mongoUpdateMany(ctx, table, filter, M{
 		"$inc": M{
 			"__index": add,

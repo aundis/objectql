@@ -764,9 +764,13 @@ func (o *Objectql) Insert(ctx context.Context, objectApi string, options InsertO
 		return nil, err
 	}
 	buffer.WriteString(text)
-	if options.Index > 0 {
+	if options.Index != nil {
 		buffer.WriteString(" index:")
 		buffer.WriteString(gconv.String(options.Index))
+	}
+	if options.Dir != nil {
+		buffer.WriteString(" dir:")
+		buffer.WriteString(gconv.String(options.Dir))
 	}
 	buffer.WriteString(")")
 	buffer.WriteString("{")
@@ -1057,6 +1061,8 @@ func (o *Objectql) Move(ctx context.Context, objectApi string, options MoveOptio
 	buffer.WriteString(`"`)
 	buffer.WriteString(" index:")
 	buffer.WriteString(gconv.String(options.Index))
+	buffer.WriteString(" dir:")
+	buffer.WriteString(gconv.String(options.Dir))
 	buffer.WriteString(")")
 	buffer.WriteString("}")
 	return getErrorFromGraphqlResult(o.Do(ctx, buffer.String()))

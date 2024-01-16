@@ -1123,7 +1123,221 @@ func TestInsertMaxIndex(t *testing.T) {
 	}
 }
 
-func TestMove(t *testing.T) {
+func TestInsertDown(t *testing.T) {
+	ctx := context.Background()
+	oql := New()
+	err := oql.InitMongodb(ctx, testMongodbUrl, "test")
+	if err != nil {
+		t.Error("初始化数据库失败", err)
+		return
+	}
+	_, err = oql.WithTransaction(ctx, func(ctx context.Context) (interface{}, error) {
+		oql.AddObject(&Object{
+			Name:       "员工",
+			Api:        "staff",
+			Index:      true,
+			IndexGroup: []string{"class"},
+			Fields: []*Field{
+				{
+					Name: "姓名",
+					Api:  "name",
+					Type: String,
+				},
+				{
+					Name: "年龄",
+					Api:  "age",
+					Type: Int,
+				},
+				{
+					Name: "班组",
+					Api:  "class",
+					Type: Int,
+				},
+			},
+			Comment: "",
+		})
+
+		err = oql.InitObjects(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("初始化对象失败 %s", err.Error())
+		}
+
+		res, err := oql.DoCommands(ctx, []Command{
+			{
+				Call: "staff.insert",
+				Args: M{
+					"doc": M{
+						"name": "老陈",
+						"age":  55,
+					},
+					"index": 1,
+					"dir":   1,
+				},
+				Fields: []string{
+					"_id",
+					"__index",
+				},
+				Result: "staff1",
+			},
+			{
+				Call: "staff.insert",
+				Args: M{
+					"doc": M{
+						"name": "老陈",
+						"age":  55,
+					},
+					"index": 1,
+					"dir":   1,
+				},
+				Fields: []string{
+					"_id",
+					"__index",
+				},
+				Result: "staff2",
+			},
+			{
+				Call: "staff.findOneById",
+				Args: M{
+					"id": M{"$formula": "staff1._id"},
+				},
+				Fields: []string{"__index"},
+				Result: "a",
+			},
+			{
+				Call: "staff.findOneById",
+				Args: M{
+					"id": M{"$formula": "staff2._id"},
+				},
+				Fields: []string{"__index"},
+				Result: "b",
+			},
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		index1 := res.Int("a.__index")
+		index2 := res.Int("b.__index")
+		if !(index1 > index2) {
+			return nil, fmt.Errorf("except index1 > index2 but got index1=%d index2=%d", index1, index2)
+		}
+
+		return nil, ErrOk
+	})
+	if err != ErrOk {
+		t.Log(err)
+		return
+	}
+}
+
+func TestInsertUp(t *testing.T) {
+	ctx := context.Background()
+	oql := New()
+	err := oql.InitMongodb(ctx, testMongodbUrl, "test")
+	if err != nil {
+		t.Error("初始化数据库失败", err)
+		return
+	}
+	_, err = oql.WithTransaction(ctx, func(ctx context.Context) (interface{}, error) {
+		oql.AddObject(&Object{
+			Name:       "员工",
+			Api:        "staff",
+			Index:      true,
+			IndexGroup: []string{"class"},
+			Fields: []*Field{
+				{
+					Name: "姓名",
+					Api:  "name",
+					Type: String,
+				},
+				{
+					Name: "年龄",
+					Api:  "age",
+					Type: Int,
+				},
+				{
+					Name: "班组",
+					Api:  "class",
+					Type: Int,
+				},
+			},
+			Comment: "",
+		})
+
+		err = oql.InitObjects(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("初始化对象失败 %s", err.Error())
+		}
+
+		res, err := oql.DoCommands(ctx, []Command{
+			{
+				Call: "staff.insert",
+				Args: M{
+					"doc": M{
+						"name": "老陈",
+						"age":  55,
+					},
+					"index": 1,
+					"dir":   -1,
+				},
+				Fields: []string{
+					"_id",
+					"__index",
+				},
+				Result: "staff1",
+			},
+			{
+				Call: "staff.insert",
+				Args: M{
+					"doc": M{
+						"name": "老陈",
+						"age":  55,
+					},
+					"index": 1,
+					"dir":   -1,
+				},
+				Fields: []string{
+					"_id",
+					"__index",
+				},
+				Result: "staff2",
+			},
+			{
+				Call: "staff.findOneById",
+				Args: M{
+					"id": M{"$formula": "staff1._id"},
+				},
+				Fields: []string{"__index"},
+				Result: "a",
+			},
+			{
+				Call: "staff.findOneById",
+				Args: M{
+					"id": M{"$formula": "staff2._id"},
+				},
+				Fields: []string{"__index"},
+				Result: "b",
+			},
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		index1 := res.Int("a.__index")
+		index2 := res.Int("b.__index")
+		if !(index2 > index1) {
+			return nil, fmt.Errorf("except index2 > index1 but got index1=%d index2=%d", index1, index2)
+		}
+
+		return nil, ErrOk
+	})
+	if err != ErrOk {
+		t.Log(err)
+		return
+	}
+}
+
+func TestMoveDown(t *testing.T) {
 	ctx := context.Background()
 	oql := New()
 	err := oql.InitMongodb(ctx, testMongodbUrl, "test")
@@ -1206,6 +1420,7 @@ func TestMove(t *testing.T) {
 						"$formula": "staff3._id",
 					},
 					"index": 1,
+					"dir":   1,
 				},
 			},
 			{

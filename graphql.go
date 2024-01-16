@@ -12,6 +12,7 @@ import (
 
 	"github.com/aundis/graphql"
 	"github.com/aundis/graphql/language/ast"
+	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/frame/g"
 	"github.com/gogf/gf/v2/os/gtime"
 	"github.com/gogf/gf/v2/util/gconv"
@@ -257,7 +258,7 @@ func (o *Objectql) graphqlQueryCountResolver(ctx context.Context, p graphql.Reso
 	if err != nil {
 		return nil, err
 	}
-	filter, err := o.parseMongoFindFilters(ctx, p)
+	filter, err := o.parseMongoFindFilters(ctx, gconv.String(p.Args["filter"]))
 	if err != nil {
 		return nil, err
 	}
@@ -273,7 +274,7 @@ func (o *Objectql) graphqlQueryCountResolver(ctx context.Context, p graphql.Reso
 func (o *Objectql) parseMongoFindOneOptinos(ctx context.Context, p graphql.ResolveParams) (*findOneExOptions, error) {
 	findOptions := &findOneExOptions{}
 	findOptions.Fields = o.parseMongoQueryFields(p)
-	filter, err := o.parseMongoFindFilters(ctx, p)
+	filter, err := o.parseMongoFindFilters(ctx, gconv.String(p.Args["filter"]))
 	if err != nil {
 		return nil, err
 	}
@@ -302,7 +303,7 @@ func (o *Objectql) parseMongoFindOptions(ctx context.Context, p graphql.ResolveP
 	if sort != nil {
 		findOptions.Sort = gconv.Strings(sort)
 	}
-	filter, err := o.parseMongoFindFilters(ctx, p)
+	filter, err := o.parseMongoFindFilters(ctx, gconv.String(p.Args["filter"]))
 	if err != nil {
 		return nil, err
 	}
@@ -397,31 +398,39 @@ func (o *Objectql) parseMongoFiledSelects(ctx context.Context, p graphql.Resolve
 	return nil
 }
 
-func (o *Objectql) parseMongoFindFilters(ctx context.Context, p graphql.ResolveParams) (M, error) {
-	filterStr := p.Args["filter"]
-	filterMgn := primitive.M{}
-	if filterStr != nil && len(filterStr.(string)) > 0 {
-		// TODO: 详细了解一下UnmarshalExtJSON的用法
-		err := bson.UnmarshalExtJSON([]byte(filterStr.(string)), true, &filterMgn)
-		if err != nil {
-			return nil, err
-		}
-	}
-	pfilter, err := preprocessMongoMap(filterMgn)
+func (o *Objectql) exceptParseMongoFindFilters(ctx context.Context, filterJsonStr string) (M, error) {
+	filter, err := o.parseMongoFindFilters(ctx, filterJsonStr)
 	if err != nil {
 		return nil, err
 	}
-	filter, ok := pfilter.(primitive.M)
-	if !ok {
-		return nil, fmt.Errorf("filter not primitive.M, got %T", filter)
+	if len(filter) == 0 {
+		return nil, gerror.New("parsed filter can't be empty")
 	}
 	return filter, nil
 }
 
+func (o *Objectql) parseMongoFindFilters(ctx context.Context, filterJsonStr string) (M, error) {
+	// 空的删选条件
+	if len(filterJsonStr) == 0 {
+		return nil, nil
+	}
+
+	var fjson M
+	err := json.Unmarshal([]byte(filterJsonStr), &fjson)
+	if err != nil {
+		return nil, err
+	}
+	filter, err := preprocessMongoMap(fjson)
+	if err != nil {
+		return nil, err
+	}
+	return filter.(M), nil
+}
+
 func preprocessMongoMap(data interface{}) (interface{}, error) {
 	switch n := data.(type) {
-	case primitive.M:
-		res := primitive.M{}
+	case M:
+		res := M{}
 		for k, v := range n {
 			switch k {
 			case "$toId":
@@ -443,8 +452,8 @@ func preprocessMongoMap(data interface{}) (interface{}, error) {
 			}
 		}
 		return res, nil
-	case primitive.A:
-		var list primitive.A
+	case A:
+		var list A
 		for _, v := range n {
 			r, err := preprocessMongoMap(v)
 			if err != nil {
@@ -488,7 +497,11 @@ func (o *Objectql) initObjectGraphqlMutation(ctx context.Context, mutations grap
 			},
 			"index": &graphql.ArgumentConfig{
 				Type:        graphql.Int,
-				Description: "排序位置",
+				Description: "插入位置",
+			},
+			"dir": &graphql.ArgumentConfig{
+				Type:        graphql.Int,
+				Description: "插入方向",
 			},
 		},
 		Resolve: func(p graphql.ResolveParams) (interface{}, error) {
@@ -541,6 +554,10 @@ func (o *Objectql) initObjectGraphqlMutation(ctx context.Context, mutations grap
 				"index": &graphql.ArgumentConfig{
 					Type:        graphql.Int,
 					Description: "排序位置",
+				},
+				"dir": &graphql.ArgumentConfig{
+					Type:        graphql.Int,
+					Description: "插入方向",
 				},
 			},
 			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
@@ -793,65 +810,92 @@ func (o *Objectql) getGrpahqlObjectMutationForm(object *Object) graphql.Input {
 }
 
 func (o *Objectql) graphqlMutationInsertResolver(ctx context.Context, p graphql.ResolveParams, object *Object) (interface{}, error) {
-	if m, ok := p.Args["doc"].(map[string]interface{}); ok {
-		m = formatNullValue(m)
-		index := 0
-		if !isNull(p.Args["index"]) {
-			index = gconv.Int(p.Args["index"])
-		}
-		objectId, err := o.insertHandle(ctx, object.Api, m, index)
-		if err != nil {
-			return nil, err
-		}
-		return o.graphqlMutationQueryOne(ctx, p, object, objectId)
-	}
-	return nil, nil
-}
-
-func (o *Objectql) graphqlMutationUpdateResolver(ctx context.Context, p graphql.ResolveParams, object *Object) (interface{}, error) {
-	filter, err := o.parseMongoFindFilters(ctx, p)
+	args := formatNullValue(p.Args)
+	err := o.graphqlMutationInsertArgumentValidate(object, args)
 	if err != nil {
 		return nil, err
 	}
-	if len(filter) == 0 {
-		return nil, errors.New("filter can't empty")
-	}
-	m, ok2 := p.Args["doc"].(map[string]interface{})
-	if ok2 {
-		m = formatNullValue(m)
-		// 找出需要被修改的id数组
-		list, err := o.mongoFindAllEx(ctx, object.Api, findAllExOptions{
-			Fields: []string{"_id"},
-			Filter: filter,
-		})
-		if err != nil {
-			return nil, err
+	var pos *IndexPosition
+	if !isNull(p.Args["index"]) {
+		pos = &IndexPosition{
+			Index: gconv.Int(args["index"]),
+			Dir:   gconv.Int(args["dir"]),
 		}
-		// 使用事务来进行操作
-		_, err = o.WithTransaction(ctx, func(ctx context.Context) (interface{}, error) {
-			for _, item := range list {
-				err := o.updateHandleRaw(ctx, object.Api, gconv.String(item["_id"]), m, false)
-				if err != nil {
-					return nil, err
-				}
+	}
+	doc := args["doc"].(map[string]interface{})
+	objectId, err := o.insertHandle(ctx, object.Api, doc, pos)
+	if err != nil {
+		return nil, err
+	}
+	return o.graphqlMutationQueryOne(ctx, p, object, objectId)
+}
+
+func (o *Objectql) graphqlMutationInsertArgumentValidate(object *Object, args map[string]interface{}) error {
+	if isNull(args["doc"]) {
+		return fmt.Errorf(`mutation %s__insert method arg "doc" can't be null`, object.Api)
+	}
+	if !isNull(args["index"]) {
+		dir := gconv.Int(args["dir"])
+		if !(dir == 1 || dir == -1) {
+			return fmt.Errorf(`mutation %s__insert method arg "dir" can't be %v`, object.Api, args["dir"])
+		}
+	}
+	return nil
+}
+
+func (o *Objectql) graphqlMutationUpdateResolver(ctx context.Context, p graphql.ResolveParams, object *Object) (interface{}, error) {
+	args := formatNullValue(p.Args)
+	err := o.graphqlMutationUpdateArgumentValidate(object, args)
+	if err != nil {
+		return nil, err
+	}
+	filterJsonStr := gconv.String(p.Args["filter"])
+	filter, err := o.exceptParseMongoFindFilters(ctx, filterJsonStr)
+	if err != nil {
+		return nil, err
+	}
+	doc := formatNullValue(p.Args["doc"].(map[string]interface{}))
+	// 找出需要被修改的id数组
+	list, err := o.mongoFindAllEx(ctx, object.Api, findAllExOptions{
+		Fields: []string{"_id"},
+		Filter: filter,
+	})
+	if err != nil {
+		return nil, err
+	}
+	// 使用事务来进行操作
+	_, err = o.WithTransaction(ctx, func(ctx context.Context) (interface{}, error) {
+		for _, item := range list {
+			err := o.updateHandleRaw(ctx, object.Api, gconv.String(item["_id"]), doc, false)
+			if err != nil {
+				return nil, err
 			}
-			return nil, nil
-		})
-		if err != nil {
-			return nil, err
 		}
-		//
-		fieds := o.parseMongoQueryFields(p)
-		result, err := o.mongoFindAllEx(ctx, object.Api, findAllExOptions{
-			Fields: fieds,
-			Filter: filter,
-		})
-		if err != nil {
-			return nil, err
-		}
-		return result, nil
+		return nil, nil
+	})
+	if err != nil {
+		return nil, err
 	}
-	return nil, nil
+	//
+	fieds := o.parseMongoQueryFields(p)
+	result, err := o.mongoFindAllEx(ctx, object.Api, findAllExOptions{
+		Fields: fieds,
+		Filter: filter,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (o *Objectql) graphqlMutationUpdateArgumentValidate(object *Object, args map[string]interface{}) error {
+	if isNull(args["doc"]) {
+		return fmt.Errorf(`mutation %s__update method arg "doc" can't be null`, object.Api)
+	}
+	if isNull(args["filter"]) {
+		return fmt.Errorf(`mutation %s__update method arg "filter" can't be null`, object.Api)
+	}
+	return nil
 }
 
 func (o *Objectql) graphqlMutationUpdateByIdResolver(ctx context.Context, p graphql.ResolveParams, object *Object) (interface{}, error) {
@@ -871,28 +915,43 @@ func (o *Objectql) graphqlMutationUpdateByIdResolver(ctx context.Context, p grap
 }
 
 func (o *Objectql) graphqlMutationMoveResolver(ctx context.Context, p graphql.ResolveParams, object *Object) (interface{}, error) {
+	err := o.graphqlMutationMoveArgumentValidate(object, p.Args)
+	if err != nil {
+		return nil, err
+	}
 	objectId := gconv.String(p.Args["_id"])
 	index := gconv.Int(p.Args["index"])
-	if isNull(p.Args["_id"]) || len(objectId) == 0 {
-		return false, errors.New("mutation __move _id can't be embty")
-	}
-	if isNull(p.Args["index"]) {
-		return false, errors.New("mutation __move index can't be embty")
-	}
-	err := o.moveHandle(ctx, object.Api, objectId, index)
+	dir := gconv.Int(p.Args["dir"])
+	err = o.moveHandle(ctx, object.Api, objectId, IndexPosition{
+		Index: index,
+		Dir:   dir,
+	})
 	if err != nil {
 		return false, err
 	}
 	return true, nil
 }
 
+func (o *Objectql) graphqlMutationMoveArgumentValidate(object *Object, args map[string]interface{}) error {
+	objectId := gconv.String(args["_id"])
+	if len(objectId) == 0 {
+		return fmt.Errorf(`mutation %s__move method arg "_id" can't be empty`, object.Api)
+	}
+	if isNull(args["index"]) {
+		return fmt.Errorf("mutation %s__move index can't be embty", object.Api)
+	}
+	dir := gconv.Int(args["dir"])
+	if !(dir == 1 || dir == -1) {
+		return fmt.Errorf(`mutation %s__move method arg "dir" can't be %d`, object.Api, dir)
+	}
+	return nil
+}
+
 func (o *Objectql) graphqlMutationDeleteResolver(ctx context.Context, p graphql.ResolveParams, object *Object) (interface{}, error) {
-	filter, err := o.parseMongoFindFilters(ctx, p)
+	filterJsonStr := gconv.String(p.Args["filter"])
+	filter, err := o.exceptParseMongoFindFilters(ctx, filterJsonStr)
 	if err != nil {
 		return false, err
-	}
-	if len(filter) == 0 {
-		return false, errors.New("filter can't empty")
 	}
 	// 查询出要被删除的数据
 	list, err := o.mongoFindAllEx(ctx, object.Api, findAllExOptions{
@@ -919,15 +978,25 @@ func (o *Objectql) graphqlMutationDeleteResolver(ctx context.Context, p graphql.
 }
 
 func (o *Objectql) graphqlMutationDeleteByIdResolver(ctx context.Context, p graphql.ResolveParams, object *Object) (interface{}, error) {
-	// source, _ := p.Source.(bson.M)
-	id, ok := p.Args["_id"].(string)
-	if ok {
-		err := o.deleteHandle(ctx, object.Api, id)
-		if err != nil {
-			return false, err
-		}
+	args := formatNullValue(p.Args)
+	err := o.graphqlMutationDeleteArgumentValidate(object, args)
+	if err != nil {
+		return false, err
+	}
+	objectId := gconv.String(args["_id"])
+	err = o.deleteHandle(ctx, object.Api, objectId)
+	if err != nil {
+		return false, err
 	}
 	return true, nil
+}
+
+func (o *Objectql) graphqlMutationDeleteArgumentValidate(object *Object, args map[string]interface{}) error {
+	objectId := gconv.String(args["_id"])
+	if len(objectId) == 0 {
+		return fmt.Errorf(`mutation %s__delete method arg "_id" can't be empty`, object.Api)
+	}
+	return nil
 }
 
 func (o *Objectql) getObjectBeforeValues(ctx context.Context, object *Object, id string) (beforeValues map[string]interface{}, err error) {
@@ -1144,9 +1213,9 @@ func (o *Objectql) getGraphqlFieldType(tpe Type) graphql.Output {
 
 func formatNullValue(m map[string]interface{}) map[string]interface{} {
 	for k, v := range m {
-		switch v.(type) {
+		switch n := v.(type) {
 		case map[string]interface{}:
-			formatNullValue(m)
+			formatNullValue(n)
 		case graphql.NullValue:
 			m[k] = nil
 		}

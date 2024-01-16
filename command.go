@@ -80,6 +80,7 @@ func (o *Objectql) DoCommands(ctx context.Context, commands []Command, filter ..
 				result, err = o.Insert(ctx, objectApi, InsertOptions{
 					Doc:    n.Doc,
 					Index:  n.Index,
+					Dir:    n.Dir,
 					Fields: command.Fields,
 					Direct: n.Direct,
 				})
@@ -119,6 +120,7 @@ func (o *Objectql) DoCommands(ctx context.Context, commands []Command, filter ..
 				err = o.Move(ctx, objectApi, MoveOptions{
 					ID:     n.ID,
 					Index:  n.Index,
+					Dir:    n.Dir,
 					Direct: n.Direct,
 				})
 			case map[string]any:

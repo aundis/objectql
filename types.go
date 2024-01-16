@@ -229,7 +229,8 @@ type CountArgs struct {
 
 type InsertArgs struct {
 	Doc    map[string]any `json:"doc"`
-	Index  int            `json:"index"`
+	Index  interface{}    `json:"index"`
+	Dir    interface{}    `json:"dir"`
 	Direct bool           `json:"direct"`
 }
 
@@ -248,6 +249,7 @@ type UpdateArgs struct {
 type MoveArgs struct {
 	ID     string `json:"id"`
 	Index  int    `json:"index"`
+	Dir    int    `json:"dir"`
 	Direct bool   `json:"direct"`
 }
 
@@ -327,6 +329,7 @@ type AggregateOptions struct {
 type MoveOptions struct {
 	ID     string `json:"id"`
 	Index  int    `json:"index"`
+	Dir    int    `json:"dir"`
 	Direct bool   `json:"direct"`
 }
 
@@ -339,7 +342,8 @@ type CountOptions struct {
 type InsertOptions struct {
 	Doc    map[string]any `json:"doc"`
 	Fields []string       `json:"fields"`
-	Index  int            `json:"index"`
+	Index  interface{}    `json:"index"`
+	Dir    interface{}    `json:"dir"`
 	Direct bool           `json:"direct"`
 }
 
@@ -385,3 +389,8 @@ var graphqlAny = graphql.NewScalar(graphql.ScalarConfig{
 })
 
 var Null = &struct{}{}
+
+type IndexPosition struct {
+	Index int
+	Dir   int // 1=down -1=up
+}
