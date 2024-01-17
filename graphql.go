@@ -845,7 +845,7 @@ func (o *Objectql) graphqlMutationInsertArgumentValidate(object *Object, args ma
 	}
 	if !isNull(args["index"]) {
 		dir := gconv.Int(args["dir"])
-		if !(dir == 1 || dir == -1) {
+		if !(dir == 1 || dir == -1 || dir == 0) {
 			return fmt.Errorf(`mutation %s__insert method arg "dir" can't be %v`, object.Api, args["dir"])
 		}
 	}
@@ -954,7 +954,7 @@ func (o *Objectql) graphqlMutationMoveArgumentValidate(object *Object, args map[
 		return fmt.Errorf("mutation %s__move index can't be embty", object.Api)
 	}
 	dir := gconv.Int(args["dir"])
-	if !(dir == 1 || dir == -1) {
+	if !(dir == 1 || dir == -1 || dir == 0) {
 		return fmt.Errorf(`mutation %s__move method arg "dir" can't be %d`, object.Api, dir)
 	}
 	return nil

@@ -396,6 +396,6 @@ var Null = &struct{}{}
 
 type IndexPosition struct {
 	Index    int
-	Dir      int  // 1=down -1=up
+	Dir      int  // 1=down -1=up 0=自动判断
 	Absolute bool // 绝对位置
 }

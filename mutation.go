@@ -157,7 +157,22 @@ func (o *Objectql) initInsertRowIndex(ctx context.Context, object *Object, doc m
 		if err != nil {
 			return err
 		}
-		err = o.indexOffset(ctx, object.Api, filter, realIndex, pos.Dir)
+		add := pos.Dir
+		if add == 0 {
+			firstIndex, err := o.getRealIndex(ctx, object, filter, *pos)
+			if err != nil {
+				return err
+			}
+			if err != nil {
+				return err
+			}
+			if realIndex == firstIndex {
+				add = 1
+			} else {
+				add = -1
+			}
+		}
+		err = o.indexOffset(ctx, object.Api, filter, realIndex, add)
 		if err != nil {
 			return err
 		}
@@ -520,6 +535,7 @@ func (o *Objectql) moveHandleRaw(ctx context.Context, api string, id string, pos
 	if err != nil {
 		return err
 	}
+	currentIndex := gconv.Int(one["__index"])
 	// 分组筛选
 	groupMatchValues := M{}
 	if len(object.IndexGroup) > 0 {
@@ -551,8 +567,17 @@ func (o *Objectql) moveHandleRaw(ctx context.Context, api string, id string, pos
 			return err
 		}
 	}
+	// 计算add
+	add := pos.Dir
+	if add == 0 {
+		if currentIndex < realIndex {
+			add = -1
+		} else {
+			add = 1
+		}
+	}
 	// 修改数据库 1. 调整后面部分的索引，空出目标位置
-	err = o.indexOffset(ctx, object.Api, groupMatchValues, realIndex, pos.Dir)
+	err = o.indexOffset(ctx, object.Api, groupMatchValues, realIndex, add)
 	if err != nil {
 		return err
 	}
