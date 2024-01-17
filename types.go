@@ -228,10 +228,11 @@ type CountArgs struct {
 }
 
 type InsertArgs struct {
-	Doc    map[string]any `json:"doc"`
-	Index  interface{}    `json:"index"`
-	Dir    interface{}    `json:"dir"`
-	Direct bool           `json:"direct"`
+	Doc      map[string]any `json:"doc"`
+	Index    interface{}    `json:"index"`
+	Dir      interface{}    `json:"dir"`
+	Absolute bool           `json:"absolute"`
+	Direct   bool           `json:"direct"`
 }
 
 type UpdateByIdArgs struct {
@@ -247,10 +248,11 @@ type UpdateArgs struct {
 }
 
 type MoveArgs struct {
-	ID     string `json:"id"`
-	Index  int    `json:"index"`
-	Dir    int    `json:"dir"`
-	Direct bool   `json:"direct"`
+	ID       string `json:"id"`
+	Index    int    `json:"index"`
+	Dir      int    `json:"dir"`
+	Absolute bool   `json:"absolute"`
+	Direct   bool   `json:"direct"`
 }
 
 type DeleteByIdArgs struct {
@@ -327,10 +329,11 @@ type AggregateOptions struct {
 }
 
 type MoveOptions struct {
-	ID     string `json:"id"`
-	Index  int    `json:"index"`
-	Dir    int    `json:"dir"`
-	Direct bool   `json:"direct"`
+	ID       string `json:"id"`
+	Index    int    `json:"index"`
+	Dir      int    `json:"dir"`
+	Absolute bool   `json:"absolute"`
+	Direct   bool   `json:"direct"`
 }
 
 type CountOptions struct {
@@ -340,11 +343,12 @@ type CountOptions struct {
 }
 
 type InsertOptions struct {
-	Doc    map[string]any `json:"doc"`
-	Fields []string       `json:"fields"`
-	Index  interface{}    `json:"index"`
-	Dir    interface{}    `json:"dir"`
-	Direct bool           `json:"direct"`
+	Doc      map[string]any `json:"doc"`
+	Fields   []string       `json:"fields"`
+	Index    interface{}    `json:"index"`
+	Dir      interface{}    `json:"dir"`
+	Absolute bool           `json:"absolute"`
+	Direct   bool           `json:"direct"`
 }
 
 type UpdateByIdOptions struct {
@@ -391,6 +395,7 @@ var graphqlAny = graphql.NewScalar(graphql.ScalarConfig{
 var Null = &struct{}{}
 
 type IndexPosition struct {
-	Index int
-	Dir   int // 1=down -1=up
+	Index    int
+	Dir      int  // 1=down -1=up
+	Absolute bool // 绝对位置
 }

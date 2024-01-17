@@ -772,6 +772,8 @@ func (o *Objectql) Insert(ctx context.Context, objectApi string, options InsertO
 		buffer.WriteString(" dir:")
 		buffer.WriteString(gconv.String(options.Dir))
 	}
+	buffer.WriteString(" absolute:")
+	buffer.WriteString(gconv.String(options.Absolute))
 	buffer.WriteString(")")
 	buffer.WriteString("{")
 	writeObjectQueyrFields(&buffer, object, options.Fields)
@@ -1063,6 +1065,8 @@ func (o *Objectql) Move(ctx context.Context, objectApi string, options MoveOptio
 	buffer.WriteString(gconv.String(options.Index))
 	buffer.WriteString(" dir:")
 	buffer.WriteString(gconv.String(options.Dir))
+	buffer.WriteString(" absolute:")
+	buffer.WriteString(gconv.String(options.Absolute))
 	buffer.WriteString(")")
 	buffer.WriteString("}")
 	return getErrorFromGraphqlResult(o.Do(ctx, buffer.String()))

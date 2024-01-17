@@ -503,6 +503,10 @@ func (o *Objectql) initObjectGraphqlMutation(ctx context.Context, mutations grap
 				Type:        graphql.Int,
 				Description: "插入方向",
 			},
+			"absolute": &graphql.ArgumentConfig{
+				Type:        graphql.Boolean,
+				Description: "绝对位置",
+			},
 		},
 		Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 			return o.graphqlMutationInsertResolver(p.Context, p, object)
@@ -558,6 +562,10 @@ func (o *Objectql) initObjectGraphqlMutation(ctx context.Context, mutations grap
 				"dir": &graphql.ArgumentConfig{
 					Type:        graphql.Int,
 					Description: "插入方向",
+				},
+				"absolute": &graphql.ArgumentConfig{
+					Type:        graphql.Boolean,
+					Description: "绝对位置",
 				},
 			},
 			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
@@ -818,8 +826,9 @@ func (o *Objectql) graphqlMutationInsertResolver(ctx context.Context, p graphql.
 	var pos *IndexPosition
 	if !isNull(p.Args["index"]) {
 		pos = &IndexPosition{
-			Index: gconv.Int(args["index"]),
-			Dir:   gconv.Int(args["dir"]),
+			Index:    gconv.Int(args["index"]),
+			Dir:      gconv.Int(args["dir"]),
+			Absolute: gconv.Bool(args["absolute"]),
 		}
 	}
 	doc := args["doc"].(map[string]interface{})
@@ -915,16 +924,20 @@ func (o *Objectql) graphqlMutationUpdateByIdResolver(ctx context.Context, p grap
 }
 
 func (o *Objectql) graphqlMutationMoveResolver(ctx context.Context, p graphql.ResolveParams, object *Object) (interface{}, error) {
-	err := o.graphqlMutationMoveArgumentValidate(object, p.Args)
+	args := formatNullValue(p.Args)
+	err := o.graphqlMutationMoveArgumentValidate(object, args)
 	if err != nil {
 		return nil, err
 	}
-	objectId := gconv.String(p.Args["_id"])
-	index := gconv.Int(p.Args["index"])
-	dir := gconv.Int(p.Args["dir"])
+
+	objectId := gconv.String(args["_id"])
+	index := gconv.Int(args["index"])
+	dir := gconv.Int(args["dir"])
+	absolute := gconv.Bool(args["absolute"])
 	err = o.moveHandle(ctx, object.Api, objectId, IndexPosition{
-		Index: index,
-		Dir:   dir,
+		Index:    index,
+		Dir:      dir,
+		Absolute: absolute,
 	})
 	if err != nil {
 		return false, err

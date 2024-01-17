@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/os/gctx"
 	"github.com/gogf/gf/v2/util/guid"
 	"go.mongodb.org/mongo-driver/bson"
@@ -13,112 +14,85 @@ import (
 
 var testMongodbUrl = "mongodb://192.168.0.197:27017/?connect=direct"
 
-type GraphqlQueryReq struct {
-	Query     string `json:"query"`
-	Variables string `json:"variables"`
+func testTransaction(objects []*Object, fun func(ctx context.Context, oql *Objectql) error) error {
+	ctx := context.Background()
+	oql := New()
+	err := oql.InitMongodb(ctx, testMongodbUrl, "test")
+	if err != nil {
+		return gerror.Wrap(err, err.Error())
+	}
+	for _, object := range objects {
+		oql.AddObject(object)
+	}
+	err = oql.InitObjects(ctx)
+	if err != nil {
+		return gerror.Wrap(err, err.Error())
+	}
+	_, err = oql.WithTransaction(ctx, func(ctx context.Context) (interface{}, error) {
+		err = fun(ctx, oql)
+		if err != nil {
+			return nil, err
+		}
+		return nil, ErrOk
+	})
+	if err != ErrOk {
+		return gerror.Wrap(err, err.Error())
+	}
+	return nil
+}
+
+func TestQuery(t *testing.T) {
+	list := []*Object{
+		{
+			Name: "学生",
+			Api:  "student",
+			Fields: []*Field{
+				{
+					Name: "姓名",
+					Api:  "name",
+					Type: String,
+				},
+				{
+					Name: "年龄",
+					Api:  "age",
+					Type: Int,
+				},
+			},
+			Comment: "",
+			Querys: []*Handle{
+				{
+					Name: "获取姓名",
+					Api:  "getName",
+					Resolve: func(ctx context.Context, req getNameReq) (string, error) {
+						return fmt.Sprintf("%d,%d", req.Age, req.Number), nil
+					},
+				},
+			},
+		},
+	}
+	err := testTransaction(list, func(ctx context.Context, oql *Objectql) error {
+		res, err := oql.Query(ctx, "student", "getName", map[string]any{
+			"age":    10,
+			"number": 200,
+		})
+		if err != nil {
+			return gerror.Wrap(err, err.Error())
+		}
+		if res.ToString() != "10,200" {
+			return gerror.Newf("except 10,200 but got %s", res.ToAny())
+		}
+		return nil
+	})
+	if err != nil {
+		t.Error(gerror.Stack(err))
+		return
+	}
 }
 
 type getNameReq struct {
 	Number int `v:"min:100"`
 	Age    int `v:"min:10"`
 }
-
-func TestQuery(t *testing.T) {
-	ctx := context.Background()
-	oql := New()
-	err := oql.InitMongodb(ctx, testMongodbUrl, "test")
-	if err != nil {
-		t.Error("初始化数据库失败", err)
-		return
-	}
-
-	oql.AddObject(&Object{
-		Name: "学生",
-		Api:  "student",
-		Fields: []*Field{
-			{
-				Name: "姓名",
-				Api:  "name",
-				Type: String,
-			},
-			{
-				Name: "年龄",
-				Api:  "age",
-				Type: Int,
-			},
-		},
-		Comment: "",
-		Querys: []*Handle{
-			{
-				Name: "获取姓名",
-				Api:  "getName",
-				Resolve: func(ctx context.Context, req getNameReq) (string, error) {
-					return fmt.Sprintf("%d,%d", req.Age, req.Number), nil
-				},
-			},
-		},
-	})
-	err = oql.InitObjects(ctx)
-	if err != nil {
-		t.Error("初始化对象失败", err)
-		return
-	}
-
-	res, err := oql.Query(ctx, "student", "getName", map[string]any{
-		"age":    10,
-		"number": 200,
-	})
-	if err != nil {
-		t.Error("初始化对象失败", err)
-		return
-	}
-	if res.ToString() != "10,200" {
-		t.Errorf("except 10,200 but got %s", res.ToAny())
-		return
-	}
-}
-
-// func TestMutation(t *testing.T) {
-// 	ctx := context.Background()
-// 	objectql := New()
-// 	err := objectql.InitMongodb(ctx, testMongodbUrl, "test")
-// 	if err != nil {
-// 		t.Error("初始化数据库失败", err)
-// 		return
-// 	}
-
-// 	objectql.AddObject(&Object{
-// 		Name: "学生",
-// 		Api:  "student",
-// 		Fields: []*Field{
-// 			{
-// 				Name: "姓名",
-// 				Api:  "name",
-// 				Type: String,
-// 			},
-// 			{
-// 				Name: "年龄",
-// 				Api:  "age",
-// 				Type: Int,
-// 			},
-// 		},
-// 		Comment: "",
-// 		Querys: []*Query{
-// 			{
-// 				Name: "获取姓名",
-// 				Api:  "getName",
-// 				Handle: func(ctx context.Context, req getNameReq) (getNameRes, error) {
-// 					return getNameRes{Index: req.Age, Name: fmt.Sprintf("%d,%d", req.Age, req.Number)}, nil
-// 				},
-// 			},
-// 		},
-// 	})
-// 	err = objectql.InitObjects(ctx)
-// 	if err != nil {
-// 		t.Error("初始化对象失败", err)
-// 		return
-// 	}
-// }
 
 // 引用类型的字段引用不到对象时, 出现空指针引用的问题 #1
 func TestIssues1(t *testing.T) {
@@ -140,406 +114,171 @@ func TestIssues1(t *testing.T) {
 	}
 }
 
-// func TestQuery(t *testing.T) {
-// 	oql := New()
-// 	oql.AddObject(&objectql.Object{
-// 		Name: "任务日志",
-// 		Api:  "sysTaskLog",
-// 		Fields: []*Field{
-// 			{
-// 				Name: "任务ID",
-// 				Api:  "task",
-// 				Type: NewRelate("sysTask"),
-// 			},
-// 			{
-// 				Name: "任务名称",
-// 				Api:  "taskName",
-// 				Type: String,
-// 			},
-// 			{
-// 				Name: "状态",
-// 				Api:  "status",
-// 				Type: Bool,
-// 			},
-// 			{
-// 				Name: "描述",
-// 				Api:  "detail",
-// 				Type: String,
-// 			},
-// 			{
-// 				Name: "消耗时间",
-// 				Api:  "consumeTime",
-// 				Type: Int,
-// 			},
-// 		},
-// 	})
-// }
-
-//  ended session was used
-
-func TestSession(t *testing.T) {
-	ctx := context.Background()
-	oql := New()
-	err := oql.InitMongodb(ctx, testMongodbUrl, "test")
-	if err != nil {
-		panic(err)
-	}
-	oql.AddObject(&Object{
-		Name: "用户信息",
-		Api:  "person22",
-		Fields: []*Field{
-			{
-				Name: "姓名",
-				Api:  "name",
-				Type: String,
-			},
-			{
-				Name: "年龄",
-				Api:  "age",
-				Type: Int,
-			},
-		},
-	})
-	err = oql.InitObjects(ctx)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	_, err = oql.Insert(ctx, "person22", InsertOptions{
-		Doc: map[string]interface{}{
-			"name": "小明",
-			"age":  13,
-		},
-	})
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	_, err = oql.Insert(ctx, "person22", InsertOptions{
-		Doc: map[string]interface{}{
-			"name": "小明",
-			"age":  13,
-		},
-	})
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	_, err = oql.Insert(ctx, "person22", InsertOptions{
-		Doc: map[string]interface{}{
-			"name": "小明",
-			"age":  13,
-		},
-	})
-	if err != nil {
-		t.Error(err)
-		return
-	}
-}
-
-// func TestServer(t *testing.T) {
-// 	ctx := context.Background()
-// 	objectql := New()
-// 	err := objectql.InitMongodb(context.Background(), "mongodb://192.168.0.197:27017/?connect=direct")
-// 	if err != nil {
-// 		panic(err)
-// 	}
-
-// 	objectql.AddObject(&Object{
-// 		Name: "人",
-// 		Api:  "person",
-// 		Fields: []*Field{
-// 			{
-// 				Name: "名称",
-// 				Api:  "name",
-// 				Type: String,
-// 			},
-// 			{
-// 				Name: "爱好",
-// 				Api:  "aih",
-// 				Type: NewArrayType(String),
-// 			},
-// 		},
-// 		Querys: []*Query{
-// 			{
-// 				Name: "获取姓名",
-// 				Api:  "getName",
-// 				Handle: func(ctx context.Context, req *getNameReq) (*getNameRes, error) {
-// 					// return &getNameRes{Index: req.Age, Name: fmt.Sprintf("%d,%d", req.Age, req.Number)}, nil
-// 					return nil, nil
-// 				},
-// 				// Handle: func(ctx context.Context, req getNameReq) (bool, error) {
-// 				// 	return true, nil
-// 				// },
-// 			},
-// 		},
-// 	})
-
-// 	// 初始化
-// 	err = objectql.InitObjects(ctx)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-
-// 	http.HandleFunc("/graphql", func(w http.ResponseWriter, r *http.Request) {
-// 		if r.Method == "POST" {
-// 			var params *GraphqlQueryReq
-// 			err := json.NewDecoder(r.Body).Decode(&params)
-// 			if err != nil {
-// 				http.Error(w, err.Error(), http.StatusBadRequest)
-// 				return
-// 			}
-
-// 			result := objectql.Do(context.Background(), params.Query)
-// 			// result := graphql.Do(graphql.Params{
-// 			// 	Schema:        objectql.gschema,
-// 			// 	RequesString: params.Query,
-// 			// 	Context: context.Background(),
-// 			// })
-// 			json.NewEncoder(w).Encode(result)
-// 		} else {
-// 			http.Error(w, "Method not supported", http.StatusMethodNotAllowed)
-// 		}
-// 	})
-
-// 	// 处理GraphQL Playground页面
-// 	http.HandleFunc("/", graphiql.ServeGraphiQL)
-
-// 	// 启动服务器
-// 	fmt.Println("Listening on1 :8080")
-// 	http.ListenAndServe(":8080", nil)
-// }
-
 func TestInsert(t *testing.T) {
-	ctx := context.Background()
-	objectql := New()
-	err := objectql.InitMongodb(ctx, testMongodbUrl, "test")
-	if err != nil {
-		t.Error("初始化数据库失败", err)
-		return
-	}
-
-	objectql.AddObject(&Object{
-		Name: "学生",
-		Api:  "student",
-		Fields: []*Field{
-			{
-				Name: "姓名",
-				Api:  "name",
-				Type: String,
+	list := []*Object{
+		{
+			Name: "学生",
+			Api:  "student",
+			Fields: []*Field{
+				{
+					Name: "姓名",
+					Api:  "name",
+					Type: String,
+				},
+				{
+					Name: "年龄",
+					Api:  "age",
+					Type: Int,
+				},
 			},
-			{
-				Name: "年龄",
-				Api:  "age",
-				Type: Int,
+			Comment: "",
+		},
+	}
+	err := testTransaction(list, func(ctx context.Context, oql *Objectql) error {
+		res, err := oql.Insert(ctx, "student", InsertOptions{
+			Doc: map[string]interface{}{
+				"name": "小明",
+				"age":  13,
 			},
-		},
-		Comment: "",
-	})
-	err = objectql.InitObjects(ctx)
-	if err != nil {
-		t.Error("初始化对象失败", err)
-		return
-	}
-
-	res, err := objectql.Insert(ctx, "student", InsertOptions{
-		Doc: map[string]interface{}{
-			"name": "小明",
-			"age":  13,
-		},
-		Fields: []string{
-			"_id",
-		},
-	})
-	if err != nil {
-		t.Error("插入数据失败", err)
-		return
-	}
-	id := res.String("_id")
-	if len(id) == 0 {
-		t.Error("插入数据失败, id为空")
-		return
-	}
-	// 查找这个新创建的记录
-	one, err := objectql.FindOne(ctx, "student", FindOneOptions{
-		Filter: M{
-			"_id": M{
-				"$toId": id,
+			Fields: []string{
+				"_id",
+				"name",
+				"age",
 			},
-		},
+		})
+		if err != nil {
+			return err
+		}
+		if res.String("name") != "小明" {
+			return gerror.Newf("except name = '小明' but got %s", res.String("name"))
+		}
+		if res.Int("age") != 13 {
+			return gerror.Newf("except age = 13 but got %d", res.Int("age"))
+		}
+		return nil
 	})
 	if err != nil {
-		t.Error(err)
-		return
-	}
-	if one == nil {
-		t.Error("找不到记录")
-		return
-	}
-	// 删除这条记录
-	err = objectql.DeleteById(ctx, "student", DeleteByIdOptions{
-		ID: id,
-	})
-	if err != nil {
-		t.Error("找不到记录")
+		t.Error(gerror.Stack(err))
 		return
 	}
 }
 
 func TestUpdate(t *testing.T) {
-	ctx := context.Background()
-	objectql := New()
-	err := objectql.InitMongodb(ctx, testMongodbUrl, "test")
-	if err != nil {
-		t.Error("初始化数据库失败", err)
-		return
-	}
-
-	objectql.AddObject(&Object{
-		Name: "学生",
-		Api:  "student",
-		Fields: []*Field{
-			{
-				Name: "姓名",
-				Api:  "name",
-				Type: String,
+	list := []*Object{
+		{
+			Name: "学生",
+			Api:  "student",
+			Fields: []*Field{
+				{
+					Name: "姓名",
+					Api:  "name",
+					Type: String,
+				},
+				{
+					Name: "年龄",
+					Api:  "age",
+					Type: Int,
+				},
 			},
-			{
-				Name: "年龄",
-				Api:  "age",
-				Type: Int,
+			Comment: "",
+		},
+	}
+	err := testTransaction(list, func(ctx context.Context, oql *Objectql) error {
+		res, err := oql.Insert(ctx, "student", InsertOptions{
+			Doc: map[string]interface{}{
+				"name": "小明",
+				"age":  13,
 			},
-		},
-		Comment: "",
-	})
-	err = objectql.InitObjects(ctx)
-	if err != nil {
-		t.Error("初始化对象失败", err)
-		return
-	}
-
-	res, err := objectql.Insert(ctx, "student", InsertOptions{
-		Doc: map[string]interface{}{
-			"name": "小明",
-			"age":  13,
-		},
-		Fields: []string{
-			"_id",
-		},
-	})
-	if err != nil {
-		t.Error("插入数据失败", err)
-		return
-	}
-	id := res.String("_id")
-	if len(id) == 0 {
-		t.Error("插入数据失败, id为空")
-		return
-	}
-	// 修改数据
-	one, err := objectql.UpdateById(ctx, "student", UpdateByIdOptions{
-		ID: id,
-		Doc: bson.M{
-			"age": 20,
-		},
-		Fields: []string{
-			"age",
-		},
+			Fields: []string{
+				"_id",
+			},
+		})
+		if err != nil {
+			return gerror.New(err.Error())
+		}
+		// 修改数据
+		one, err := oql.UpdateById(ctx, "student", UpdateByIdOptions{
+			ID: res.String("_id"),
+			Doc: bson.M{
+				"age": 20,
+			},
+			Fields: []string{
+				"age",
+			},
+		})
+		if err != nil {
+			return gerror.New(err.Error())
+		}
+		if one.IsNil() {
+			return gerror.New("没有找到要修改的数据")
+		}
+		if one.Int("age") != 20 {
+			return gerror.Newf("except age = 20 but got %d", one.Int("age"))
+		}
+		return nil
 	})
 	if err != nil {
-		t.Error(err)
-		return
-	}
-	if one.IsNil() {
-		t.Error("找不到记录")
-		return
-	}
-	if one.Int("age") != 20 {
-		t.Errorf("except age = 20 but got %d", one.Int("age"))
-	}
-	// 删除这条数据
-	err = objectql.DeleteById(ctx, "student", DeleteByIdOptions{
-		ID: id,
-	})
-	if err != nil {
-		t.Error(err)
+		t.Error(gerror.Stack(err))
 		return
 	}
 }
 
 func TestDelete(t *testing.T) {
-	ctx := context.Background()
-	objectql := New()
-	err := objectql.InitMongodb(ctx, testMongodbUrl, "test")
-	if err != nil {
-		t.Error("初始化数据库失败", err)
-		return
-	}
-
-	objectql.AddObject(&Object{
-		Name: "学生",
-		Api:  "student",
-		Fields: []*Field{
-			{
-				Name: "姓名",
-				Api:  "name",
-				Type: String,
+	list := []*Object{
+		{
+			Name: "学生",
+			Api:  "student",
+			Fields: []*Field{
+				{
+					Name: "姓名",
+					Api:  "name",
+					Type: String,
+				},
+				{
+					Name: "年龄",
+					Api:  "age",
+					Type: Int,
+				},
 			},
-			{
-				Name: "年龄",
-				Api:  "age",
-				Type: Int,
+			Comment: "",
+		},
+	}
+	err := testTransaction(list, func(ctx context.Context, oql *Objectql) error {
+		res, err := oql.Insert(ctx, "student", InsertOptions{
+			Doc: map[string]interface{}{
+				"name": "小明",
+				"age":  13,
 			},
-		},
-		Comment: "",
-	})
-	err = objectql.InitObjects(ctx)
-	if err != nil {
-		t.Error("初始化对象失败", err)
-		return
-	}
-
-	res, err := objectql.Insert(ctx, "student", InsertOptions{
-		Doc: map[string]interface{}{
-			"name": "小明",
-			"age":  13,
-		},
-		Fields: []string{
-			"_id",
-		},
-	})
-	if err != nil {
-		t.Error("插入数据失败", err)
-		return
-	}
-	id := res.String("_id")
-	if len(id) == 0 {
-		t.Error("插入数据失败, id为空")
-		return
-	}
-	// 删除这条数据
-	err = objectql.DeleteById(ctx, "student", DeleteByIdOptions{
-		ID: id,
+			Fields: []string{
+				"_id",
+			},
+		})
+		if err != nil {
+			return gerror.Wrap(err, err.Error())
+		}
+		// 删除这条数据
+		err = oql.DeleteById(ctx, "student", DeleteByIdOptions{
+			ID: res.String("_id"),
+		})
+		if err != nil {
+			return gerror.Wrap(err, err.Error())
+		}
+		// 查找这个新创建的记录
+		one, err := oql.FindOne(ctx, "student", FindOneOptions{
+			Filter: map[string]any{
+				"_id": res.String("_id"),
+			},
+		})
+		if err != nil {
+			return gerror.Wrap(err, err.Error())
+		}
+		if one != nil {
+			return gerror.Wrap(err, "记录删除失败")
+		}
+		return nil
 	})
 	if err != nil {
-		t.Error(err)
-		return
-	}
-	// 查找这个新创建的记录
-	one, err := objectql.FindOne(ctx, "student", FindOneOptions{
-		Filter: map[string]any{
-			"_id": id,
-		},
-	})
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	if one != nil {
-		t.Error("记录删除失败", err)
+		t.Error(gerror.Stack(err))
 		return
 	}
 }
@@ -1047,7 +786,7 @@ func TestInsertMaxIndex(t *testing.T) {
 	_, err = oql.WithTransaction(ctx, func(ctx context.Context) (interface{}, error) {
 		oql.AddObject(&Object{
 			Name:       "员工",
-			Api:        "staff",
+			Api:        "lperson",
 			Index:      true,
 			IndexGroup: []string{"class"},
 			Fields: []*Field{
@@ -1077,7 +816,7 @@ func TestInsertMaxIndex(t *testing.T) {
 
 		res, err := oql.DoCommands(ctx, []Command{
 			{
-				Call: "staff.insert",
+				Call: "lperson.insert",
 				Args: M{
 					"doc": M{
 						"name": "老陈",
@@ -1088,10 +827,10 @@ func TestInsertMaxIndex(t *testing.T) {
 					"_id",
 					"__index",
 				},
-				Result: "staff1",
+				Result: "lperson1",
 			},
 			{
-				Call: "staff.insert",
+				Call: "lperson.insert",
 				Args: M{
 					"doc": M{
 						"name": "老陈",
@@ -1102,15 +841,15 @@ func TestInsertMaxIndex(t *testing.T) {
 					"_id",
 					"__index",
 				},
-				Result: "staff2",
+				Result: "lperson2",
 			},
 		})
 		if err != nil {
 			return nil, err
 		}
 
-		index1 := res.Int("staff1.__index")
-		index2 := res.Int("staff2.__index")
+		index1 := res.Int("lperson1.__index")
+		index2 := res.Int("lperson2.__index")
 		if index2-index1 != 1 {
 			return nil, fmt.Errorf("except index2 - index1 = 1 but got %d", index2-index1)
 		}
@@ -1118,7 +857,7 @@ func TestInsertMaxIndex(t *testing.T) {
 		return nil, ErrOk
 	})
 	if err != ErrOk {
-		t.Log(err)
+		t.Error(err)
 		return
 	}
 }
@@ -1134,7 +873,7 @@ func TestInsertDown(t *testing.T) {
 	_, err = oql.WithTransaction(ctx, func(ctx context.Context) (interface{}, error) {
 		oql.AddObject(&Object{
 			Name:       "员工",
-			Api:        "staff",
+			Api:        "lperson",
 			Index:      true,
 			IndexGroup: []string{"class"},
 			Fields: []*Field{
@@ -1164,7 +903,7 @@ func TestInsertDown(t *testing.T) {
 
 		res, err := oql.DoCommands(ctx, []Command{
 			{
-				Call: "staff.insert",
+				Call: "lperson.insert",
 				Args: M{
 					"doc": M{
 						"name": "老陈",
@@ -1177,10 +916,10 @@ func TestInsertDown(t *testing.T) {
 					"_id",
 					"__index",
 				},
-				Result: "staff1",
+				Result: "lperson1",
 			},
 			{
-				Call: "staff.insert",
+				Call: "lperson.insert",
 				Args: M{
 					"doc": M{
 						"name": "老陈",
@@ -1193,20 +932,20 @@ func TestInsertDown(t *testing.T) {
 					"_id",
 					"__index",
 				},
-				Result: "staff2",
+				Result: "lperson2",
 			},
 			{
-				Call: "staff.findOneById",
+				Call: "lperson.findOneById",
 				Args: M{
-					"id": M{"$formula": "staff1._id"},
+					"id": M{"$formula": "lperson1._id"},
 				},
 				Fields: []string{"__index"},
 				Result: "a",
 			},
 			{
-				Call: "staff.findOneById",
+				Call: "lperson.findOneById",
 				Args: M{
-					"id": M{"$formula": "staff2._id"},
+					"id": M{"$formula": "lperson2._id"},
 				},
 				Fields: []string{"__index"},
 				Result: "b",
@@ -1225,7 +964,7 @@ func TestInsertDown(t *testing.T) {
 		return nil, ErrOk
 	})
 	if err != ErrOk {
-		t.Log(err)
+		t.Error(err)
 		return
 	}
 }
@@ -1241,7 +980,7 @@ func TestInsertUp(t *testing.T) {
 	_, err = oql.WithTransaction(ctx, func(ctx context.Context) (interface{}, error) {
 		oql.AddObject(&Object{
 			Name:       "员工",
-			Api:        "staff",
+			Api:        "lperson",
 			Index:      true,
 			IndexGroup: []string{"class"},
 			Fields: []*Field{
@@ -1271,7 +1010,7 @@ func TestInsertUp(t *testing.T) {
 
 		res, err := oql.DoCommands(ctx, []Command{
 			{
-				Call: "staff.insert",
+				Call: "lperson.insert",
 				Args: M{
 					"doc": M{
 						"name": "老陈",
@@ -1284,10 +1023,10 @@ func TestInsertUp(t *testing.T) {
 					"_id",
 					"__index",
 				},
-				Result: "staff1",
+				Result: "lperson1",
 			},
 			{
-				Call: "staff.insert",
+				Call: "lperson.insert",
 				Args: M{
 					"doc": M{
 						"name": "老陈",
@@ -1300,20 +1039,20 @@ func TestInsertUp(t *testing.T) {
 					"_id",
 					"__index",
 				},
-				Result: "staff2",
+				Result: "lperson2",
 			},
 			{
-				Call: "staff.findOneById",
+				Call: "lperson.findOneById",
 				Args: M{
-					"id": M{"$formula": "staff1._id"},
+					"id": M{"$formula": "lperson1._id"},
 				},
 				Fields: []string{"__index"},
 				Result: "a",
 			},
 			{
-				Call: "staff.findOneById",
+				Call: "lperson.findOneById",
 				Args: M{
-					"id": M{"$formula": "staff2._id"},
+					"id": M{"$formula": "lperson2._id"},
 				},
 				Fields: []string{"__index"},
 				Result: "b",
@@ -1332,7 +1071,7 @@ func TestInsertUp(t *testing.T) {
 		return nil, ErrOk
 	})
 	if err != ErrOk {
-		t.Log(err)
+		t.Error(err)
 		return
 	}
 }
@@ -1348,7 +1087,7 @@ func TestMoveDown(t *testing.T) {
 	_, err = oql.WithTransaction(ctx, func(ctx context.Context) (interface{}, error) {
 		oql.AddObject(&Object{
 			Name:  "员工",
-			Api:   "staff",
+			Api:   "lperson",
 			Index: true,
 			Fields: []*Field{
 				{
@@ -1372,7 +1111,7 @@ func TestMoveDown(t *testing.T) {
 
 		res, err := oql.DoCommands(ctx, []Command{
 			{
-				Call: "staff.insert",
+				Call: "lperson.insert",
 				Args: M{
 					"doc": M{
 						"name": "老陈",
@@ -1383,10 +1122,10 @@ func TestMoveDown(t *testing.T) {
 					"_id",
 					"__index",
 				},
-				Result: "staff1",
+				Result: "lperson1",
 			},
 			{
-				Call: "staff.insert",
+				Call: "lperson.insert",
 				Args: M{
 					"doc": M{
 						"name": "老陈",
@@ -1397,10 +1136,10 @@ func TestMoveDown(t *testing.T) {
 					"_id",
 					"__index",
 				},
-				Result: "staff2",
+				Result: "lperson2",
 			},
 			{
-				Call: "staff.insert",
+				Call: "lperson.insert",
 				Args: M{
 					"doc": M{
 						"name": "老陈",
@@ -1411,64 +1150,64 @@ func TestMoveDown(t *testing.T) {
 					"_id",
 					"__index",
 				},
-				Result: "staff3",
+				Result: "lperson3",
 			},
 			{
-				Call: "staff.move",
+				Call: "lperson.move",
 				Args: M{
 					"id": M{
-						"$formula": "staff3._id",
+						"$formula": "lperson3._id",
 					},
 					"index": 1,
 					"dir":   1,
 				},
 			},
 			{
-				Call: "staff.findOneById",
+				Call: "lperson.findOneById",
 				Args: M{
 					"id": M{
-						"$formula": "staff1._id",
+						"$formula": "lperson1._id",
 					},
 				},
 				Fields: []string{
 					"_id",
 					"__index",
 				},
-				Result: "staff1_1",
+				Result: "lperson1_1",
 			},
 			{
-				Call: "staff.findOneById",
+				Call: "lperson.findOneById",
 				Args: M{
 					"id": M{
-						"$formula": "staff2._id",
+						"$formula": "lperson2._id",
 					},
 				},
 				Fields: []string{
 					"_id",
 					"__index",
 				},
-				Result: "staff2_1",
+				Result: "lperson2_1",
 			},
 			{
-				Call: "staff.findOneById",
+				Call: "lperson.findOneById",
 				Args: M{
 					"id": M{
-						"$formula": "staff3._id",
+						"$formula": "lperson3._id",
 					},
 				},
 				Fields: []string{
 					"_id",
 					"__index",
 				},
-				Result: "staff3_1",
+				Result: "lperson3_1",
 			},
 		}, M{
-			"a1": M{"$formula": "staff1.__index"},
-			"b1": M{"$formula": "staff2.__index"},
-			"c1": M{"$formula": "staff3.__index"},
-			"a2": M{"$formula": "staff1_1.__index"},
-			"b2": M{"$formula": "staff2_1.__index"},
-			"c2": M{"$formula": "staff3_1.__index"},
+			"a1": M{"$formula": "lperson1.__index"},
+			"b1": M{"$formula": "lperson2.__index"},
+			"c1": M{"$formula": "lperson3.__index"},
+			"a2": M{"$formula": "lperson1_1.__index"},
+			"b2": M{"$formula": "lperson2_1.__index"},
+			"c2": M{"$formula": "lperson3_1.__index"},
 		})
 		if err != nil {
 			return nil, err
@@ -1491,7 +1230,714 @@ func TestMoveDown(t *testing.T) {
 		return nil, ErrOk
 	})
 	if err != ErrOk {
-		t.Log(err)
+		t.Error(err)
+		return
+	}
+}
+
+func TestMoveDownUp(t *testing.T) {
+	ctx := context.Background()
+	oql := New()
+	err := oql.InitMongodb(ctx, testMongodbUrl, "test")
+	if err != nil {
+		t.Error("初始化数据库失败", err)
+		return
+	}
+	_, err = oql.WithTransaction(ctx, func(ctx context.Context) (interface{}, error) {
+		oql.AddObject(&Object{
+			Name:  "员工",
+			Api:   "lperson",
+			Index: true,
+			Fields: []*Field{
+				{
+					Name: "姓名",
+					Api:  "name",
+					Type: String,
+				},
+				{
+					Name: "年龄",
+					Api:  "age",
+					Type: Int,
+				},
+			},
+			Comment: "",
+		})
+
+		err = oql.InitObjects(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("初始化对象失败 %s", err.Error())
+		}
+
+		res, err := oql.DoCommands(ctx, []Command{
+			{
+				Call: "lperson.insert",
+				Args: M{
+					"doc": M{
+						"name": "老陈",
+						"age":  55,
+					},
+				},
+				Fields: []string{
+					"_id",
+					"__index",
+				},
+				Result: "lperson1",
+			},
+			{
+				Call: "lperson.insert",
+				Args: M{
+					"doc": M{
+						"name": "老陈",
+						"age":  55,
+					},
+				},
+				Fields: []string{
+					"_id",
+					"__index",
+				},
+				Result: "lperson2",
+			},
+			{
+				Call: "lperson.insert",
+				Args: M{
+					"doc": M{
+						"name": "老陈",
+						"age":  55,
+					},
+				},
+				Fields: []string{
+					"_id",
+					"__index",
+				},
+				Result: "lperson3",
+			},
+			{
+				Call: "lperson.move",
+				Args: M{
+					"id": M{
+						"$formula": "lperson3._id",
+					},
+					"index": 1,
+					"dir":   -1,
+				},
+			},
+			{
+				Call: "lperson.findOneById",
+				Args: M{
+					"id": M{
+						"$formula": "lperson1._id",
+					},
+				},
+				Fields: []string{
+					"_id",
+					"__index",
+				},
+				Result: "lperson1_1",
+			},
+			{
+				Call: "lperson.findOneById",
+				Args: M{
+					"id": M{
+						"$formula": "lperson2._id",
+					},
+				},
+				Fields: []string{
+					"_id",
+					"__index",
+				},
+				Result: "lperson2_1",
+			},
+			{
+				Call: "lperson.findOneById",
+				Args: M{
+					"id": M{
+						"$formula": "lperson3._id",
+					},
+				},
+				Fields: []string{
+					"_id",
+					"__index",
+				},
+				Result: "lperson3_1",
+			},
+		}, M{
+			"a1": M{"$formula": "lperson1.__index"},
+			"b1": M{"$formula": "lperson2.__index"},
+			"c1": M{"$formula": "lperson3.__index"},
+			"a2": M{"$formula": "lperson1_1.__index"},
+			"b2": M{"$formula": "lperson2_1.__index"},
+			"c2": M{"$formula": "lperson3_1.__index"},
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		a1 := res.Int("a1")
+		b1 := res.Int("b1")
+		c1 := res.Int("c1")
+		if !(a1 < b1 && b1 < c1) {
+			return nil, fmt.Errorf("excecpt a1 < b1 < c1, but got a1=%d  b1=%d c1=%d", a1, b1, c1)
+		}
+
+		a2 := res.Int("a2")
+		b2 := res.Int("b2")
+		c2 := res.Int("c2")
+		if !(a2 < c2 && c2 < b2) {
+			return nil, fmt.Errorf("excecpt a2 < c2 < b2, but got a2=%d  b2=%d c2=%d", a2, b2, c2)
+		}
+
+		return nil, ErrOk
+	})
+	if err != ErrOk {
+		t.Error(err)
+		return
+	}
+}
+
+func TestInsertDownAbs(t *testing.T) {
+	ctx := context.Background()
+	oql := New()
+	err := oql.InitMongodb(ctx, testMongodbUrl, "test")
+	if err != nil {
+		t.Error("初始化数据库失败", err)
+		return
+	}
+	_, err = oql.WithTransaction(ctx, func(ctx context.Context) (interface{}, error) {
+		oql.AddObject(&Object{
+			Name:       "员工",
+			Api:        "lperson",
+			Index:      true,
+			IndexGroup: []string{"class"},
+			Fields: []*Field{
+				{
+					Name: "姓名",
+					Api:  "name",
+					Type: String,
+				},
+				{
+					Name: "年龄",
+					Api:  "age",
+					Type: Int,
+				},
+				{
+					Name: "班组",
+					Api:  "class",
+					Type: Int,
+				},
+			},
+			Comment: "",
+		})
+
+		err = oql.InitObjects(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("初始化对象失败 %s", err.Error())
+		}
+
+		res, err := oql.DoCommands(ctx, []Command{
+			{
+				Call: "lperson.insert",
+				Args: M{
+					"doc": M{
+						"name": "老陈",
+						"age":  55,
+					},
+					"index": -5,
+					"dir":   1,
+				},
+				Fields: []string{
+					"_id",
+					"__index",
+				},
+				Result: "lperson1",
+			},
+			{
+				Call: "lperson.insert",
+				Args: M{
+					"doc": M{
+						"name": "老陈",
+						"age":  55,
+					},
+					"index":    1,
+					"dir":      1,
+					"absolute": true,
+				},
+				Fields: []string{
+					"_id",
+					"__index",
+				},
+				Result: "lperson2",
+			},
+			{
+				Call: "lperson.findOneById",
+				Args: M{
+					"id": M{"$formula": "lperson1._id"},
+				},
+				Fields: []string{"__index"},
+				Result: "a",
+			},
+			{
+				Call: "lperson.findOneById",
+				Args: M{
+					"id": M{"$formula": "lperson2._id"},
+				},
+				Fields: []string{"__index"},
+				Result: "b",
+			},
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		index1 := res.Int("a.__index")
+		index2 := res.Int("b.__index")
+		if !(index1 > index2 && index2 < 0) {
+			return nil, fmt.Errorf("except index1 > index2 && index2 < 0	 but got index1=%d index2=%d", index1, index2)
+		}
+
+		return nil, ErrOk
+	})
+	if err != ErrOk {
+		t.Error(err)
+		return
+	}
+}
+
+func TestInsertUpAbs(t *testing.T) {
+	ctx := context.Background()
+	oql := New()
+	err := oql.InitMongodb(ctx, testMongodbUrl, "test")
+	if err != nil {
+		t.Error("初始化数据库失败", err)
+		return
+	}
+	_, err = oql.WithTransaction(ctx, func(ctx context.Context) (interface{}, error) {
+		oql.AddObject(&Object{
+			Name:       "员工",
+			Api:        "lperson",
+			Index:      true,
+			IndexGroup: []string{"class"},
+			Fields: []*Field{
+				{
+					Name: "姓名",
+					Api:  "name",
+					Type: String,
+				},
+				{
+					Name: "年龄",
+					Api:  "age",
+					Type: Int,
+				},
+				{
+					Name: "班组",
+					Api:  "class",
+					Type: Int,
+				},
+			},
+			Comment: "",
+		})
+
+		err = oql.InitObjects(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("初始化对象失败 %s", err.Error())
+		}
+
+		res, err := oql.DoCommands(ctx, []Command{
+			{
+				Call: "lperson.insert",
+				Args: M{
+					"doc": M{
+						"name": "老陈",
+						"age":  55,
+					},
+					"index": -5,
+					"dir":   -1,
+				},
+				Fields: []string{
+					"_id",
+					"__index",
+				},
+				Result: "lperson1",
+			},
+			{
+				Call: "lperson.insert",
+				Args: M{
+					"doc": M{
+						"name": "老陈",
+						"age":  55,
+					},
+					"index":    1,
+					"dir":      -1,
+					"absolute": true,
+				},
+				Fields: []string{
+					"_id",
+					"__index",
+				},
+				Result: "lperson2",
+			},
+			{
+				Call: "lperson.findOneById",
+				Args: M{
+					"id": M{"$formula": "lperson1._id"},
+				},
+				Fields: []string{"__index"},
+				Result: "a",
+			},
+			{
+				Call: "lperson.findOneById",
+				Args: M{
+					"id": M{"$formula": "lperson2._id"},
+				},
+				Fields: []string{"__index"},
+				Result: "b",
+			},
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		index1 := res.Int("a.__index")
+		index2 := res.Int("b.__index")
+		if !(index2 > index1 && index1 < 0 && index2 < 0) {
+			return nil, fmt.Errorf("except index2 > index1 && index1 < 0 && index2 < 0 but got index1=%d index2=%d", index1, index2)
+		}
+
+		return nil, ErrOk
+	})
+	if err != ErrOk {
+		t.Error(err)
+		return
+	}
+}
+
+func TestMoveDownAbs(t *testing.T) {
+	ctx := context.Background()
+	oql := New()
+	err := oql.InitMongodb(ctx, testMongodbUrl, "test")
+	if err != nil {
+		t.Error("初始化数据库失败", err)
+		return
+	}
+	_, err = oql.WithTransaction(ctx, func(ctx context.Context) (interface{}, error) {
+		oql.AddObject(&Object{
+			Name:  "员工",
+			Api:   "lperson",
+			Index: true,
+			Fields: []*Field{
+				{
+					Name: "姓名",
+					Api:  "name",
+					Type: String,
+				},
+				{
+					Name: "年龄",
+					Api:  "age",
+					Type: Int,
+				},
+			},
+			Comment: "",
+		})
+
+		err = oql.InitObjects(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("初始化对象失败 %s", err.Error())
+		}
+
+		res, err := oql.DoCommands(ctx, []Command{
+			{
+				Call: "lperson.insert",
+				Args: M{
+					"doc": M{
+						"name": "老陈",
+						"age":  55,
+					},
+					"index": -10,
+					"dir":   1,
+				},
+				Fields: []string{
+					"_id",
+					"__index",
+				},
+				Result: "lperson1",
+			},
+			{
+				Call: "lperson.insert",
+				Args: M{
+					"doc": M{
+						"name": "老陈",
+						"age":  55,
+					},
+					"index": -9,
+					"dir":   1,
+				},
+				Fields: []string{
+					"_id",
+					"__index",
+				},
+				Result: "lperson2",
+			},
+			{
+				Call: "lperson.insert",
+				Args: M{
+					"doc": M{
+						"name": "老陈",
+						"age":  55,
+					},
+					"index": -8,
+					"dir":   1,
+				},
+				Fields: []string{
+					"_id",
+					"__index",
+				},
+				Result: "lperson3",
+			},
+			{
+				Call: "lperson.move",
+				Args: M{
+					"id": M{
+						"$formula": "lperson3._id",
+					},
+					"index":    1,
+					"dir":      1,
+					"absolute": true,
+				},
+			},
+			{
+				Call: "lperson.findOneById",
+				Args: M{
+					"id": M{
+						"$formula": "lperson1._id",
+					},
+				},
+				Fields: []string{
+					"_id",
+					"__index",
+				},
+				Result: "lperson1_1",
+			},
+			{
+				Call: "lperson.findOneById",
+				Args: M{
+					"id": M{
+						"$formula": "lperson2._id",
+					},
+				},
+				Fields: []string{
+					"_id",
+					"__index",
+				},
+				Result: "lperson2_1",
+			},
+			{
+				Call: "lperson.findOneById",
+				Args: M{
+					"id": M{
+						"$formula": "lperson3._id",
+					},
+				},
+				Fields: []string{
+					"_id",
+					"__index",
+				},
+				Result: "lperson3_1",
+			},
+		}, M{
+			"a1": M{"$formula": "lperson1.__index"},
+			"b1": M{"$formula": "lperson2.__index"},
+			"c1": M{"$formula": "lperson3.__index"},
+			"a2": M{"$formula": "lperson1_1.__index"},
+			"b2": M{"$formula": "lperson2_1.__index"},
+			"c2": M{"$formula": "lperson3_1.__index"},
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		a1 := res.Int("a1")
+		b1 := res.Int("b1")
+		c1 := res.Int("c1")
+		if !(a1 < b1 && b1 < c1 && c1 < 0) {
+			return nil, fmt.Errorf("excecpt a1 < b1 < c1 && c1 < 0, but got a1=%d  b1=%d c1=%d", a1, b1, c1)
+		}
+
+		a2 := res.Int("a2")
+		b2 := res.Int("b2")
+		c2 := res.Int("c2")
+		if !(c2 < a2 && a2 < b2 && b2 < 0) {
+			return nil, fmt.Errorf("excecpt c2 < a2 < b2 && b2 < 0, but got a2=%d  b2=%d c2=%d", a2, b2, c2)
+		}
+
+		return nil, ErrOk
+	})
+	if err != ErrOk {
+		t.Error(err)
+		return
+	}
+}
+
+func TestMoveDownUpAbs(t *testing.T) {
+	ctx := context.Background()
+	oql := New()
+	err := oql.InitMongodb(ctx, testMongodbUrl, "test")
+	if err != nil {
+		t.Error("初始化数据库失败", err)
+		return
+	}
+	_, err = oql.WithTransaction(ctx, func(ctx context.Context) (interface{}, error) {
+		oql.AddObject(&Object{
+			Name:  "员工",
+			Api:   "lperson",
+			Index: true,
+			Fields: []*Field{
+				{
+					Name: "姓名",
+					Api:  "name",
+					Type: String,
+				},
+				{
+					Name: "年龄",
+					Api:  "age",
+					Type: Int,
+				},
+			},
+			Comment: "",
+		})
+
+		err = oql.InitObjects(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("初始化对象失败 %s", err.Error())
+		}
+
+		res, err := oql.DoCommands(ctx, []Command{
+			{
+				Call: "lperson.insert",
+				Args: M{
+					"doc": M{
+						"name": "老陈",
+						"age":  55,
+					},
+					"index": -10,
+					"dir":   1,
+				},
+				Fields: []string{
+					"_id",
+					"__index",
+				},
+				Result: "lperson1",
+			},
+			{
+				Call: "lperson.insert",
+				Args: M{
+					"doc": M{
+						"name": "老陈",
+						"age":  55,
+					},
+					"index": -9,
+					"dir":   1,
+				},
+				Fields: []string{
+					"_id",
+					"__index",
+				},
+				Result: "lperson2",
+			},
+			{
+				Call: "lperson.insert",
+				Args: M{
+					"doc": M{
+						"name": "老陈",
+						"age":  55,
+					},
+					"index": -8,
+					"dir":   1,
+				},
+				Fields: []string{
+					"_id",
+					"__index",
+				},
+				Result: "lperson3",
+			},
+			{
+				Call: "lperson.move",
+				Args: M{
+					"id": M{
+						"$formula": "lperson3._id",
+					},
+					"index":    1,
+					"dir":      -1,
+					"absolute": true,
+				},
+			},
+			{
+				Call: "lperson.findOneById",
+				Args: M{
+					"id": M{
+						"$formula": "lperson1._id",
+					},
+				},
+				Fields: []string{
+					"_id",
+					"__index",
+				},
+				Result: "lperson1_1",
+			},
+			{
+				Call: "lperson.findOneById",
+				Args: M{
+					"id": M{
+						"$formula": "lperson2._id",
+					},
+				},
+				Fields: []string{
+					"_id",
+					"__index",
+				},
+				Result: "lperson2_1",
+			},
+			{
+				Call: "lperson.findOneById",
+				Args: M{
+					"id": M{
+						"$formula": "lperson3._id",
+					},
+				},
+				Fields: []string{
+					"_id",
+					"__index",
+				},
+				Result: "lperson3_1",
+			},
+		}, M{
+			"a1": M{"$formula": "lperson1.__index"},
+			"b1": M{"$formula": "lperson2.__index"},
+			"c1": M{"$formula": "lperson3.__index"},
+			"a2": M{"$formula": "lperson1_1.__index"},
+			"b2": M{"$formula": "lperson2_1.__index"},
+			"c2": M{"$formula": "lperson3_1.__index"},
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		a1 := res.Int("a1")
+		b1 := res.Int("b1")
+		c1 := res.Int("c1")
+		if !(a1 < b1 && b1 < c1 && c1 < 0) {
+			return nil, fmt.Errorf("excecpt a1 < b1 < c1 && c1 < 0, but got a1=%d  b1=%d c1=%d", a1, b1, c1)
+		}
+
+		a2 := res.Int("a2")
+		b2 := res.Int("b2")
+		c2 := res.Int("c2")
+		if !(a2 < c2 && c2 < b2 && b2 < 0) {
+			return nil, fmt.Errorf("excecpt a2 < c2 < b2 && b2 < 0, but got a2=%d  b2=%d c2=%d", a2, b2, c2)
+		}
+
+		return nil, ErrOk
+	})
+	if err != ErrOk {
+		t.Error(err)
 		return
 	}
 }

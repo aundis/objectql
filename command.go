@@ -78,11 +78,12 @@ func (o *Objectql) DoCommands(ctx context.Context, commands []Command, filter ..
 			case *InsertArgs:
 				mapKey = command.Result
 				result, err = o.Insert(ctx, objectApi, InsertOptions{
-					Doc:    n.Doc,
-					Index:  n.Index,
-					Dir:    n.Dir,
-					Fields: command.Fields,
-					Direct: n.Direct,
+					Doc:      n.Doc,
+					Index:    n.Index,
+					Dir:      n.Dir,
+					Absolute: n.Absolute,
+					Fields:   command.Fields,
+					Direct:   n.Direct,
 				})
 			case *UpdateByIdArgs:
 				mapKey = command.Result
@@ -118,10 +119,11 @@ func (o *Objectql) DoCommands(ctx context.Context, commands []Command, filter ..
 				})
 			case *MoveArgs:
 				err = o.Move(ctx, objectApi, MoveOptions{
-					ID:     n.ID,
-					Index:  n.Index,
-					Dir:    n.Dir,
-					Direct: n.Direct,
+					ID:       n.ID,
+					Index:    n.Index,
+					Dir:      n.Dir,
+					Absolute: n.Absolute,
+					Direct:   n.Direct,
 				})
 			case map[string]any:
 				mapKey = command.Result

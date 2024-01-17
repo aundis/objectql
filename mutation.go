@@ -153,14 +153,22 @@ func (o *Objectql) initInsertRowIndex(ctx context.Context, object *Object, doc m
 		if err != nil {
 			return err
 		}
-		err = o.indexOffset(ctx, object.Api, filter, pos.Index, pos.Dir)
+		realIndex, err := o.getRealIndex(ctx, object, filter, *pos)
 		if err != nil {
 			return err
 		}
-		doc["__index"] = pos.Index
+		err = o.indexOffset(ctx, object.Api, filter, realIndex, pos.Dir)
+		if err != nil {
+			return err
+		}
+		doc["__index"] = realIndex
 	} else {
 		// 插入到末尾
-		max, err := o.getMaxIndex(ctx, object, doc)
+		gropu, err := o.documentToGroupFilter(object, doc)
+		if err != nil {
+			return err
+		}
+		max, err := o.getMaxIndex(ctx, object, gropu)
 		if err != nil {
 			return err
 		}
@@ -186,23 +194,27 @@ func (o *Objectql) getGroupFilterFromDoc(ctx context.Context, object *Object, do
 	return result, nil
 }
 
-func (o *Objectql) getMaxIndex(ctx context.Context, object *Object, doc M) (int, error) {
-	var pipeline []M
-	if len(object.IndexGroup) > 0 {
-		matchValues := M{}
-		for _, fapi := range object.IndexGroup {
-			f := FindFieldFromObject(object, fapi)
-			if f == nil {
-				return 0, fmt.Errorf(`%s not found index group field %s`, object.Api, fapi)
-			}
-			mongoV, err := formatValueToDatabase(f.Type, doc[fapi])
-			if err != nil {
-				return 0, err
-			}
-			matchValues[fapi] = mongoV
+func (o *Objectql) documentToGroupFilter(object *Object, doc M) (M, error) {
+	matchValues := M{}
+	for _, fapi := range object.IndexGroup {
+		f := FindFieldFromObject(object, fapi)
+		if f == nil {
+			return nil, fmt.Errorf(`%s not found index group field %s`, object.Api, fapi)
 		}
+		mongoV, err := formatValueToDatabase(f.Type, doc[fapi])
+		if err != nil {
+			return nil, err
+		}
+		matchValues[fapi] = mongoV
+	}
+	return matchValues, nil
+}
+
+func (o *Objectql) getMaxIndex(ctx context.Context, object *Object, group M) (int, error) {
+	var pipeline []M
+	if len(group) > 0 {
 		pipeline = append(pipeline, M{
-			"$match": matchValues,
+			"$match": group,
 		})
 	}
 	pipeline = append(pipeline, M{
@@ -519,6 +531,11 @@ func (o *Objectql) moveHandleRaw(ctx context.Context, api string, id string, pos
 			groupMatchValues[fapi] = one[fapi]
 		}
 	}
+	// 找到真正的索引位置（位置有分绝对位置和相对位置）
+	realIndex, err := o.getRealIndex(ctx, object, groupMatchValues, pos)
+	if err != nil {
+		return err
+	}
 	// before 查询
 	var before *Var
 	if ctx.Value(blockEventsKey) != true {
@@ -529,18 +546,18 @@ func (o *Objectql) moveHandleRaw(ctx context.Context, api string, id string, pos
 	}
 	// before事件触发
 	if ctx.Value(blockEventsKey) != true {
-		err = o.triggerIndexMoveBefore(ctx, api, id, pos.Index, before)
+		err = o.triggerIndexMoveBefore(ctx, api, id, realIndex, before)
 		if err != nil {
 			return err
 		}
 	}
 	// 修改数据库 1. 调整后面部分的索引，空出目标位置
-	err = o.indexOffset(ctx, object.Api, groupMatchValues, pos.Index, pos.Dir)
+	err = o.indexOffset(ctx, object.Api, groupMatchValues, realIndex, pos.Dir)
 	if err != nil {
 		return err
 	}
 	// 修改数据库 2. 修改指定_id行位置修改为目标位置
-	_, err = o.mongoUpdateById(ctx, object.Api, id, M{"__index": pos.Index})
+	_, err = o.mongoUpdateById(ctx, object.Api, id, M{"__index": realIndex})
 	if err != nil {
 		return err
 	}
@@ -554,7 +571,7 @@ func (o *Objectql) moveHandleRaw(ctx context.Context, api string, id string, pos
 	}
 	// after 事件触发
 	if ctx.Value(blockEventsKey) != true {
-		err = o.triggerIndexMoveAfter(ctx, api, id, pos.Index, after, before)
+		err = o.triggerIndexMoveAfter(ctx, api, id, realIndex, after, before)
 		if err != nil {
 			return err
 		}
@@ -567,6 +584,31 @@ func (o *Objectql) moveHandleRaw(ctx context.Context, api string, id string, pos
 		}
 	}
 	return nil
+}
+
+func (o *Objectql) getRealIndex(ctx context.Context, object *Object, group M, pos IndexPosition) (int, error) {
+	if !pos.Absolute {
+		return pos.Index, nil
+	}
+	list, err := o.mongoFindAllEx(ctx, object.Api, findAllExOptions{
+		Fields: []string{"_id", "__index"},
+		Sort:   []string{"+__index"},
+		Filter: group,
+		Skip:   pos.Index - 1,
+		Top:    1,
+	})
+	if err != nil {
+		return 0, err
+	}
+	if len(list) > 0 {
+		return gconv.Int(list[0]["__index"]), nil
+	} else {
+		max, err := o.getMaxIndex(ctx, object, group)
+		if err != nil {
+			return 0, err
+		}
+		return max + 1, nil
+	}
 }
 
 func (o *Objectql) indexOffset(ctx context.Context, table string, group M, index int, add int) error {
