@@ -589,7 +589,7 @@ func (o *Objectql) moveHandleRaw(ctx context.Context, api string, id string, pos
 	// after 查询
 	var after *Var
 	if ctx.Value(blockEventsKey) != true {
-		before, _, err = o.queryEventObjectEntity(ctx, object, id, IndexMoveAfter)
+		after, _, err = o.queryEventObjectEntity(ctx, object, id, IndexMoveAfter)
 		if err != nil {
 			return err
 		}
