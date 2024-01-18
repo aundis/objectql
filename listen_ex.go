@@ -134,9 +134,9 @@ func (o *Objectql) getListenQueryFields(ctx context.Context, table string, posit
 		kinds = []eventKind{kDeleteBeforeEx, kDeleteAfterEx, kFieldChange, kIndexChange}
 		// case DeleteAfter:
 	case IndexMoveBefore:
-		kinds = []eventKind{kIndexMoveBefore, kFieldChange}
+		kinds = []eventKind{kIndexMoveBefore, kIndexChange}
 	case IndexMoveAfter:
-		kinds = []eventKind{kIndexMoveAfter, kFieldChange}
+		kinds = []eventKind{kIndexMoveAfter, kIndexChange}
 	}
 
 	for _, kind := range kinds {
