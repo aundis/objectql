@@ -66,8 +66,9 @@ func (o *Objectql) formulaHandler(ctx context.Context, object *Object, id string
 	}
 	if len(objectIds) > 0 {
 		// 查询相关数据
+		target := info.TargetField.Parent
 		formulaData := info.TargetField.Type.(*FormulaType)
-		list, err := o.mongoFindAllEx(ctx, object.Api, findAllExOptions{
+		list, err := o.mongoFindAllEx(ctx, target.Api, findAllExOptions{
 			Fields: append(formulaData.referenceFields, "_id"),
 			Filter: M{
 				"_id": M{
@@ -80,7 +81,6 @@ func (o *Objectql) formulaHandler(ctx context.Context, object *Object, id string
 		if err != nil {
 			return err
 		}
-		target := info.TargetField.Parent
 		for _, item := range list {
 			runner := formula.NewRunner()
 			runner.SetThis(item)
