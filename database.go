@@ -330,6 +330,8 @@ func (o *Objectql) mongoFindAllEx(ctx context.Context, table string, options fin
 	}
 	// remove primitive types
 	clear := removePrimitiveTypes(results)
+	// remove empty expand map
+	clear = removeEmptyExpandMap(results)
 	// format raw database values
 	err = o.formatListWithObject(object, clear.([]M))
 	if err != nil {
@@ -636,6 +638,45 @@ func (o *Objectql) generateLookupStages(fieldsMap map[string]interface{}, from s
 		}
 	}
 	return nil
+}
+
+// 在多重嵌套的expand查询中，即使expand没有数据顶层的expand也会有一个空的Map对象
+func removeEmptyExpandMap(v interface{}) interface{} {
+	switch n := v.(type) {
+	case primitive.A:
+		r := A(n)
+		for i, v := range n {
+			r[i] = removeEmptyExpandMap(v)
+		}
+		return r
+	case primitive.M:
+		r := M(n)
+		for k, v := range n {
+			if strings.HasSuffix(k, "__expand") && isEmptyMap(v) {
+				r[k] = nil
+			} else {
+				r[k] = removeEmptyExpandMap(v)
+			}
+		}
+		return r
+	// 支持FindAllEx
+	case []M:
+		for _, m := range n {
+			for k, v := range m {
+				m[k] = removeEmptyExpandMap(v)
+			}
+		}
+		return n
+	default:
+		return v
+	}
+}
+
+func isEmptyMap(v interface{}) bool {
+	if m, ok := v.(M); ok && len(m) == 0 {
+		return true
+	}
+	return false
 }
 
 func removePrimitiveTypes(v interface{}) interface{} {
