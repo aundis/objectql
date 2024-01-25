@@ -643,22 +643,20 @@ func (o *Objectql) generateLookupStages(fieldsMap map[string]interface{}, from s
 // 在多重嵌套的expand查询中，即使expand没有数据顶层的expand也会有一个空的Map对象
 func removeEmptyExpandMap(v interface{}) interface{} {
 	switch n := v.(type) {
-	case primitive.A:
-		r := A(n)
+	case A:
 		for i, v := range n {
-			r[i] = removeEmptyExpandMap(v)
+			n[i] = removeEmptyExpandMap(v)
 		}
-		return r
-	case primitive.M:
-		r := M(n)
+		return n
+	case M:
 		for k, v := range n {
 			if strings.HasSuffix(k, "__expand") && isEmptyMap(v) {
-				r[k] = nil
+				n[k] = nil
 			} else {
-				r[k] = removeEmptyExpandMap(v)
+				n[k] = removeEmptyExpandMap(v)
 			}
 		}
-		return r
+		return n
 	// 支持FindAllEx
 	case []M:
 		for _, m := range n {
