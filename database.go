@@ -331,7 +331,7 @@ func (o *Objectql) mongoFindAllEx(ctx context.Context, table string, options fin
 	// remove primitive types
 	clear := removePrimitiveTypes(results)
 	// remove empty expand map
-	clear = removeEmptyExpandMap(results)
+	clear = removeEmptyExpandMap(clear)
 	// format raw database values
 	err = o.formatListWithObject(object, clear.([]M))
 	if err != nil {
