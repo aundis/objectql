@@ -657,12 +657,9 @@ func removeEmptyExpandMap(v interface{}) interface{} {
 			}
 		}
 		return n
-	// 支持FindAllEx
 	case []M:
-		for _, m := range n {
-			for k, v := range m {
-				m[k] = removeEmptyExpandMap(v)
-			}
+		for i, v := range n {
+			n[i] = removeEmptyExpandMap(v).(M)
 		}
 		return n
 	default:
@@ -671,7 +668,7 @@ func removeEmptyExpandMap(v interface{}) interface{} {
 }
 
 func isEmptyMap(v interface{}) bool {
-	if m, ok := v.(M); ok && (isNull(m) || isNull(m["_id"])) {
+	if m, ok := v.(M); ok && len(m) == 0 {
 		return true
 	}
 	return false
