@@ -673,7 +673,7 @@ func removeEmptyExpandMap(v interface{}) interface{} {
 }
 
 func isEmptyMap(v interface{}) bool {
-	if m, ok := v.(M); ok && isNull(m["_id"]) {
+	if m, ok := v.(M); ok && (isNull(m) || isNull(m["_id"])) {
 		return true
 	}
 	return false
