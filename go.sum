@@ -1,9 +1,5 @@
 github.com/BurntSushi/toml v1.1.0 h1:ksErzDEI1khOiGPgpwuI7x2ebx/uXQNw7xJpn9Eq1+I=
 github.com/BurntSushi/toml v1.1.0/go.mod h1:CxXYINrC8qIiEnFrOxCa7Jy5BFHlXnUU2pbicEuybxQ=
-github.com/aundis/formula v1.0.13 h1:CfjYwAe2HTx4i8ZpoRGWiKT74C6Nn1sqV+dOnXEhcLE=
-github.com/aundis/formula v1.0.13/go.mod h1:aCxsvX3v7MOS88Ti6jL5Ma5jRgEO3Br138SNaDmgna4=
-github.com/aundis/formula v1.0.16 h1:xF6CTmnDLsKPfc1Oh3YhCXUQfbePbFmcbT39phOHy9c=
-github.com/aundis/formula v1.0.16/go.mod h1:r6iKNac1NK4cRuyJ9+4ct82YJHTxaateq1/xeUZyswA=
 github.com/aundis/formula v1.0.17 h1:gHtrD3yhmenSIs666mhLLJg/TuENbgLs5WkIeBK0NTs=
 github.com/aundis/formula v1.0.17/go.mod h1:r6iKNac1NK4cRuyJ9+4ct82YJHTxaateq1/xeUZyswA=
 github.com/aundis/graphql v1.0.0 h1:LXOKoSmD9SCpCN8Uj78YOdQnW18ruL+QxBhndZD11r0=
@@ -54,8 +50,6 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/samber/lo v1.38.1 h1:j2XEAqXKb09Am4ebOg31SpvzUTTs6EN3VfgeLUhPdXM=
 github.com/samber/lo v1.38.1/go.mod h1:+m/ZKRl6ClXCE2Lgf3MsQlWfh4bn1bz6CXEOxnEXnEA=
-github.com/shopspring/decimal v1.3.1 h1:2Usl1nmF/WZucqkFZhnfFYxxxu8LG21F6nPQBE5gKV8=
-github.com/shopspring/decimal v1.3.1/go.mod h1:DKyhrW/HYNuLGql+MJL6WCR6knT2jwCFRcu2hWCYk4o=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/testify v1.7.1 h1:5TQK59W5E3v0r2duFAb7P95B6hEeOyEnHRa8MjYSMTY=
 github.com/stretchr/testify v1.7.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
