@@ -2,6 +2,8 @@ github.com/BurntSushi/toml v1.1.0 h1:ksErzDEI1khOiGPgpwuI7x2ebx/uXQNw7xJpn9Eq1+I
 github.com/BurntSushi/toml v1.1.0/go.mod h1:CxXYINrC8qIiEnFrOxCa7Jy5BFHlXnUU2pbicEuybxQ=
 github.com/aundis/formula v1.0.17 h1:gHtrD3yhmenSIs666mhLLJg/TuENbgLs5WkIeBK0NTs=
 github.com/aundis/formula v1.0.17/go.mod h1:r6iKNac1NK4cRuyJ9+4ct82YJHTxaateq1/xeUZyswA=
+github.com/aundis/formula v1.0.19 h1:2OE2IRolWaXMlzOehnIwhc/AJfsXQkG8xSLY7DAwv4w=
+github.com/aundis/formula v1.0.19/go.mod h1:r6iKNac1NK4cRuyJ9+4ct82YJHTxaateq1/xeUZyswA=
 github.com/aundis/graphql v1.0.0 h1:LXOKoSmD9SCpCN8Uj78YOdQnW18ruL+QxBhndZD11r0=
 github.com/aundis/graphql v1.0.0/go.mod h1:BmwH8u3bgE2UBjHJw3TfxvjLYbCVlm1ZaPW3q+eYlVQ=
 github.com/clbanning/mxj/v2 v2.5.5 h1:oT81vUeEiQQ/DcHbzSytRngP6Ky9O+L+0Bw0zSJag9E=
