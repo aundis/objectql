@@ -161,16 +161,19 @@ func (o *Objectql) aggregateField(ctx context.Context, object *Object, id string
 	default:
 		return errors.New("not support aggregate kind")
 	}
+	ands := bson.A{
+		bson.M{
+			adata.Relate: ObjectIdFromHex(id),
+		},
+	}
+	if adata.Filter != nil {
+		ands = append(ands, adata.Filter)
+	}
 	// 聚合查询
 	cursor, err := o.getCollection(adata.Object).Aggregate(ctx, []bson.M{
 		{
 			"$match": bson.M{
-				"$and": bson.A{
-					bson.M{
-						adata.Relate: ObjectIdFromHex(id),
-					},
-					adata.Filter,
-				},
+				"$and": ands,
 			},
 		},
 		{
