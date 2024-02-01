@@ -396,7 +396,7 @@ func (o *Objectql) formatValueWithFieldType(tpe Type, v interface{}) (interface{
 	case *IntType:
 		return gconv.Int(v), nil
 	case *FloatType:
-		return gconv.Float32(v), nil
+		return gconv.Float64(v), nil
 	case *StringType:
 		return gconv.String(v), nil
 	case *DateTimeType, *DateType, *TimeType:

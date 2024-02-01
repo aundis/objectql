@@ -17,7 +17,7 @@ func formatDatabaseValueToCompute(field *Field, value interface{}) (interface{},
 		case *IntType:
 			return gconv.Int(value), nil
 		case *FloatType:
-			return gconv.Float32(value), nil
+			return gconv.Float64(value), nil
 		case *BoolType:
 			return gconv.Bool(value), nil
 		case *StringType:
@@ -108,7 +108,7 @@ func formatFloatValueToDatebase(v interface{}) (interface{}, error) {
 	if isNull(v) {
 		return nil, nil
 	}
-	return gconv.Float32(v), nil
+	return gconv.Float64(v), nil
 }
 
 func formatStringValueToDatebase(v interface{}) (interface{}, error) {
@@ -164,7 +164,7 @@ func formatComputedValue(tpe Type, value interface{}) (interface{}, error) {
 	case *IntType:
 		return gconv.Int(value), nil
 	case *FloatType:
-		return gconv.Float32(value), nil
+		return gconv.Float64(value), nil
 	case *BoolType:
 		return gconv.Bool(value), nil
 	case *StringType:
@@ -246,7 +246,7 @@ func floatOrNil(v interface{}) interface{} {
 	if v == nil {
 		return nil
 	}
-	return gconv.Float32(v)
+	return gconv.Float64(v)
 }
 
 func stringOrNil(v interface{}) interface{} {
