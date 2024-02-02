@@ -1333,8 +1333,10 @@ func (o *Objectql) GetObjectMetaInfo(objectApi string) *ObjectMetaInfo {
 		return nil
 	}
 	info := &ObjectMetaInfo{
-		Name: object.Name,
-		Api:  object.Api,
+		Name:       object.Name,
+		Api:        object.Api,
+		Index:      object.Index,
+		IndexGroup: object.IndexGroup,
 	}
 	for _, field := range object.Fields {
 		fapi := field.Api

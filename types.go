@@ -281,9 +281,11 @@ type FieldInfo struct {
 }
 
 type ObjectMetaInfo struct {
-	Name   string          `json:"name"`
-	Api    string          `json:"api"`
-	Fields []FieldMetaInfo `json:"fields"`
+	Name       string          `json:"name"`
+	Api        string          `json:"api"`
+	Index      bool            `json:"index"`
+	IndexGroup []string        `json:"indexGroup"`
+	Fields     []FieldMetaInfo `json:"fields"`
 }
 
 type FieldMetaInfo struct {

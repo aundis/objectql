@@ -1943,7 +1943,7 @@ func TestMoveDownUpAbs(t *testing.T) {
 	}
 }
 
-func TestGetObjectInfo(t *testing.T) {
+func TestGetObjectMetaInfo(t *testing.T) {
 	list := []*Object{
 		{
 			Name:       "学生",
@@ -1966,7 +1966,7 @@ func TestGetObjectInfo(t *testing.T) {
 		},
 	}
 	err := testTransaction(list, func(ctx context.Context, oql *Objectql) error {
-		info := oql.GetObjectInfo("student")
+		info := oql.GetObjectMetaInfo("student")
 		if info == nil {
 			return errors.New("except info")
 		}
