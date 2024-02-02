@@ -266,11 +266,13 @@ type DeleteArgs struct {
 }
 
 type ObjectInfo struct {
-	Name      string       `json:"name"`
-	Api       string       `json:"api"`
-	Fields    []FieldInfo  `json:"fields"`
-	Querys    []HandleInfo `json:"querys"`
-	Mutations []HandleInfo `json:"mutations"`
+	Name       string       `json:"name"`
+	Index      bool         `json:"index"`
+	IndexGroup []string     `json:"indexGroup"`
+	Api        string       `json:"api"`
+	Fields     []FieldInfo  `json:"fields"`
+	Querys     []HandleInfo `json:"querys"`
+	Mutations  []HandleInfo `json:"mutations"`
 }
 
 type FieldInfo struct {

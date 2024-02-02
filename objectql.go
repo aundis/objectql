@@ -1276,8 +1276,10 @@ func (o *Objectql) GetObjectInfo(objectApi string) *ObjectInfo {
 		return nil
 	}
 	info := &ObjectInfo{
-		Name: object.Name,
-		Api:  object.Api,
+		Name:       object.Name,
+		Api:        object.Api,
+		Index:      object.Index,
+		IndexGroup: object.IndexGroup,
 	}
 	for _, field := range object.Fields {
 		fapi := field.Api
