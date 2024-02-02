@@ -188,7 +188,7 @@ const (
 	Max
 	Min
 	Avg
-	// Count
+	Count
 )
 
 // COMMAND

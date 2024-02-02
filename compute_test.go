@@ -317,6 +317,17 @@ func TestAggCompute(t *testing.T) {
 						},
 					},
 				},
+				{
+					Name: "收入记录数量",
+					Api:  "dayWagesQuantity",
+					Type: &AggregationType{
+						Object: "dayWages",
+						Relate: "staff",
+						Field:  "_id",
+						Type:   Float,
+						Kind:   Count,
+					},
+				},
 			},
 			Comment: "",
 		})
@@ -409,7 +420,7 @@ func TestAggCompute(t *testing.T) {
 						"$formula": "staff._id",
 					},
 				},
-				Fields: []string{"_id", "name", "age", "sumWages"},
+				Fields: []string{"_id", "name", "age", "sumWages", "dayWagesQuantity"},
 				Result: "staff1",
 			},
 			{
@@ -442,6 +453,10 @@ func TestAggCompute(t *testing.T) {
 		wages1 := res.Int("staff1.sumWages")
 		if wages1 != 30 {
 			return nil, fmt.Errorf("except staff1.sumWages = 30 but got %d", wages1)
+		}
+		dayWagesQuantity := res.Int("staff1.dayWagesQuantity")
+		if dayWagesQuantity != 3 {
+			return nil, fmt.Errorf("except day wages quantity = 3 but got %d", dayWagesQuantity)
 		}
 		wages2 := res.Int("staff2.sumWages")
 		if wages2 != 130 {

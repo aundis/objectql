@@ -148,16 +148,18 @@ func (o *Objectql) aggregateField(ctx context.Context, object *Object, id string
 	adata := field.Type.(*AggregationType)
 
 	// 聚合方法
-	funcStr := ""
+	var rmap M
 	switch adata.Kind {
 	case Sum:
-		funcStr = "$sum"
+		rmap = bson.M{"$sum": "$" + adata.Field}
 	case Avg:
-		funcStr = "$avg"
+		rmap = bson.M{"$avg": "$" + adata.Field}
 	case Min:
-		funcStr = "$min"
+		rmap = bson.M{"$min": "$" + adata.Field}
 	case Max:
-		funcStr = "$max"
+		rmap = bson.M{"$max": "$" + adata.Field}
+	case Count:
+		rmap = bson.M{"$sum": 1}
 	default:
 		return errors.New("not support aggregate kind")
 	}
@@ -178,8 +180,8 @@ func (o *Objectql) aggregateField(ctx context.Context, object *Object, id string
 		},
 		{
 			"$group": bson.M{
-				"_id":    "$item",
-				"result": bson.M{funcStr: "$" + adata.Field},
+				"_id":    nil,
+				"result": rmap,
 			},
 		},
 	})
