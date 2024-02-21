@@ -684,9 +684,9 @@ func (o *Objectql) Call(ctx context.Context, objectApi string, method string, pa
 }
 
 func (o *Objectql) Query(ctx context.Context, objectApi string, method string, param map[string]any, fields ...[]string) (*Var, error) {
-	object := FindObjectFromList(o.list, objectApi)
-	if object == nil {
-		return nil, fmt.Errorf("not found object '%s'", objectApi)
+	_, err := o.MustGetObject(objectApi)
+	if err != nil {
+		return nil, err
 	}
 	fullName := objectApi + "__" + method
 	gquery := o.gquerys[fullName]
@@ -724,9 +724,9 @@ func (o *Objectql) Query(ctx context.Context, objectApi string, method string, p
 }
 
 func (o *Objectql) Mutation(ctx context.Context, objectApi string, method string, param map[string]any, fields ...[]string) (*Var, error) {
-	object := FindObjectFromList(o.list, objectApi)
-	if object == nil {
-		return nil, fmt.Errorf("not found object '%s'", objectApi)
+	_, err := o.MustGetObject(objectApi)
+	if err != nil {
+		return nil, err
 	}
 	fullName := objectApi + "__" + method
 	gmutation := o.gmutations[fullName]
@@ -777,9 +777,9 @@ func writeGraphqlOutputFieldQueryString(buffer *bytes.Buffer, gtype graphql.Outp
 // 增删改查接口
 func (o *Objectql) Insert(ctx context.Context, objectApi string, options InsertOptions) (*Var, error) {
 	ctx = context.WithValue(ctx, blockEventsKey, options.Direct)
-	object := FindObjectFromList(o.list, objectApi)
-	if object == nil {
-		return nil, fmt.Errorf("not found object '%s'", objectApi)
+	_, err := o.MustGetObject(objectApi)
+	if err != nil {
+		return nil, err
 	}
 	var buffer bytes.Buffer
 	buffer.WriteString("mutation {")
@@ -802,7 +802,7 @@ func (o *Objectql) Insert(ctx context.Context, objectApi string, options InsertO
 	buffer.WriteString(gconv.String(options.Absolute))
 	buffer.WriteString(")")
 	buffer.WriteString("{")
-	writeObjectQueyrFields(&buffer, object, options.Fields)
+	writeGraphqlQueyrFields(&buffer, options.Fields)
 	buffer.WriteString("}")
 	buffer.WriteString("}")
 	return getVarFromGraphqlResult(o.Do(ctx, buffer.String()))
@@ -810,9 +810,9 @@ func (o *Objectql) Insert(ctx context.Context, objectApi string, options InsertO
 
 func (o *Objectql) Update(ctx context.Context, objectApi string, options UpdateOptions) ([]*Var, error) {
 	ctx = context.WithValue(ctx, blockEventsKey, options.Direct)
-	object := FindObjectFromList(o.list, objectApi)
-	if object == nil {
-		return nil, fmt.Errorf("not found object '%s'", objectApi)
+	_, err := o.MustGetObject(objectApi)
+	if err != nil {
+		return nil, err
 	}
 	if len(options.Filter) == 0 {
 		return nil, errors.New("filter can't empty")
@@ -836,7 +836,7 @@ func (o *Objectql) Update(ctx context.Context, objectApi string, options UpdateO
 	buffer.WriteString(docStr)
 	buffer.WriteString(")")
 	buffer.WriteString("{")
-	writeObjectQueyrFields(&buffer, object, options.Fields)
+	writeGraphqlQueyrFields(&buffer, options.Fields)
 	buffer.WriteString("}")
 	buffer.WriteString("}")
 	return getVarsFromGraphqlResult(o.Do(ctx, buffer.String()))
@@ -844,9 +844,9 @@ func (o *Objectql) Update(ctx context.Context, objectApi string, options UpdateO
 
 func (o *Objectql) UpdateById(ctx context.Context, objectApi string, options UpdateByIdOptions) (*Var, error) {
 	ctx = context.WithValue(ctx, blockEventsKey, options.Direct)
-	object := FindObjectFromList(o.list, objectApi)
-	if object == nil {
-		return nil, fmt.Errorf("not found object '%s'", objectApi)
+	_, err := o.MustGetObject(objectApi)
+	if err != nil {
+		return nil, err
 	}
 	docStr, err := o.docToGrpahqlArgumentText(objectApi, options.Doc)
 	if err != nil {
@@ -861,7 +861,7 @@ func (o *Objectql) UpdateById(ctx context.Context, objectApi string, options Upd
 	buffer.WriteString(docStr)
 	buffer.WriteString(")")
 	buffer.WriteString("{")
-	writeObjectQueyrFields(&buffer, object, options.Fields)
+	writeGraphqlQueyrFields(&buffer, options.Fields)
 	buffer.WriteString("}")
 	buffer.WriteString("}")
 	return getVarFromGraphqlResult(o.Do(ctx, buffer.String()))
@@ -869,9 +869,9 @@ func (o *Objectql) UpdateById(ctx context.Context, objectApi string, options Upd
 
 func (o *Objectql) Delete(ctx context.Context, objectApi string, options DeleteOptions) error {
 	ctx = context.WithValue(ctx, blockEventsKey, options.Direct)
-	object := FindObjectFromList(o.list, objectApi)
-	if object == nil {
-		return fmt.Errorf("not found object '%s'", objectApi)
+	_, err := o.MustGetObject(objectApi)
+	if err != nil {
+		return err
 	}
 	if len(options.Filter) == 0 {
 		return errors.New("filter can't empty")
@@ -913,7 +913,7 @@ func (o *Objectql) DeleteById(ctx context.Context, objectApi string, options Del
 
 func (o *Objectql) FindList(ctx context.Context, objectApi string, options FindListOptions) ([]*Var, error) {
 	ctx = context.WithValue(ctx, blockEventsKey, options.Direct)
-	object, err := o.MustGetObject(objectApi)
+	_, err := o.MustGetObject(objectApi)
 	if err != nil {
 		return nil, err
 	}
@@ -951,7 +951,7 @@ func (o *Objectql) FindList(ctx context.Context, objectApi string, options FindL
 		buffer.WriteString(")")
 	}
 	buffer.WriteString("{")
-	writeObjectQueyrFields(&buffer, object, options.Fields)
+	writeGraphqlQueyrFields(&buffer, options.Fields)
 	buffer.WriteString("}")
 	buffer.WriteString("}")
 	return getVarsFromGraphqlResult(o.Do(ctx, buffer.String()))
@@ -959,7 +959,7 @@ func (o *Objectql) FindList(ctx context.Context, objectApi string, options FindL
 
 func (o *Objectql) FindOneById(ctx context.Context, objectApi string, options FindOneByIdOptions) (*Var, error) {
 	ctx = context.WithValue(ctx, blockEventsKey, options.Direct)
-	object, err := o.MustGetObject(objectApi)
+	_, err := o.MustGetObject(objectApi)
 	if err != nil {
 		return nil, err
 	}
@@ -975,7 +975,7 @@ func (o *Objectql) FindOneById(ctx context.Context, objectApi string, options Fi
 	buffer.WriteString(`"`)
 	buffer.WriteString(")")
 	buffer.WriteString("{")
-	writeObjectQueyrFields(&buffer, object, options.Fields)
+	writeGraphqlQueyrFields(&buffer, options.Fields)
 	buffer.WriteString("}")
 	buffer.WriteString("}")
 	return getVarFromGraphqlResult(o.Do(ctx, buffer.String()))
@@ -983,7 +983,7 @@ func (o *Objectql) FindOneById(ctx context.Context, objectApi string, options Fi
 
 func (o *Objectql) FindOne(ctx context.Context, objectApi string, options FindOneOptions) (*Var, error) {
 	ctx = context.WithValue(ctx, blockEventsKey, options.Direct)
-	object, err := o.MustGetObject(objectApi)
+	_, err := o.MustGetObject(objectApi)
 	if err != nil {
 		return nil, err
 	}
@@ -1007,18 +1007,60 @@ func (o *Objectql) FindOne(ctx context.Context, objectApi string, options FindOn
 	}
 	buffer.WriteString(")")
 	buffer.WriteString("{")
-	writeObjectQueyrFields(&buffer, object, options.Fields)
+	writeGraphqlQueyrFields(&buffer, options.Fields)
 	buffer.WriteString("}")
 	buffer.WriteString("}")
 	return getVarFromGraphqlResult(o.Do(ctx, buffer.String()))
 }
 
-func writeObjectQueyrFields(buffer *bytes.Buffer, object *Object, fields []string) {
+func writeGraphqlQueyrFields(buffer *bytes.Buffer, fields []string) {
 	if len(fields) > 0 {
-		buffer.WriteString(strings.Join(gconv.Strings(fields), ","))
+		// buffer.WriteString(strings.Join(gconv.Strings(fields), ","))
+		buffer.WriteString(Strings2GraphqlFieldQuery(fields))
 	} else {
-		buffer.WriteString(getObjectFieldsQueryString(object))
+		// buffer.WriteString(getObjectFieldsQueryString(object))
+		buffer.WriteString("_id")
 	}
+}
+
+func Strings2GraphqlFieldQuery(arr []string) string {
+	result := make(map[string]interface{})
+
+	for _, item := range arr {
+		parts := strings.Split(item, ".")
+		current := result
+
+		for _, part := range parts {
+			if _, ok := current[part]; !ok {
+				current[part] = make(map[string]interface{})
+			}
+			current = current[part].(map[string]interface{})
+		}
+	}
+
+	return buildQuery(result, "")
+}
+
+func buildQuery(obj map[string]interface{}, prefix string) string {
+	var query strings.Builder
+
+	for key := range obj {
+		fullPath := key
+		if prefix != "" {
+			fullPath = fmt.Sprintf("%s.%s", prefix, key)
+		}
+
+		query.WriteString(key)
+		if len(obj[key].(map[string]interface{})) > 0 {
+			query.WriteString(" { ")
+			query.WriteString(buildQuery(obj[key].(map[string]interface{}), fullPath))
+			query.WriteString(" }")
+		} else {
+			query.WriteString(" ")
+		}
+	}
+
+	return query.String()
 }
 
 func (o *Objectql) Count(ctx context.Context, objectApi string, options CountOptions) (int64, error) {

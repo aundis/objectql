@@ -710,7 +710,7 @@ func removeFieldSuffix(api string) string {
 }
 
 func isSuffixField(api string) bool {
-	return strings.Index(api, "__") >= 0
+	return strings.Contains(api, "__")
 }
 
 type countExOptions struct {
