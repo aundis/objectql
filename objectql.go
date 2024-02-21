@@ -417,7 +417,7 @@ func (o *Objectql) parseFormulaField(object *Object, field *Field) error {
 			if !ok {
 				return fmt.Errorf("object %s field %s not a relate field", object.Api, arr[0])
 			}
-			relatedField.relations = append(relatedField.relations, &relationFiledInfo{
+			appendRelateionToField(relatedField, &relationFiledInfo{
 				ThroughField: relatedField,
 				TargetField:  field,
 			})
@@ -425,13 +425,23 @@ func (o *Objectql) parseFormulaField(object *Object, field *Field) error {
 			if err != nil {
 				return err
 			}
-			beCountedField.relations = append(beCountedField.relations, &relationFiledInfo{
+			appendRelateionToField(beCountedField, &relationFiledInfo{
 				ThroughField: relatedField,
 				TargetField:  field,
 			})
 		}
 	}
 	return nil
+}
+
+func appendRelateionToField(field *Field, relation *relationFiledInfo) {
+	// 过滤掉重复的关联字段
+	for _, rel := range field.relations {
+		if rel.ThroughField == relation.ThroughField && rel.TargetField == relation.TargetField {
+			return
+		}
+	}
+	field.relations = append(field.relations, relation)
 }
 
 // 局部初始化全部的对象,因为后面可能相关表需要相互引用

@@ -2120,3 +2120,52 @@ func TestImmediateFormula(t *testing.T) {
 		return
 	}
 }
+
+func TestInitFormulaRelations(t *testing.T) {
+	list := []*Object{
+		{
+			Name: "a",
+			Api:  "a",
+			Fields: []*Field{
+				{
+					Name: "编号",
+					Api:  "number",
+					Type: NewFormula(String, "b__expnad.number + b__expand.number"),
+				},
+				{
+					Name: "b",
+					Api:  "b",
+					Type: NewRelate("b"),
+				},
+			},
+			Comment: "",
+		},
+		{
+			Name: "b",
+			Api:  "b",
+			Fields: []*Field{
+				{
+					Name: "编号",
+					Api:  "number",
+					Type: String,
+				},
+			},
+			Comment: "",
+		},
+	}
+	err := testTransaction(list, func(ctx context.Context, oql *Objectql) error {
+		b, err := oql.MustGetObject("b")
+		if err != nil {
+			return err
+		}
+		field := FindFieldFromObject(b, "number")
+		if len(field.relations) != 1 {
+			return gerror.Newf("except 1 but got %d", len(field.relations))
+		}
+		return nil
+	})
+	if err != nil {
+		t.Error(gerror.Stack(err))
+		return
+	}
+}
