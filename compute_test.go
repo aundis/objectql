@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"testing"
+
+	"github.com/gogf/gf/v2/errors/gerror"
 )
 
 // 自身对象的公式字段计算
@@ -467,6 +469,75 @@ func TestAggCompute(t *testing.T) {
 	})
 	if err != ErrOk {
 		t.Log(err)
+		return
+	}
+}
+
+func TestComputeContext(t *testing.T) {
+	list := []*Object{
+		{
+			Name: "学生",
+			Api:  "student",
+			Fields: []*Field{
+				{
+					Name: "姓名",
+					Api:  "name",
+					Type: String,
+				},
+				{
+					Name: "年龄",
+					Api:  "age",
+					Type: Int,
+				},
+				{
+					Name: "计算值",
+					Api:  "value",
+					Type: NewFormula(String, "getInfo(this)"),
+				},
+			},
+			Comment: "",
+		},
+	}
+	err := testTransaction(list, func(ctx context.Context, oql *Objectql) error {
+		oql.AddFormulaFunction("getInfo", func(this map[string]interface{}) (string, error) {
+			return fmt.Sprintf("%s.%s", this["objectApi"], this["fieldApi"]), nil
+		})
+		res, err := oql.DoCommands(ctx, []Command{
+			{
+				Call: "student.insert",
+				Args: M{
+					"doc": M{
+						"name": "老陈",
+						"age":  55,
+					},
+				},
+				Fields: []string{
+					"_id",
+				},
+				Result: "student1",
+			},
+			{
+				Call: "student.findOneById",
+				Args: M{
+					"id": M{"$formula": "student1._id"},
+				},
+				Fields: []string{
+					"_id",
+					"value",
+				},
+				Result: "student1_1",
+			},
+		})
+		if err != nil {
+			return gerror.Wrap(err, err.Error())
+		}
+		if res.String("student1_1.value") != "student.value" {
+			return gerror.Newf("except 'student.value' but got '%s'", res.String("student1_1.value"))
+		}
+		return nil
+	})
+	if err != nil {
+		t.Error(gerror.Stack(err))
 		return
 	}
 }

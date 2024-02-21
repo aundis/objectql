@@ -92,6 +92,11 @@ func (o *Objectql) insertHandleRaw(ctx context.Context, api string, doc map[stri
 			}
 		}
 	}
+	// 触发 immediate 的公式字段
+	err = o.triggerImmediateFormulaFields(ctx, object, objectIdStr)
+	if err != nil {
+		return "", err
+	}
 	// after 数据查询
 	var after *Var
 	if ctx.Value(blockEventsKey) != true {
@@ -144,6 +149,22 @@ func (o *Objectql) insertHandleRaw(ctx context.Context, api string, doc map[stri
 		}
 	}
 	return objectIdStr, nil
+}
+
+func (o *Objectql) triggerImmediateFormulaFields(ctx context.Context, object *Object, id string) error {
+	if len(object.immediateFormulaFields) == 0 {
+		return nil
+	}
+	for _, field := range object.immediateFormulaFields {
+		err := o.formulaHandler(ctx, object, id, &relationFiledInfo{
+			ThroughField: nil,
+			TargetField:  field,
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (o *Objectql) initInsertRowIndex(ctx context.Context, object *Object, doc map[string]interface{}, pos *IndexPosition) error {

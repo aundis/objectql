@@ -83,6 +83,13 @@ func (o *Objectql) formulaHandler(ctx context.Context, object *Object, id string
 		}
 		for _, item := range list {
 			runner := formula.NewRunner()
+			// 添加自定义的方法
+			for name, fun := range o.formulaCustomerFunction {
+				item[name] = fun
+			}
+			// 添加上下文信息
+			item["objectApi"] = target.Api
+			item["fieldApi"] = info.TargetField.Api
 			runner.SetThis(item)
 			value, err := runner.Resolve(ctx, formulaData.sourceCode.Expression)
 			if err != nil {

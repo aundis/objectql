@@ -45,6 +45,8 @@ func New(optinos ...ObjectqlOptiosn) *Objectql {
 		// owner
 		operatorObject: option.OperatorObject,
 		getOperator:    option.GetOperator,
+		// formula
+		formulaCustomerFunction: map[string]interface{}{},
 	}
 }
 
@@ -71,6 +73,12 @@ type Objectql struct {
 	// owner
 	operatorObject string
 	getOperator    func(ctx context.Context) (any, error)
+	// formula
+	formulaCustomerFunction map[string]interface{}
+}
+
+func (o *Objectql) AddFormulaFunction(name string, fun interface{}) {
+	o.formulaCustomerFunction[name] = fun
 }
 
 func (o *Objectql) AddObject(object *Object) {
@@ -181,6 +189,8 @@ func (o *Objectql) InitObjects(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
+		// 初始化 immediate 的字段
+		v.immediateFormulaFields = o.getImmediateFormulaFields(v)
 		// 初始化DeleteSync
 		err = o.initObjectDeleteSync(v)
 		if err != nil {
@@ -214,6 +224,20 @@ func (o *Objectql) InitObjects(ctx context.Context) error {
 		}),
 	})
 	return err
+}
+
+func (o *Objectql) getImmediateFormulaFields(object *Object) []*Field {
+	var result []*Field
+	for _, field := range object.Fields {
+		switch n := field.Type.(type) {
+		case *FormulaType:
+			if n.immediate {
+				result = append(result, field)
+			}
+		}
+
+	}
+	return result
 }
 
 func (o *Objectql) isMutationHandle(object string, name string) bool {
@@ -369,6 +393,8 @@ func (o *Objectql) parseFormulaField(object *Object, field *Field) error {
 		return err
 	}
 	fdata.referenceFields = names
+	fdata.immediate = len(names) == 0
+
 	// 字段挂载
 	for _, name := range names {
 		arr := strings.Split(name, ".")

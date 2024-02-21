@@ -8,6 +8,8 @@ github.com/aundis/formula v1.0.21 h1:OaJxT3K41TbDG1iWtcGHBqCuKTSbdD/kra3spIxbUug
 github.com/aundis/formula v1.0.21/go.mod h1:r6iKNac1NK4cRuyJ9+4ct82YJHTxaateq1/xeUZyswA=
 github.com/aundis/formula v1.0.22 h1:JCnkE5+pRqED6u5ADB84I3mdsCRSw2lAujcTonLg95k=
 github.com/aundis/formula v1.0.22/go.mod h1:r6iKNac1NK4cRuyJ9+4ct82YJHTxaateq1/xeUZyswA=
+github.com/aundis/formula v1.0.23 h1:X36LJaRaT+fyJ5mfkqidMxtZFOOE095ptfjhZdQ7dDs=
+github.com/aundis/formula v1.0.23/go.mod h1:r6iKNac1NK4cRuyJ9+4ct82YJHTxaateq1/xeUZyswA=
 github.com/aundis/graphql v1.0.0 h1:LXOKoSmD9SCpCN8Uj78YOdQnW18ruL+QxBhndZD11r0=
 github.com/aundis/graphql v1.0.0/go.mod h1:BmwH8u3bgE2UBjHJw3TfxvjLYbCVlm1ZaPW3q+eYlVQ=
 github.com/clbanning/mxj/v2 v2.5.5 h1:oT81vUeEiQQ/DcHbzSytRngP6Ky9O+L+0Bw0zSJag9E=

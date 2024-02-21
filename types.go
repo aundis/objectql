@@ -11,16 +11,17 @@ import (
 )
 
 type Object struct {
-	Name       string
-	Api        string
-	Fields     []*Field
-	Comment    string
-	Bind       any
-	Querys     []*Handle
-	Mutations  []*Handle
-	hasPrimary interface{}
-	Index      bool
-	IndexGroup []string
+	Name                   string
+	Api                    string
+	Fields                 []*Field
+	Comment                string
+	Bind                   any
+	Querys                 []*Handle
+	Mutations              []*Handle
+	hasPrimary             interface{}
+	Index                  bool
+	IndexGroup             []string
+	immediateFormulaFields []*Field
 }
 
 type Handle struct {
@@ -141,8 +142,10 @@ func NewRelate(api string) *RelateType {
 func (t *RelateType) aType() {}
 
 type FormulaType struct {
-	Formula         string
-	Type            Type
+	Formula string
+	Type    Type
+
+	immediate       bool
 	sourceCode      *formula.SourceCode
 	referenceFields []string // 公式引用到的字段
 }

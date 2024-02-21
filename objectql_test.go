@@ -1983,3 +1983,140 @@ func TestGetObjectMetaInfo(t *testing.T) {
 		return
 	}
 }
+
+func TestCustomerFormulaFunction(t *testing.T) {
+	list := []*Object{
+		{
+			Name: "学生",
+			Api:  "student",
+			Fields: []*Field{
+				{
+					Name: "姓名",
+					Api:  "name",
+					Type: String,
+				},
+				{
+					Name: "年龄",
+					Api:  "age",
+					Type: Int,
+				},
+				{
+					Name: "计算值",
+					Api:  "value",
+					Type: NewFormula(Int, "add10(age)"),
+				},
+			},
+			Comment: "",
+		},
+	}
+	err := testTransaction(list, func(ctx context.Context, oql *Objectql) error {
+		oql.AddFormulaFunction("add10", func(v int) (int, error) {
+			return v + 10, nil
+		})
+
+		res, err := oql.DoCommands(ctx, []Command{
+			{
+				Call: "student.insert",
+				Args: M{
+					"doc": M{
+						"name": "老陈",
+						"age":  55,
+					},
+				},
+				Fields: []string{
+					"_id",
+				},
+				Result: "student1",
+			},
+			{
+				Call: "student.findOneById",
+				Args: M{
+					"id": M{"$formula": "student1._id"},
+				},
+				Fields: []string{
+					"_id",
+					"value",
+				},
+				Result: "student1_1",
+			},
+		})
+		if err != nil {
+			return gerror.Wrap(err, err.Error())
+		}
+		if res.Int("student1_1.value") != 65 {
+			return gerror.Newf("except 65 but got %d", res.Int("student1_1.value"))
+		}
+		return nil
+	})
+	if err != nil {
+		t.Error(gerror.Stack(err))
+		return
+	}
+}
+
+func TestImmediateFormula(t *testing.T) {
+	list := []*Object{
+		{
+			Name: "学生",
+			Api:  "student",
+			Fields: []*Field{
+				{
+					Name: "姓名",
+					Api:  "name",
+					Type: String,
+				},
+				{
+					Name: "年龄",
+					Api:  "age",
+					Type: Int,
+				},
+				{
+					Name: "计算值",
+					Api:  "value",
+					Type: NewFormula(Int, "10 + 20"),
+				},
+			},
+			Comment: "",
+		},
+	}
+	err := testTransaction(list, func(ctx context.Context, oql *Objectql) error {
+
+		res, err := oql.DoCommands(ctx, []Command{
+			{
+				Call: "student.insert",
+				Args: M{
+					"doc": M{
+						"name": "老陈",
+						"age":  55,
+					},
+				},
+				Fields: []string{
+					"_id",
+				},
+				Result: "student1",
+			},
+			{
+				Call: "student.findOneById",
+				Args: M{
+					"id": M{"$formula": "student1._id"},
+				},
+				Fields: []string{
+					"_id",
+					"value",
+				},
+				Result: "student1_1",
+			},
+		})
+		if err != nil {
+			return gerror.Wrap(err, err.Error())
+		}
+		if res.Int("student1_1.value") != 30 {
+			return gerror.Newf("except 30 but got %d", res.Int("student1_1.value"))
+		}
+		return nil
+	})
+	if err != nil {
+		t.Error(gerror.Stack(err))
+		return
+	}
+}
