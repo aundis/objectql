@@ -43,6 +43,6 @@ require (
 )
 
 require (
-	github.com/aundis/formula v1.0.25
+	github.com/aundis/formula v1.0.26
 	github.com/gogf/gf/v2 v2.4.4
 )
