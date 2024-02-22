@@ -145,3 +145,11 @@ func writeJSONToFile(filename string, data interface{}) error {
 
 	return ioutil.WriteFile(filename, jsonData, 0644)
 }
+
+func copyStrAnyMap(original map[string]interface{}) map[string]interface{} {
+	copied := make(map[string]interface{})
+	for key, value := range original {
+		copied[key] = value
+	}
+	return copied
+}

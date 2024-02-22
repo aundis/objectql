@@ -18,6 +18,7 @@ func (o *Objectql) insertHandle(ctx context.Context, api string, doc map[string]
 }
 
 func (o *Objectql) insertHandleRaw(ctx context.Context, api string, doc map[string]interface{}, pos *IndexPosition) (string, error) {
+	doc = copyStrAnyMap(doc)
 	object := FindObjectFromList(o.list, api)
 	if object == nil {
 		return "", ErrNotFoundObject
