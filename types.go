@@ -399,8 +399,6 @@ var graphqlAny = graphql.NewScalar(graphql.ScalarConfig{
 	},
 })
 
-var Null = &struct{}{}
-
 type IndexPosition struct {
 	Index    int
 	Dir      int  // 1=down -1=up 0=自动判断

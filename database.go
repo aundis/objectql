@@ -107,20 +107,41 @@ func (o *Objectql) mongoCount(ctx context.Context, table string, filter bson.M) 
 }
 
 func (o *Objectql) mongoInsert(ctx context.Context, table string, doc bson.M) (string, error) {
-	insertResult, err := o.getCollection(table).InsertOne(ctx, doc)
+	// nil 值不设置 $set
+	set := bson.M{}
+	for k, v := range doc {
+		if !isNull(v) {
+			set[k] = v
+		}
+	}
+
+	insertResult, err := o.getCollection(table).InsertOne(ctx, set)
 	if err != nil {
 		return "", err
 	}
 	return insertResult.InsertedID.(primitive.ObjectID).Hex(), nil
 }
 
+// 如果是NULL则会执行 $unset
 func (o *Objectql) mongoUpdateById(ctx context.Context, table string, id string, doc bson.M) (int64, error) {
+	// 分离出$set 和 $unset 不修改原有map
+	set := bson.M{}
+	unset := bson.M{}
+	for k, v := range doc {
+		if isNull(v) {
+			unset[k] = 1
+		} else {
+			set[k] = v
+		}
+	}
+
 	objectId, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		return 0, err
 	}
 	result, err := o.getCollection(table).UpdateByID(ctx, objectId, bson.M{
-		"$set": doc,
+		"$set":   set,
+		"$unset": unset,
 	})
 	if err != nil {
 		return 0, err

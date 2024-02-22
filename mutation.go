@@ -281,9 +281,7 @@ func (o *Objectql) initDefaultValues(fields []*Field, doc map[string]interface{}
 		if field.Default == nil || !isNull(doc[field.Api]) {
 			continue
 		}
-		if field.Default == Null {
-			doc[field.Api] = nil
-		} else {
+		if field.Default != nil {
 			doc[field.Api] = field.Default
 		}
 	}
