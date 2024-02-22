@@ -297,6 +297,7 @@ func (o *Objectql) updateHandle(ctx context.Context, api string, id string, doc 
 }
 
 func (o *Objectql) updateHandleRaw(ctx context.Context, api string, id string, doc map[string]interface{}, permissionBlock bool) error {
+	doc = copyStrAnyMap(doc)
 	var err error
 	// var err error
 	object := FindObjectFromList(o.list, api)
