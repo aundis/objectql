@@ -1470,7 +1470,7 @@ func getFieldTypeMeta(tpe Type) string {
 
 func getFieldReadonlyMeta(field *Field) bool {
 	switch field.Api {
-	case "owver", "createTime", "updateTime", "__index":
+	case "owner", "createTime", "updateTime", "__index":
 		return true
 	}
 	switch field.Type.(type) {
