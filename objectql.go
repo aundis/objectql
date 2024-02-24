@@ -1431,7 +1431,7 @@ func (o *Objectql) GetObjectMetaInfo(objectApi string) *ObjectMetaInfo {
 			Name:        field.Name,
 			Api:         field.Api,
 			Type:        getFieldTypeMeta(field.Type),
-			Readonly:    getFieldReadonlyMeta(field.Type),
+			Readonly:    getFieldReadonlyMeta(field),
 			Select:      field.Select,
 			SelectFrom:  field.SelectFrom,
 			SelectLabel: field.SelectLabel,
@@ -1468,8 +1468,12 @@ func getFieldTypeMeta(tpe Type) string {
 	return ""
 }
 
-func getFieldReadonlyMeta(tpe Type) bool {
-	switch tpe.(type) {
+func getFieldReadonlyMeta(field *Field) bool {
+	switch field.Api {
+	case "owver", "createTime", "updateTime", "__index":
+		return true
+	}
+	switch field.Type.(type) {
 	case *FormulaType, *AggregationType:
 		return true
 	}
