@@ -34,27 +34,31 @@ type Handle struct {
 }
 
 type Field struct {
-	Parent                   *Object
-	Primary                  bool
-	Require                  any
-	RequireMsg               string
-	Validate                 any
-	ValidateMsg              string
-	DeleteSync               bool
-	Type                     Type
-	Name                     string
-	Api                      string
-	Comment                  string
-	Default                  any
-	Select                   []SelectOption
-	SelectFrom               *SelectValueFrom
-	SelectLabel              string
-	valueApi                 string
-	relations                []*relationFiledInfo
-	requireSourceCode        *formula.SourceCode // 公式计算是否必填
-	requireSourceCodeFields  []string            // 公式计算中需要的字段
-	validateSourceCode       *formula.SourceCode // 数据验证公式
-	validateSourceCodeFields []string            // 数据验证需要的字段
+	Parent                     *Object
+	Primary                    bool
+	Require                    any
+	RequireMsg                 string
+	Validate                   any
+	ValidateMsg                string
+	Updateable                 any
+	UpdateableMsg              string
+	DeleteSync                 bool
+	Type                       Type
+	Name                       string
+	Api                        string
+	Comment                    string
+	Default                    any
+	Select                     []SelectOption
+	SelectFrom                 *SelectValueFrom
+	SelectLabel                string
+	valueApi                   string
+	relations                  []*relationFiledInfo
+	requireSourceCode          *formula.SourceCode // 公式计算是否必填
+	requireSourceCodeFields    []string            // 公式计算中需要的字段
+	validateSourceCode         *formula.SourceCode // 数据验证公式
+	validateSourceCodeFields   []string            // 数据验证需要的字段
+	updateableSourceCode       *formula.SourceCode // 可编辑验证公式
+	updateableSourceCodeFields []string            // 可编辑验证需要的字段
 }
 
 type SelectOption struct {
@@ -74,6 +78,11 @@ type FieldReqireCheckHandle struct {
 }
 
 type FieldValidateHandle struct {
+	Fields []string
+	Handle func(ctx context.Context, cur *Var) error
+}
+
+type FieldUpdateableHandle struct {
 	Fields []string
 	Handle func(ctx context.Context, cur *Var) error
 }

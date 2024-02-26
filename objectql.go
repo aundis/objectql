@@ -271,6 +271,11 @@ func (o *Objectql) parseFields() (err error) {
 			if err != nil {
 				return err
 			}
+			// 字段可修改校验
+			err = o.parseFieldUpdateable(object, field)
+			if err != nil {
+				return err
+			}
 			// 解析统计和公式字段
 			switch field.Type.(type) {
 			case *AggregationType:
@@ -281,6 +286,30 @@ func (o *Objectql) parseFields() (err error) {
 			if err != nil {
 				return fmt.Errorf("parse field %s.%s error: %s", object.Api, field.Api, err.Error())
 			}
+		}
+	}
+	return nil
+}
+
+func (o *Objectql) parseFieldUpdateable(object *Object, field *Field) error {
+	if field.Updateable != nil {
+		switch n := field.Updateable.(type) {
+		case string:
+			souceCode, err := formula.ParseSourceCode([]byte(n + " ? true : false"))
+			if err != nil {
+				return err
+			}
+			field.updateableSourceCode = souceCode
+			fields, err := formula.ResolveReferenceFields(souceCode)
+			if err != nil {
+				return err
+			}
+			// 同时要把自己加进去
+			field.updateableSourceCodeFields = append(fields, field.Api)
+		case *FieldUpdateableHandle:
+			n.Fields = append(n.Fields, field.Api)
+		default:
+			return fmt.Errorf("%s.%s updateable value error: field updateable juse support string or *FieldUpdateableHandle", object.Api, field.Api)
 		}
 	}
 	return nil

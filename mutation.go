@@ -418,6 +418,11 @@ func (o *Objectql) updateHandleRaw(ctx context.Context, api string, id string, d
 	if err != nil {
 		return err
 	}
+	// updateable 校验
+	err = o.checkFieldFormulaOrHandledUpdateables(ctx, object, after, before)
+	if err != nil {
+		return err
+	}
 	// updateAfter 事件触发
 	if ctx.Value(blockEventsKey) != true {
 		err = o.triggerUpdateAfter(ctx, api, id, NewVar(doc))
@@ -692,6 +697,10 @@ func (o *Objectql) queryEventObjectEntity(ctx context.Context, object *Object, i
 		qFields = append(qFields, o.getObjectRequireQueryFields(object)...)
 		qFields = append(qFields, o.getObjectValidateQueryFields(object)...)
 		qFields = append(qFields, o.getObjectPrimaryFieldQuerys(object)...)
+	}
+	// updateable 中需要查询的字段
+	if position == UpdateBefore || position == UpdateAfter {
+		qFields = append(qFields, o.getObjectUpdateableQueryFields(object)...)
 	}
 	if len(qFields) == 0 {
 		return nil, true, nil
