@@ -1432,6 +1432,7 @@ func (o *Objectql) GetObjectMetaInfo(objectApi string) *ObjectMetaInfo {
 			Api:         field.Api,
 			Type:        getFieldTypeMeta(field.Type),
 			Readonly:    getFieldReadonlyMeta(field),
+			Require:     field.Require,
 			Select:      field.Select,
 			SelectFrom:  field.SelectFrom,
 			SelectLabel: field.SelectLabel,

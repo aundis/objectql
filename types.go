@@ -296,6 +296,7 @@ type FieldMetaInfo struct {
 	Api         string           `json:"api"`
 	Type        string           `json:"type"`
 	Readonly    bool             `json:"readonly"`
+	Require     interface{}      `json:"require"`
 	Select      []SelectOption   `json:"select"`
 	SelectFrom  *SelectValueFrom `json:"selectFrom"`
 	SelectLabel string           `json:"selectLabel"`
