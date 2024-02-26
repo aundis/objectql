@@ -8,15 +8,18 @@ import (
 	"github.com/gogf/gf/v2/util/gconv"
 )
 
-func (o *Objectql) checkFieldFormulaOrHandledUpdateables(ctx context.Context, object *Object, cur *Var, before *Var) error {
-	for _, field := range object.Fields {
-		if field.Updateable != nil {
-			switch n := field.Updateable.(type) {
-			case string:
-				return o.checkFieldFormulaUpdateable(ctx, field, cur, before)
-			case *FieldUpdateableHandle:
-				return o.checkFieldHandleUpdateable(ctx, field, n, cur, before)
-			}
+// 只检测有改动的字段
+func (o *Objectql) checkFieldFormulaOrHandledUpdateables(ctx context.Context, object *Object, doc M, cur *Var, before *Var) error {
+	for k := range doc {
+		field := object.getField(k)
+		if field.Updateable == nil {
+			continue
+		}
+		switch n := field.Updateable.(type) {
+		case string:
+			return o.checkFieldFormulaUpdateable(ctx, field, cur, before)
+		case *FieldUpdateableHandle:
+			return o.checkFieldHandleUpdateable(ctx, field, n, cur, before)
 		}
 	}
 	return nil
@@ -64,9 +67,10 @@ func (o *Objectql) checkFieldHandleUpdateable(ctx context.Context, field *Field,
 	return fmt.Errorf("字段<%s>禁止修改: %s", field.Name, errs[0].Error())
 }
 
-func (o *Objectql) getObjectUpdateableQueryFields(object *Object) []string {
+func (o *Objectql) getObjectUpdateableQueryFields(object *Object, doc M) []string {
 	var result []string
-	for _, field := range object.Fields {
+	for k := range doc {
+		field := object.getField(k)
 		switch n := field.Updateable.(type) {
 		case string:
 			result = append(result, field.updateableSourceCodeFields...)

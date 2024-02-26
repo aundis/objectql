@@ -101,7 +101,7 @@ func (o *Objectql) insertHandleRaw(ctx context.Context, api string, doc map[stri
 	// after 数据查询
 	var after *Var
 	if ctx.Value(blockEventsKey) != true {
-		after, _, err = o.queryEventObjectEntity(ctx, object, objectIdStr, InsertAfter)
+		after, _, err = o.queryEventObjectEntity(ctx, object, objectIdStr, doc, InsertAfter)
 		if err != nil {
 			return "", err
 		}
@@ -112,12 +112,12 @@ func (o *Objectql) insertHandleRaw(ctx context.Context, api string, doc map[stri
 		return "", err
 	}
 	// require 校验
-	err = o.checkFieldFormulaOrHandledRequires(ctx, object, after)
+	err = o.checkInsertFieldFormulaOrHandledRequires(ctx, object, after)
 	if err != nil {
 		return "", err
 	}
 	// validate 校验
-	err = o.checkFieldFormulaOrHandledValidates(ctx, object, after)
+	err = o.checkFieldFormulaOrHandledValidates(ctx, object, doc, after)
 	if err != nil {
 		return "", err
 	}
@@ -320,7 +320,7 @@ func (o *Objectql) updateHandleRaw(ctx context.Context, api string, id string, d
 	var before *Var
 	if ctx.Value(blockEventsKey) != true {
 		var exists bool
-		before, exists, err = o.queryEventObjectEntity(ctx, object, id, UpdateBefore)
+		before, exists, err = o.queryEventObjectEntity(ctx, object, id, doc, UpdateBefore)
 		if err != nil {
 			return err
 		}
@@ -398,7 +398,7 @@ func (o *Objectql) updateHandleRaw(ctx context.Context, api string, id string, d
 	// after 值查询
 	var after *Var
 	if ctx.Value(blockEventsKey) != true {
-		after, _, err = o.queryEventObjectEntity(ctx, object, id, UpdateAfter)
+		after, _, err = o.queryEventObjectEntity(ctx, object, id, doc, UpdateAfter)
 		if err != nil {
 			return err
 		}
@@ -409,17 +409,17 @@ func (o *Objectql) updateHandleRaw(ctx context.Context, api string, id string, d
 		return err
 	}
 	// require 校验
-	err = o.checkFieldFormulaOrHandledRequires(ctx, object, after)
+	err = o.checkUpdateFieldFormulaOrHandledRequires(ctx, object, doc, after)
 	if err != nil {
 		return err
 	}
 	// validate 校验
-	err = o.checkFieldFormulaOrHandledValidates(ctx, object, after)
+	err = o.checkFieldFormulaOrHandledValidates(ctx, object, doc, after)
 	if err != nil {
 		return err
 	}
 	// updateable 校验
-	err = o.checkFieldFormulaOrHandledUpdateables(ctx, object, after, before)
+	err = o.checkFieldFormulaOrHandledUpdateables(ctx, object, doc, after, before)
 	if err != nil {
 		return err
 	}
@@ -468,7 +468,7 @@ func (o *Objectql) deleteHandleRaw(ctx context.Context, api string, id string) e
 	var before *Var
 	if ctx.Value(blockEventsKey) != true {
 		var exists bool
-		before, exists, err = o.queryEventObjectEntity(ctx, object, id, DeleteBefore)
+		before, exists, err = o.queryEventObjectEntity(ctx, object, id, nil, DeleteBefore)
 		if err != nil {
 			return err
 		}
@@ -581,7 +581,7 @@ func (o *Objectql) moveHandleRaw(ctx context.Context, api string, id string, pos
 	// before 查询
 	var before *Var
 	if ctx.Value(blockEventsKey) != true {
-		before, _, err = o.queryEventObjectEntity(ctx, object, id, IndexMoveBefore)
+		before, _, err = o.queryEventObjectEntity(ctx, object, id, nil, IndexMoveBefore)
 		if err != nil {
 			return err
 		}
@@ -615,7 +615,7 @@ func (o *Objectql) moveHandleRaw(ctx context.Context, api string, id string, pos
 	// after 查询
 	var after *Var
 	if ctx.Value(blockEventsKey) != true {
-		after, _, err = o.queryEventObjectEntity(ctx, object, id, IndexMoveAfter)
+		after, _, err = o.queryEventObjectEntity(ctx, object, id, nil, IndexMoveAfter)
 		if err != nil {
 			return err
 		}
@@ -689,18 +689,23 @@ func (o *Objectql) indexOffset(ctx context.Context, table string, group M, index
 	return nil
 }
 
-func (o *Objectql) queryEventObjectEntity(ctx context.Context, object *Object, id string, position EventPosition) (*Var, bool, error) {
+func (o *Objectql) queryEventObjectEntity(ctx context.Context, object *Object, id string, doc M, position EventPosition) (*Var, bool, error) {
 	// event 中需要查询的字段
 	qFields := o.getListenQueryFields(ctx, object.Api, position)
 	// require, validate 中需要查询的字段
-	if position == InsertAfter || position == UpdateAfter {
+	if position == InsertAfter {
 		qFields = append(qFields, o.getObjectRequireQueryFields(object)...)
-		qFields = append(qFields, o.getObjectValidateQueryFields(object)...)
+		qFields = append(qFields, o.getEffectValidateFieldsQuerys(object, doc)...)
+		qFields = append(qFields, o.getObjectPrimaryFieldQuerys(object)...)
+	}
+	if position == UpdateAfter {
+		qFields = append(qFields, o.getEffectRequireFieldsQuerys(object, doc)...)
+		qFields = append(qFields, o.getEffectValidateFieldsQuerys(object, doc)...)
 		qFields = append(qFields, o.getObjectPrimaryFieldQuerys(object)...)
 	}
 	// updateable 中需要查询的字段
 	if position == UpdateBefore || position == UpdateAfter {
-		qFields = append(qFields, o.getObjectUpdateableQueryFields(object)...)
+		qFields = append(qFields, o.getObjectUpdateableQueryFields(object, doc)...)
 	}
 	if len(qFields) == 0 {
 		return nil, true, nil

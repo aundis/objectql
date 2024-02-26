@@ -22,6 +22,19 @@ type Object struct {
 	Index                  bool
 	IndexGroup             []string
 	immediateFormulaFields []*Field
+	fieldMapCache          map[string]*Field
+}
+
+func (o *Object) getField(api string) *Field {
+	if o.fieldMapCache == nil {
+		o.fieldMapCache = map[string]*Field{}
+	}
+	if v, ok := o.fieldMapCache[api]; ok {
+		return v
+	}
+	field := FindFieldFromObject(o, api)
+	o.fieldMapCache[api] = field
+	return field
 }
 
 type Handle struct {
