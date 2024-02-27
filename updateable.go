@@ -17,9 +17,15 @@ func (o *Objectql) checkFieldFormulaOrHandledUpdateables(ctx context.Context, ob
 		}
 		switch n := field.Updateable.(type) {
 		case string:
-			return o.checkFieldFormulaUpdateable(ctx, field, cur, before)
+			err := o.checkFieldFormulaUpdateable(ctx, field, cur, before)
+			if err != nil {
+				return err
+			}
 		case *FieldUpdateableHandle:
-			return o.checkFieldHandleUpdateable(ctx, field, n, cur, before)
+			err := o.checkFieldHandleUpdateable(ctx, field, n, cur, before)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil

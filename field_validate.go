@@ -18,9 +18,15 @@ func (o *Objectql) checkFieldFormulaOrHandledValidates(ctx context.Context, obje
 		}
 		switch n := field.Validate.(type) {
 		case string:
-			return o.checkFieldFormulaValidate(ctx, field, cur)
+			err := o.checkFieldFormulaValidate(ctx, field, cur)
+			if err != nil {
+				return err
+			}
 		case *FieldValidateHandle:
-			return o.checkFieldHandleValidate(ctx, n, cur)
+			err := o.checkFieldHandleValidate(ctx, n, cur)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil

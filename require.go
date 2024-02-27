@@ -14,7 +14,7 @@ func (o *Objectql) checkInsertFieldBoolRequires(object *Object, doc M) error {
 	for _, f := range object.Fields {
 		if f.Require == true {
 			if v, ok := doc[f.Api]; !ok || isNull(v) {
-				return fmt.Errorf("object %s field %s is require", object.Api, f.Api)
+				return fmt.Errorf("字段<%s>是必填的: %s", f.Name, f.RequireMsg)
 			}
 		}
 	}
@@ -26,7 +26,7 @@ func (o *Objectql) checkUpdateFieldBoolRequires(object *Object, doc M) error {
 	for _, f := range object.Fields {
 		if f.Require == true {
 			if v, ok := doc[f.Api]; ok && isNull(v) {
-				return fmt.Errorf("object %s field %s is require", object.Api, f.Api)
+				return fmt.Errorf("字段<%s>是必填的: %s", f.Name, f.RequireMsg)
 			}
 		}
 	}
@@ -47,9 +47,15 @@ func (o *Objectql) checkInsertFieldFormulaOrHandledRequires(ctx context.Context,
 			}
 			switch n := field.Require.(type) {
 			case string:
-				return o.checkFieldFormulaRequires(ctx, field, cur)
+				err := o.checkFieldFormulaRequires(ctx, field, cur)
+				if err != nil {
+					return err
+				}
 			case *FieldReqireCheckHandle:
-				return o.checkFieldHandleeRequires(ctx, n, cur)
+				err := o.checkFieldHandleeRequires(ctx, n, cur)
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -64,9 +70,15 @@ func (o *Objectql) checkUpdateFieldFormulaOrHandledRequires(ctx context.Context,
 		}
 		switch n := field.Require.(type) {
 		case string:
-			return o.checkFieldFormulaRequires(ctx, field, cur)
+			err := o.checkFieldFormulaRequires(ctx, field, cur)
+			if err != nil {
+				return err
+			}
 		case *FieldReqireCheckHandle:
-			return o.checkFieldHandleeRequires(ctx, n, cur)
+			err := o.checkFieldHandleeRequires(ctx, n, cur)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
