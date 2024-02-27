@@ -40,7 +40,7 @@ func isBoolRequire(field *Field) bool {
 
 func (o *Objectql) checkInsertFieldFormulaOrHandledRequires(ctx context.Context, object *Object, cur *Var) error {
 	for _, field := range object.Fields {
-		if isHandleRequire(field) {
+		if field.Require != nil && !isBoolRequire(field) {
 			// 字段非空不需要再进行校验
 			if !cur.isNull(field.Api) {
 				continue
