@@ -144,6 +144,10 @@ func formatDateTimeValueToDatebase(v interface{}) (interface{}, error) {
 }
 
 func formatArrayValueToDatebase(at *ArrayType, v interface{}) (interface{}, error) {
+	if isNull(v) {
+		return nil, nil
+	}
+
 	sourceValue := reflect.ValueOf(v)
 	if sourceValue.Type() != nil && sourceValue.Type().Kind() != reflect.Array && sourceValue.Type().Kind() != reflect.Slice {
 		return nil, fmt.Errorf("formatArrayValueToDatebase can't conv type %T to array", v)
