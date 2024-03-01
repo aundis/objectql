@@ -342,6 +342,7 @@ type FieldMetaInfo struct {
 	Readonly    bool             `json:"readonly"`
 	Require     interface{}      `json:"require"`
 	Default     any              `json:"default" `
+	Dynamic     bool             `json:"dynamic"`
 	Select      []SelectOption   `json:"select"`
 	SelectFrom  *SelectValueFrom `json:"selectFrom"`
 	SelectLabel string           `json:"selectLabel"`

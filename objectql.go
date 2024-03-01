@@ -1466,6 +1466,7 @@ func (o *Objectql) GetObjectMetaInfo(objectApi string) *ObjectMetaInfo {
 			Api:         field.Api,
 			Type:        getFieldTypeMeta(field.Type),
 			Readonly:    getFieldReadonlyMeta(field),
+			Dynamic:     field.Resolve != nil,
 			Require:     field.Require,
 			Default:     field.Default,
 			Select:      field.Select,
@@ -1511,6 +1512,9 @@ func getFieldReadonlyMeta(field *Field) bool {
 	}
 	switch field.Type.(type) {
 	case *FormulaType, *AggregationType:
+		return true
+	}
+	if field.Resolve != nil {
 		return true
 	}
 	return false
