@@ -802,6 +802,11 @@ func (o *Objectql) getGrpahqlObjectMutationForm(object *Object) graphql.Input {
 		if cur.Api == "_id" || cur.Api == "__aggregate" {
 			continue
 		}
+		// 定义resolve的为动态字段，不允许进行修改
+		if cur.Resolve != nil {
+			continue
+		}
+		//
 		switch cur.Type.(type) {
 		// case *ExpandType, *ExpandsType, *FormulaType, *AggregationType:
 		case *ExpandType, *ExpandsType:

@@ -23,18 +23,37 @@ type Object struct {
 	IndexGroup             []string
 	immediateFormulaFields []*Field
 	fieldMapCache          map[string]*Field
+	fieldDependencyCache   map[string][]string
+
+	// mutext *gmutex.Mutex
 }
 
 func (o *Object) getField(api string) *Field {
+	// o.mutext.Lock()
+	// defer o.mutext.Unlock()
+
 	if o.fieldMapCache == nil {
 		o.fieldMapCache = map[string]*Field{}
+		for _, field := range o.Fields {
+			o.fieldMapCache[field.Api] = field
+		}
 	}
-	if v, ok := o.fieldMapCache[api]; ok {
-		return v
+	return o.fieldMapCache[api]
+}
+
+func (o *Object) getReoslveDependencyFields(fapi string) []string {
+	// o.mutext.Lock()
+	// defer o.mutext.Unlock()
+
+	if o.fieldDependencyCache == nil {
+		o.fieldDependencyCache = map[string][]string{}
+		for _, field := range o.Fields {
+			if len(field.Fields) > 0 {
+				o.fieldDependencyCache[field.Api] = field.Fields
+			}
+		}
 	}
-	field := FindFieldFromObject(o, api)
-	o.fieldMapCache[api] = field
-	return field
+	return o.fieldDependencyCache[fapi]
 }
 
 type Handle struct {
@@ -47,23 +66,26 @@ type Handle struct {
 }
 
 type Field struct {
-	Parent                     *Object
-	Primary                    bool
-	Require                    any
-	RequireMsg                 string
-	Validate                   any
-	ValidateMsg                string
-	Updateable                 any
-	UpdateableMsg              string
-	DeleteSync                 bool
-	Type                       Type
-	Name                       string
-	Api                        string
-	Comment                    string
-	Default                    any
-	Select                     []SelectOption
-	SelectFrom                 *SelectValueFrom
-	SelectLabel                string
+	Parent        *Object
+	Primary       bool
+	Require       any
+	RequireMsg    string
+	Validate      any
+	ValidateMsg   string
+	Updateable    any
+	UpdateableMsg string
+	DeleteSync    bool
+	Type          Type
+	Name          string
+	Api           string
+	Comment       string
+	Default       any
+	Select        []SelectOption
+	SelectFrom    *SelectValueFrom
+	SelectLabel   string
+	Fields        []string // resolve 依赖的字段
+	Resolve       func(map[string]any) (interface{}, error)
+
 	valueApi                   string
 	relations                  []*relationFiledInfo
 	requireSourceCode          *formula.SourceCode // 公式计算是否必填

@@ -290,11 +290,15 @@ func (o *Objectql) mongoFindAllEx(ctx context.Context, table string, options fin
 	// 提取排序里面的字段
 	sortFields := getSortReferenceFields(options.Fields)
 
+	// 提取自定义Resolve字段的依赖字段
+	deptFields := getReoslveDependencyFields(object, options.Fields)
+
 	// Merge fields
 	var fields []string
 	fields = append(fields, filterFields...)
 	fields = append(fields, options.Fields...)
 	fields = append(fields, sortFields...)
+	fields = append(fields, deptFields...)
 
 	// merge fields into a nested map
 	fieldsMap := mergeFields(fields)
@@ -359,6 +363,17 @@ func (o *Objectql) mongoFindAllEx(ctx context.Context, table string, options fin
 		return nil, err
 	}
 	return clear.([]M), nil
+}
+
+func getReoslveDependencyFields(object *Object, fields []string) []string {
+	var result []string
+	for _, fapi := range fields {
+		depts := object.getReoslveDependencyFields(fapi)
+		if len(depts) > 0 {
+			result = append(result, depts...)
+		}
+	}
+	return result
 }
 
 func (o *Objectql) formatListWithObject(object *Object, list []M) error {

@@ -47,6 +47,7 @@ func New(optinos ...ObjectqlOptiosn) *Objectql {
 		getOperator:    option.GetOperator,
 		// formula
 		formulaCustomerFunction: map[string]interface{}{},
+		// mutex
 	}
 }
 
@@ -546,6 +547,10 @@ func (o *Objectql) graphqlFieldResolver(ctx context.Context, p graphql.ResolvePa
 		if !has {
 			return nil, nil
 		}
+	}
+	// 自定义动态数据获取
+	if field.Resolve != nil {
+		return field.Resolve(source)
 	}
 	return source[field.Api], nil
 

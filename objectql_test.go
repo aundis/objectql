@@ -9,6 +9,7 @@ import (
 
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/os/gctx"
+	"github.com/gogf/gf/v2/util/gconv"
 	"github.com/gogf/gf/v2/util/guid"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -2161,6 +2162,68 @@ func TestInitFormulaRelations(t *testing.T) {
 		field := FindFieldFromObject(b, "number")
 		if len(field.relations) != 1 {
 			return gerror.Newf("except 1 but got %d", len(field.relations))
+		}
+		return nil
+	})
+	if err != nil {
+		t.Error(gerror.Stack(err))
+		return
+	}
+}
+
+func TestFieldResolve(t *testing.T) {
+	list := []*Object{
+		{
+			Name: "a",
+			Api:  "a",
+			Fields: []*Field{
+				{
+					Name: "age",
+					Api:  "age",
+					Type: Int,
+				},
+				{
+					Name:   "value",
+					Api:    "value",
+					Type:   Int,
+					Fields: []string{"b"},
+					Resolve: func(m map[string]any) (interface{}, error) {
+						return gconv.Int(m["age"]) + 100, nil
+					},
+				},
+			},
+			Comment: "",
+		},
+	}
+	err := testTransaction(list, func(ctx context.Context, oql *Objectql) error {
+		res, err := oql.DoCommands(ctx, []Command{
+			{
+				Call: "a.insert",
+				Args: M{
+					"doc": M{
+						"age": 30,
+					},
+				},
+				Result: "r1",
+			},
+			{
+				Call: "a.findOneById",
+				Args: M{
+					"id": M{"$formula": "r1._id"},
+				},
+				Fields: []string{
+					"_id",
+					"age",
+					"value",
+				},
+				Result: "r2",
+			},
+		})
+		if err != nil {
+			return gerror.Wrap(err, err.Error())
+		}
+		if res.Int("r2.value") != 130 {
+			return gerror.Newf("except 130 but got %d", res.Int("r2.value"))
 		}
 		return nil
 	})
