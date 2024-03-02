@@ -2232,3 +2232,84 @@ func TestFieldResolve(t *testing.T) {
 		return
 	}
 }
+
+func TestSave(t *testing.T) {
+	list := []*Object{
+		{
+			Name: "学生",
+			Api:  "student",
+			Fields: []*Field{
+				{
+					Name:    "学号",
+					Api:     "number",
+					Type:    Int,
+					Primary: true,
+				},
+				{
+					Name:    "姓名",
+					Api:     "name",
+					Type:    String,
+					Primary: true,
+				},
+				{
+					Name:    "班级",
+					Api:     "class",
+					Type:    String,
+					Primary: true,
+				},
+				{
+					Name: "成绩",
+					Api:  "source",
+					Type: Int,
+				},
+			},
+			Comment: "",
+		},
+	}
+	err := testTransaction(list, func(ctx context.Context, oql *Objectql) error {
+		res, err := oql.DoCommands(ctx, []Command{
+			{
+				Call: "student.insert",
+				Args: M{
+					"doc": M{
+						"number": 1,
+						"name":   "小黄",
+						"class":  "三年二班",
+						"source": 99,
+					},
+				},
+				Result: "r1",
+			},
+			{
+				Call: "student.save",
+				Args: M{
+					"doc": M{
+						"number": 1,
+						"name":   "小黄",
+						"class":  "三年二班",
+						"source": 100,
+					},
+				},
+				Fields: []string{
+					"_id",
+					"source",
+				},
+				Result: "r2",
+			},
+		})
+		if err != nil {
+			return gerror.Wrap(err, err.Error())
+		}
+		if res.String("r1._id") != res.String("r2._id") {
+			return gerror.New("except _id equal")
+		}
+		if res.Int("r2.source") != 100 {
+			return gerror.New("except r2 source = 100")
+		}
+		return nil
+	})
+	if err != nil {
+		t.Error(gerror.Stack(err))
+		return
+	}
+}

@@ -24,8 +24,23 @@ type Object struct {
 	immediateFormulaFields []*Field
 	fieldMapCache          map[string]*Field
 	fieldDependencyCache   map[string][]string
+	primaryFieldsCache     any
 
 	// mutext *gmutex.Mutex
+}
+
+func (o *Object) getPrimaryFields() []*Field {
+	if o.primaryFieldsCache != nil {
+		return o.primaryFieldsCache.([]*Field)
+	}
+	var result []*Field
+	for _, field := range o.Fields {
+		if field.Primary {
+			result = append(result, field)
+		}
+	}
+	o.primaryFieldsCache = result
+	return result
 }
 
 func (o *Object) getField(api string) *Field {
@@ -282,6 +297,14 @@ type InsertArgs struct {
 	Direct   bool           `json:"direct"`
 }
 
+type SaveArgs struct {
+	Doc      map[string]any `json:"doc"`
+	Index    interface{}    `json:"index"`
+	Dir      interface{}    `json:"dir"`
+	Absolute bool           `json:"absolute"`
+	Direct   bool           `json:"direct"`
+}
+
 type UpdateByIdArgs struct {
 	ID     string         `json:"id"`
 	Doc    map[string]any `json:"doc"`
@@ -397,6 +420,15 @@ type CountOptions struct {
 }
 
 type InsertOptions struct {
+	Doc      map[string]any `json:"doc"`
+	Fields   []string       `json:"fields"`
+	Index    interface{}    `json:"index"`
+	Dir      interface{}    `json:"dir"`
+	Absolute bool           `json:"absolute"`
+	Direct   bool           `json:"direct"`
+}
+
+type SaveOptions struct {
 	Doc      map[string]any `json:"doc"`
 	Fields   []string       `json:"fields"`
 	Index    interface{}    `json:"index"`

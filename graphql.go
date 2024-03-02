@@ -512,6 +512,31 @@ func (o *Objectql) initObjectGraphqlMutation(ctx context.Context, mutations grap
 			return o.graphqlMutationInsertResolver(p.Context, p, object)
 		},
 	}
+	// 保存
+	mutations[object.Api+"__save"] = &graphql.Field{
+		Type: o.getGraphqlObject(object.Api),
+		Args: graphql.FieldConfigArgument{
+			"doc": &graphql.ArgumentConfig{
+				Type:        form,
+				Description: "对象文档",
+			},
+			"index": &graphql.ArgumentConfig{
+				Type:        graphql.Int,
+				Description: "插入位置",
+			},
+			"dir": &graphql.ArgumentConfig{
+				Type:        graphql.Int,
+				Description: "插入方向",
+			},
+			"absolute": &graphql.ArgumentConfig{
+				Type:        graphql.Boolean,
+				Description: "绝对位置",
+			},
+		},
+		Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+			return o.graphqlMutationSaveResolver(p.Context, p, object)
+		},
+	}
 	// 批量修改
 	mutations[object.Api+"__update"] = &graphql.Field{
 		Type: graphql.NewList(o.getGraphqlObject(object.Api)),
@@ -855,6 +880,93 @@ func (o *Objectql) graphqlMutationInsertArgumentValidate(object *Object, args ma
 		}
 	}
 	return nil
+}
+
+func (o *Objectql) graphqlMutationSaveResolver(ctx context.Context, p graphql.ResolveParams, object *Object) (interface{}, error) {
+	args := formatNullValue(p.Args)
+	err := o.graphqlMutationSaveArgumentValidate(object, args)
+	if err != nil {
+		return nil, err
+	}
+	var pos *IndexPosition
+	if !isNull(p.Args["index"]) {
+		pos = &IndexPosition{
+			Index:    gconv.Int(args["index"]),
+			Dir:      gconv.Int(args["dir"]),
+			Absolute: gconv.Bool(args["absolute"]),
+		}
+	}
+	doc := args["doc"].(map[string]interface{})
+
+	var updateId string
+	// 判断是否存在主键
+	primaryFields := object.getPrimaryFields()
+	if len(primaryFields) > 0 {
+		filter, err := o.getPrimaryFieldsFilter(doc, primaryFields)
+		if err != nil {
+			return nil, err
+		}
+		one, err := o.mongoFindOneEx(ctx, object.Api, findOneExOptions{
+			Fields: []string{"_id"},
+			Filter: filter,
+		})
+		if err != nil {
+			return nil, err
+		}
+		if one != nil {
+			updateId = gconv.String(one["_id"])
+		}
+	}
+	if len(updateId) > 0 {
+		// 数据更新
+		err = o.updateHandle(ctx, object.Api, updateId, doc, false)
+		if err != nil {
+			return nil, err
+		}
+		// 位置更新
+		if pos != nil {
+			err = o.moveHandle(ctx, object.Api, updateId, *pos)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return o.graphqlMutationQueryOne(ctx, p, object, updateId)
+	} else {
+		// 数据新建
+		objectId, err := o.insertHandle(ctx, object.Api, doc, pos)
+		if err != nil {
+			return nil, err
+		}
+		return o.graphqlMutationQueryOne(ctx, p, object, objectId)
+	}
+}
+
+func (o *Objectql) graphqlMutationSaveArgumentValidate(object *Object, args map[string]interface{}) error {
+	if isNull(args["doc"]) {
+		return fmt.Errorf(`mutation %s__insert method arg "doc" can't be null`, object.Api)
+	}
+	if !isNull(args["index"]) {
+		dir := gconv.Int(args["dir"])
+		if !(dir == 1 || dir == -1 || dir == 0) {
+			return fmt.Errorf(`mutation %s__insert method arg "dir" can't be %v`, object.Api, args["dir"])
+		}
+	}
+	return nil
+}
+
+func (o *Objectql) getPrimaryFieldsFilter(doc map[string]interface{}, fields []*Field) (map[string]interface{}, error) {
+	result := map[string]interface{}{}
+	for _, field := range fields {
+		if doc[field.Api] == nil {
+			return nil, gerror.Newf("字段<%s>是必填项", field.Name)
+		}
+		formated, err := formatValueToDatabase(field.Type, doc[field.Api])
+		if err != nil {
+			return nil, err
+		}
+		result[field.Api] = formated
+	}
+	return result, nil
 }
 
 func (o *Objectql) graphqlMutationUpdateResolver(ctx context.Context, p graphql.ResolveParams, object *Object) (interface{}, error) {

@@ -852,6 +852,39 @@ func (o *Objectql) Insert(ctx context.Context, objectApi string, options InsertO
 	return getVarFromGraphqlResult(o.Do(ctx, buffer.String()))
 }
 
+func (o *Objectql) Save(ctx context.Context, objectApi string, options SaveOptions) (*Var, error) {
+	ctx = context.WithValue(ctx, blockEventsKey, options.Direct)
+	_, err := o.MustGetObject(objectApi)
+	if err != nil {
+		return nil, err
+	}
+	var buffer bytes.Buffer
+	buffer.WriteString("mutation {")
+	buffer.WriteString("data: " + objectApi + "__save(")
+	buffer.WriteString(" doc:")
+	text, err := o.docToGrpahqlArgumentText(objectApi, options.Doc)
+	if err != nil {
+		return nil, err
+	}
+	buffer.WriteString(text)
+	if options.Index != nil {
+		buffer.WriteString(" index:")
+		buffer.WriteString(gconv.String(options.Index))
+	}
+	if options.Dir != nil {
+		buffer.WriteString(" dir:")
+		buffer.WriteString(gconv.String(options.Dir))
+	}
+	buffer.WriteString(" absolute:")
+	buffer.WriteString(gconv.String(options.Absolute))
+	buffer.WriteString(")")
+	buffer.WriteString("{")
+	writeGraphqlQueyrFields(&buffer, options.Fields)
+	buffer.WriteString("}")
+	buffer.WriteString("}")
+	return getVarFromGraphqlResult(o.Do(ctx, buffer.String()))
+}
+
 func (o *Objectql) Update(ctx context.Context, objectApi string, options UpdateOptions) ([]*Var, error) {
 	ctx = context.WithValue(ctx, blockEventsKey, options.Direct)
 	_, err := o.MustGetObject(objectApi)

@@ -85,6 +85,16 @@ func (o *Objectql) DoCommands(ctx context.Context, commands []Command, filter ..
 					Fields:   command.Fields,
 					Direct:   n.Direct,
 				})
+			case *SaveArgs:
+				mapKey = command.Result
+				result, err = o.Save(ctx, objectApi, SaveOptions{
+					Doc:      n.Doc,
+					Index:    n.Index,
+					Dir:      n.Dir,
+					Absolute: n.Absolute,
+					Fields:   command.Fields,
+					Direct:   n.Direct,
+				})
 			case *UpdateByIdArgs:
 				mapKey = command.Result
 				result, err = o.UpdateById(ctx, objectApi, UpdateByIdOptions{
@@ -233,6 +243,14 @@ func (o *Objectql) computeCommandArgs(ctx context.Context, this map[string]any, 
 func (o *Objectql) convCommandArgs(command *Command) (any, error) {
 	if gstr.HasSuffix(command.Call, ".insert") {
 		var args *InsertArgs
+		err := gconv.Struct(command.Args, &args)
+		if err != nil {
+			return nil, err
+		}
+		return args, nil
+	}
+	if gstr.HasSuffix(command.Call, ".save") {
+		var args *SaveArgs
 		err := gconv.Struct(command.Args, &args)
 		if err != nil {
 			return nil, err
