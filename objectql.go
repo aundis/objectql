@@ -164,6 +164,10 @@ func (o *Objectql) GetObject(api string) *Object {
 	return nil
 }
 
+func (o *Objectql) GetObjects() []*Object {
+	return o.list
+}
+
 func (o *Objectql) MustGetObject(api string) (*Object, error) {
 	r := o.GetObject(api)
 	if r == nil {
