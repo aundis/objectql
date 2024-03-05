@@ -756,7 +756,9 @@ func (o *Objectql) Query(ctx context.Context, objectApi string, method string, p
 		buffer.WriteString(")")
 	}
 	if len(fields) > 0 && len(fields[0]) > 0 {
+		buffer.WriteString("{")
 		buffer.WriteString(Strings2GraphqlFieldQuery(fields[0]))
+		buffer.WriteString("}")
 	} else {
 		writeGraphqlOutputFieldQueryString(&buffer, gquery.Type)
 	}
@@ -794,7 +796,9 @@ func (o *Objectql) Mutation(ctx context.Context, objectApi string, method string
 		buffer.WriteString(")")
 	}
 	if len(fields) > 0 && len(fields[0]) > 0 {
+		buffer.WriteString("{")
 		buffer.WriteString(Strings2GraphqlFieldQuery(fields[0]))
+		buffer.WriteString("}")
 	} else {
 		writeGraphqlOutputFieldQueryString(&buffer, gmutation.Type)
 	}
