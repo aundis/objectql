@@ -3,7 +3,6 @@ package objectql
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"testing"
 
@@ -1940,47 +1939,6 @@ func TestMoveDownUpAbs(t *testing.T) {
 	})
 	if err != ErrOk {
 		t.Error(err)
-		return
-	}
-}
-
-func TestGetObjectMetaInfo(t *testing.T) {
-	list := []*Object{
-		{
-			Name:       "学生",
-			Api:        "student",
-			Index:      true,
-			IndexGroup: []string{"name"},
-			Fields: []*Field{
-				{
-					Name: "姓名",
-					Api:  "name",
-					Type: String,
-				},
-				{
-					Name: "年龄",
-					Api:  "age",
-					Type: Int,
-				},
-			},
-			Comment: "",
-		},
-	}
-	err := testTransaction(list, func(ctx context.Context, oql *Objectql) error {
-		info := oql.GetObjectMetaInfo("student")
-		if info == nil {
-			return errors.New("except info")
-		}
-		if !info.Index {
-			return errors.New("except index = true")
-		}
-		if len(info.IndexGroup) != 1 {
-			return errors.New("except index group array length = 1")
-		}
-		return nil
-	})
-	if err != nil {
-		t.Error(gerror.Stack(err))
 		return
 	}
 }

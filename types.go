@@ -335,47 +335,6 @@ type DeleteArgs struct {
 	Direct bool           `json:"direct"`
 }
 
-type ObjectInfo struct {
-	Name       string       `json:"name"`
-	Index      bool         `json:"index"`
-	IndexGroup []string     `json:"indexGroup"`
-	Api        string       `json:"api"`
-	Fields     []FieldInfo  `json:"fields"`
-	Querys     []HandleInfo `json:"querys"`
-	Mutations  []HandleInfo `json:"mutations"`
-}
-
-type FieldInfo struct {
-	Name string `json:"name"`
-	Api  string `json:"api"`
-}
-
-type ObjectMetaInfo struct {
-	Name       string          `json:"name"`
-	Api        string          `json:"api"`
-	Index      bool            `json:"index"`
-	IndexGroup []string        `json:"indexGroup"`
-	Fields     []FieldMetaInfo `json:"fields"`
-}
-
-type FieldMetaInfo struct {
-	Name        string           `json:"name"`
-	Api         string           `json:"api"`
-	Type        string           `json:"type"`
-	Readonly    bool             `json:"readonly"`
-	Require     interface{}      `json:"require"`
-	Default     any              `json:"default" `
-	Dynamic     bool             `json:"dynamic"`
-	Select      []SelectOption   `json:"select"`
-	SelectFrom  *SelectValueFrom `json:"selectFrom"`
-	SelectLabel string           `json:"selectLabel"`
-}
-
-type HandleInfo struct {
-	Name string `json:"name"`
-	Api  string `json:"api"`
-}
-
 // OPTIONS
 
 type FindOneByIdOptions struct {

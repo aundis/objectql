@@ -201,8 +201,12 @@ type getObjectInfosReq struct {
 
 type testBindStructArrayStruct struct{}
 
-func (t *testBindStructArrayStruct) GetObjectInfos(ctx context.Context, req *getObjectInfosReq) ([]*ObjectInfo, error) {
+func (t *testBindStructArrayStruct) GetObjectInfos(ctx context.Context, req *getObjectInfosReq) ([]resultStruct, error) {
 	return nil, nil
+}
+
+type resultStruct struct {
+	Name string
 }
 
 func TestBindStructArray(t *testing.T) {
