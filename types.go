@@ -111,6 +111,10 @@ type Field struct {
 	updateableSourceCodeFields []string            // 可编辑验证需要的字段
 }
 
+func (f *Field) HasRelation() bool {
+	return len(f.relations) > 0
+}
+
 type SelectOption struct {
 	Label string      `json:"label"`
 	Value interface{} `json:"value"`
