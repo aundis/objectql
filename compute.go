@@ -112,7 +112,7 @@ func (o *Objectql) formulaHandler(ctx context.Context, object *Object, id string
 
 func (o *Objectql) aggregationHandler(ctx context.Context, object *Object, id string, info *relationFiledInfo, beforeValues bson.M) error {
 	// 聚合2次, 修改前和修改后
-	// 修改前
+	// 修改前，这里没有做变更优化，只有relate字段发生了变更这里才需要再计算一次
 	if beforeValues != nil && beforeValues[info.ThroughField.Api] != nil {
 		objectId := beforeValues[info.ThroughField.Api]
 		err := o.aggregateField(ctx, info.TargetField.Parent, objectId.(primitive.ObjectID).Hex(), info.TargetField)

@@ -571,6 +571,19 @@ func (o *Objectql) initObjectGraphqlMutation(ctx context.Context, mutations grap
 			return o.graphqlMutationUpdateByIdResolver(p.Context, p, object)
 		},
 	}
+	// 触发字段改变，用于触发属性计算链路
+	mutations[object.Api+"__triggerChange"] = &graphql.Field{
+		Type: graphql.Boolean,
+		Args: graphql.FieldConfigArgument{
+			"field": &graphql.ArgumentConfig{
+				Type:        graphql.String,
+				Description: "字段",
+			},
+		},
+		Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+			return o.graphqlMutationTriggerChangeResolver(p.Context, p, object)
+		},
+	}
 	// 移动
 	if object.Index {
 		mutations[object.Api+"__move"] = &graphql.Field{
@@ -1073,6 +1086,42 @@ func (o *Objectql) graphqlMutationMoveArgumentValidate(object *Object, args map[
 	dir := gconv.Int(args["dir"])
 	if !(dir == 1 || dir == -1 || dir == 0) {
 		return fmt.Errorf(`mutation %s__move method arg "dir" can't be %d`, object.Api, dir)
+	}
+	return nil
+}
+
+func (o *Objectql) graphqlMutationTriggerChangeResolver(ctx context.Context, p graphql.ResolveParams, object *Object) (interface{}, error) {
+	args := formatNullValue(p.Args)
+	err := o.graphqlMutationTriggerChangeArgumentValidate(object, args)
+	if err != nil {
+		return false, err
+	}
+	field := object.getField(args["field"].(string))
+	// 查找出该对象的所有记录
+	list, err := o.mongoFindAllEx(ctx, object.Api, findAllExOptions{
+		Fields: []string{"_id"},
+	})
+	if err != nil {
+		return false, err
+	}
+	for _, entity := range list {
+		id := entity["_id"].(string)
+		err = o.onFieldChange(ctx, object, id, field, nil)
+		if err != nil {
+			return false, err
+		}
+	}
+	return true, nil
+}
+
+func (o *Objectql) graphqlMutationTriggerChangeArgumentValidate(object *Object, args map[string]interface{}) error {
+	fapi := gconv.String(args["field"])
+	if len(fapi) == 0 {
+		return gerror.New("field can't be empty")
+	}
+	field := object.getField(fapi)
+	if field == nil {
+		return gerror.Newf("can't found field '%s.%s", object.Api, fapi)
 	}
 	return nil
 }
