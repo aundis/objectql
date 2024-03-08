@@ -731,15 +731,15 @@ func (o *Objectql) handleGraphqlResovler(ctx context.Context, p graphql.ResolveP
 		return nil, err
 	}
 	// 反射调用
-	rt := reflect.TypeOf(handle.Resolve)
-	fn := reflect.ValueOf(handle.Resolve)
-	var args []reflect.Value
-	if handle.req.Kind() == reflect.Pointer {
-		args = []reflect.Value{reflect.ValueOf(o.WithRootPermission(ctx)), reflect.ValueOf(v.Interface())}
-	} else {
-		args = []reflect.Value{reflect.ValueOf(o.WithRootPermission(ctx)), v.Elem()}
-	}
 	return o.WithTransaction(ctx, func(ctx context.Context) (interface{}, error) {
+		rt := reflect.TypeOf(handle.Resolve)
+		fn := reflect.ValueOf(handle.Resolve)
+		var args []reflect.Value
+		if handle.req.Kind() == reflect.Pointer {
+			args = []reflect.Value{reflect.ValueOf(o.WithRootPermission(ctx)), reflect.ValueOf(v.Interface())}
+		} else {
+			args = []reflect.Value{reflect.ValueOf(o.WithRootPermission(ctx)), v.Elem()}
+		}
 		result := fn.Call(args)
 		if rt.NumOut() == 1 {
 			// 只返回error, 那就返回一个bool类型值
