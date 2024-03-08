@@ -739,23 +739,25 @@ func (o *Objectql) handleGraphqlResovler(ctx context.Context, p graphql.ResolveP
 	} else {
 		args = []reflect.Value{reflect.ValueOf(o.WithRootPermission(ctx)), v.Elem()}
 	}
-	result := fn.Call(args)
-	if rt.NumOut() == 1 {
-		// 只返回error, 那就返回一个bool类型值
-		if !result[0].IsNil() {
-			return false, result[0].Interface().(error)
+	return o.WithTransaction(ctx, func(ctx context.Context) (interface{}, error) {
+		result := fn.Call(args)
+		if rt.NumOut() == 1 {
+			// 只返回error, 那就返回一个bool类型值
+			if !result[0].IsNil() {
+				return false, result[0].Interface().(error)
+			}
+			return true, nil
+		} else {
+			// 带有自定义类型的返回值
+			if !result[1].IsNil() {
+				return nil, result[1].Interface().(error)
+			}
+			if handle.res.Kind() == reflect.Pointer && result[0].IsNil() {
+				return nil, nil
+			}
+			return formatHandleReturnValue(result[0].Interface()), nil
 		}
-		return true, nil
-	} else {
-		// 带有自定义类型的返回值
-		if !result[1].IsNil() {
-			return nil, result[1].Interface().(error)
-		}
-		if handle.res.Kind() == reflect.Pointer && result[0].IsNil() {
-			return nil, nil
-		}
-		return formatHandleReturnValue(result[0].Interface()), nil
-	}
+	})
 }
 
 func formatHandleReturnValue(v interface{}) interface{} {
