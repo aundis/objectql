@@ -1384,6 +1384,19 @@ func writeGraphqlArgumentValue(buffer *bytes.Buffer, value interface{}) error {
 			}
 			return nil
 		}
+		if sourceValue.Type().Kind() == reflect.Struct {
+			buffer.WriteString(`{`)
+			for i := 0; i < sourceValue.NumField(); i++ {
+				field := sourceValue.Type().Field(i)
+				fieldValue := sourceValue.Field(i)
+				buffer.WriteString(field.Name)
+				buffer.WriteString(":")
+				writeGraphqlArgumentValue(buffer, fieldValue.Interface())
+				buffer.WriteString(" ")
+			}
+			buffer.WriteString(`}`)
+			return nil
+		}
 		if sourceValue.Type().Kind() == reflect.Map {
 			buffer.WriteString(`"`)
 			buffer.WriteString(escapeString(gconv.String(n)))
