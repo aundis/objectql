@@ -3,7 +3,7 @@ module github.com/aundis/objectql
 go 1.18
 
 require (
-	github.com/aundis/graphql v1.0.2
+	github.com/aundis/graphql v1.0.6
 	go.mongodb.org/mongo-driver v1.12.0
 )
 

@@ -166,7 +166,7 @@ func TestDeleteSync(t *testing.T) {
 		return nil, ErrOk
 	})
 	if err != ErrOk {
-		t.Log(err)
+		t.Error(err)
 		return
 	}
 }
